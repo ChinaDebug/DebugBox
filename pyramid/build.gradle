@@ -1,0 +1,64 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.chaquo.python'
+
+android {
+    namespace 'com.undcover.freedom.pyramid'
+    compileSdk 34
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+        python {
+            version "3.8"
+            buildPython "py", "-3.8"
+            pip {
+                install "lxml"
+                install "pyquery"
+                install "requests"
+                install "jsonpath-ng"
+                install "cachetools"
+                install "pycryptodome"
+                install "beautifulsoup4"
+            }
+        }
+    }
+
+    flavorDimensions "abi"
+
+    productFlavors {
+        arm32 {
+            dimension = "abi"
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        }
+
+        arm64 {
+            dimension = "abi"
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main {
+            python.srcDirs = ["src/python"]
+        }
+    }
+}
+
+dependencies {
+
+}

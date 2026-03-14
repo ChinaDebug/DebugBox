@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="@dimen/vs_530"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/shape_dialog_bg_main"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:lineSpacingExtra="@dimen/ts_40"
+                android:padding="@dimen/vs_20"
+                android:shadowColor="@color/color_FF000000"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="5"
+                android:singleLine="true"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_26"
+                android:textStyle="bold"
+                tools:text="Subtitle Options" />
+
+            <!-- 字幕来源选择 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_mode"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/selectInternal"
+                    android:layout_width="@dimen/vs_110"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_4"
+                    android:layout_marginLeft="@dimen/vs_4"
+                    android:layout_marginEnd="@dimen/vs_4"
+                    android:layout_marginRight="@dimen/vs_4"
+                    android:background="@drawable/button_dialog_main"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:text="Internal"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <TextView
+                    android:id="@+id/selectLocal"
+                    android:layout_width="@dimen/vs_110"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_4"
+                    android:layout_marginLeft="@dimen/vs_4"
+                    android:layout_marginEnd="@dimen/vs_4"
+                    android:layout_marginRight="@dimen/vs_4"
+                    android:background="@drawable/button_dialog_main"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:text="Local"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <TextView
+                    android:id="@+id/selectRemote"
+                    android:layout_width="@dimen/vs_110"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_4"
+                    android:layout_marginLeft="@dimen/vs_4"
+                    android:layout_marginEnd="@dimen/vs_4"
+                    android:layout_marginRight="@dimen/vs_4"
+                    android:background="@drawable/button_dialog_main"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:text="Remote"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <TextView
+                    android:id="@+id/selectClose"
+                    android:layout_width="@dimen/vs_110"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_4"
+                    android:layout_marginLeft="@dimen/vs_4"
+                    android:layout_marginEnd="@dimen/vs_4"
+                    android:layout_marginRight="@dimen/vs_4"
+                    android:background="@drawable/button_dialog_main"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:text="Close"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+            </LinearLayout>
+
+            <!-- 字幕大小 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_size"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="@string/sub_size"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/subtitleSizeMinus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewleft" />
+
+                <TextView
+                    android:id="@+id/subtitleSizeText"
+                    android:layout_width="@dimen/vs_120"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
+                    android:gravity="center"
+                    android:text="16"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <ImageView
+                    android:id="@+id/subtitleSizePlus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewright" />
+            </LinearLayout>
+
+            <!-- 字体颜色选择 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_text_color"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="字体颜色"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/subtitleTextColorMinus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewleft" />
+
+                <TextView
+                    android:id="@+id/subtitleTextColorText"
+                    android:layout_width="@dimen/vs_120"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
+                    android:gravity="center"
+                    android:text="白色"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <ImageView
+                    android:id="@+id/subtitleTextColorPlus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewright" />
+            </LinearLayout>
+
+            <!-- 描边颜色选择 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_stroke_color"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="描边颜色"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/subtitleStrokeColorMinus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewleft" />
+
+                <TextView
+                    android:id="@+id/subtitleStrokeColorText"
+                    android:layout_width="@dimen/vs_120"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
+                    android:gravity="center"
+                    android:text="黑边"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <ImageView
+                    android:id="@+id/subtitleStrokeColorPlus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewright" />
+            </LinearLayout>
+
+            <!-- 字体粗细 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_bold"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="字体粗细"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/subtitleBoldMinus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewleft" />
+
+                <TextView
+                    android:id="@+id/subtitleBoldText"
+                    android:layout_width="@dimen/vs_120"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
+                    android:gravity="center"
+                    android:text="常规"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <ImageView
+                    android:id="@+id/subtitleBoldPlus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewright" />
+            </LinearLayout>
+
+            <!-- 样式预览 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_preview"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="预览"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <com.github.tvbox.osc.subtitle.widget.SimpleSubtitleView
+                    android:id="@+id/subtitleStyleText"
+                    android:layout_width="@dimen/vs_240"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="字幕预览效果"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- 时间调整 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_delay"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/vs_55"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="@dimen/vs_140"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="2"
+                    android:text="提前/延后"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/subtitleTimeMinus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewleft" />
+
+                <TextView
+                    android:id="@+id/subtitleTimeText"
+                    android:layout_width="@dimen/vs_120"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
+                    android:gravity="center"
+                    android:text="0秒"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+
+                <ImageView
+                    android:id="@+id/subtitleTimePlus"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_gravity="center"
+                    android:background="@drawable/subtitle_circle"
+                    android:focusable="true"
+                    android:padding="@dimen/vs_8"
+                    app:srcCompat="@drawable/scrollviewright" />
+            </LinearLayout>
+
+            <!-- 重置按钮 -->
+            <LinearLayout
+                android:id="@+id/ll_subtitle_reset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_15"
+                android:layout_marginRight="@dimen/vs_15"
+                android:layout_marginBottom="@dimen/vs_20"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/subtitleReset"
+                    android:layout_width="@dimen/vs_200"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:background="@drawable/button_dialog_main"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:padding="@dimen/vs_12"
+                    android:text="恢复默认设置"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_20" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

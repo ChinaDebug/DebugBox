@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TVBox</string>
+    <string name="app_home">Home</string>
+    <string name="app_source"></string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_confirm">OK</string>
+
+    // Home Page //
+    <string name="hm_ok">Load Complete</string>
+    <string name="hm_notok">Load Fail</string>
+    <string name="hm_retry">Retry</string>
+    <string name="hm_cancel">Cancel</string>
+    <string name="hm_exit">Press BACK again to EXIT</string>
+    <string name="hm_exit_live">Press BACK again to exit LiveTV</string>
+    <string name="hm_date1">dd MMM</string>
+    <string name="hm_date2">EE HH:mm</string>
+    <string name="hm_hist">History</string>
+    <string name="hm_live">LiveTV</string>
+    <string name="hm_search">Search</string>
+    <string name="hm_push">Push</string>
+    <string name="hm_file">Drives</string>
+    <string name="hm_fav">Favorite</string>
+    <string name="hm_setting">Menu</string>
+    <string name="hm_style_line">Line View</string>
+    <string name="hm_style_grid">Grid View</string>
+    <string name="hm_hist_del">Removed from History</string>
+    <string name="hm_cache_del">System cache cleared</string>
+
+    // History Page //
+    <string name="update_badge_text">Updated</string>
+    <string name="update_check_btn">Check Update</string>
+    <string name="update_check_enable">Enable Update Check</string>
+    <string name="update_check_interval">Background Auto Check Interval</string>
+    <string name="update_check_startup">Startup Check</string>
+    <string name="update_check_wifi_only">WiFi Only</string>
+    <string name="update_found">Found %d updates</string>
+    <string name="update_no_found">No updates found</string>
+
+    // Play Detail Page //
+    <string name="det_play">Play</string>
+    <string name="det_expand">Expand</string>
+    <string name="det_search">Search</string>
+    <string name="det_sort">Sort</string>
+    <string name="det_sort_normal">Normal</string>
+    <string name="det_sort_reverse">Reverse</string>
+    <string name="det_push">Push</string>
+    <string name="det_fav">Favorite</string>
+    <string name="det_fav_add">Added to Favorite</string>
+    <string name="det_fav_del">Removed from Favorite</string>
+    <string name="det_fav_star">★ Favorite</string>
+    <string name="det_fav_unstar">☆ Favorite</string>
+    <string name="det_url">Play URL Copied</string>
+    <string name="det_source"></string>
+    <string name="det_year">Year</string>
+    <string name="det_area">Area</string>
+    <string name="det_lang">Language</string>
+    <string name="det_type">Genre</string>
+    <string name="det_actor">Cast</string>
+    <string name="det_dir">Director</string>
+    <string name="det_des"></string>
+    <string name="det_desc">intro</string>
+    <string name="det_back">Back</string>
+
+    // Settings Menu Page //
+    <string name="mn_config">Configuration Address</string>
+    <string name="mn_home">Source</string>
+    <string name="mn_home_show">Show Source</string>
+    <string name="mn_home_type">Type</string>
+    <string name="mn_icon">Button</string>
+    <string name="mn_history_num">History</string>
+    <string name="mn_live_boot">Autostart Live</string>
+    <string name="mn_wall_change">Wallpaper</string>
+    <string name="mn_wall_load">Loading Wallpaper</string>
+    <string name="mn_wall_reset">Reset</string>
+    <string name="mn_play_type">Player</string>
+    <string name="mn_play_decode">Decode</string>
+    <string name="mn_search">Search Display</string>
+    <string name="mn_ratio">Screen Ratio</string>
+    <string name="mn_bgplay">Bgplay</string>
+    <string name="mn_preview">Detail Page</string>
+    <string name="mn_render">Render</string>
+    <string name="mn_backup">Backup/Restore</string>
+    <string name="mn_dns">DNS</string>
+    <string name="mn_locale">Language</string>
+    <string name="mn_theme">Theme</string>
+    <string name="mn_about">About</string>
+    <string name="mn_purify">Skip Ad</string>
+    <string name="mn_ijk_cache_play">IJK Cache</string>
+    <string name="mn_reset">resetApp</string>
+    <string name="mn_fastsearch">FastSearch</string>
+
+    // Settings Dialog Pop-Up //
+    <string name="dia_source">Select Source</string>
+    <string name="dia_hm_type">Select Display Type</string>
+    <string name="dia_hm_icon">Home Icon Placement</string>
+    <string name="dia_history">Select History to Keep</string>
+    <string name="dia_history_list">Configuration History List</string>
+    <string name="dia_history_live">Live History List</string>
+    <string name="dia_history_epg">EPG History List</string>
+    <string name="dia_player">Select Player Type</string>
+    <string name="dia_decode">Select IJK Decoder</string>
+    <string name="dia_search">Select Search Mode</string>
+    <string name="dia_ratio">Select Screen Ratio</string>
+    <string name="dia_render">Select Render Mode</string>
+    <string name="dia_bkres">Backup / Restore</string>
+    <string name="dia_bkpkg">Select Backup Package</string>
+    <string name="dia_dns">Select DNS</string>
+    <string name="dia_locale">Select Language</string>
+    <string name="dia_theme">Select Theme</string>
+    <string name="dia_confirm">Confirm to Clear All ?</string>
+    <string name="dia_reset">Reset Clear Configuration</string>
+    <string name="dia_media_setting_title">Media Setting</string>
+    <string name="dia_detail_page">Select Detail Page Mode</string>
+    <string name="detail_page_preview">Preview Mode</string>
+    <string name="detail_page_poster">Poster Mode</string>
+
+
+    // Settings Backup Restore Page //
+    <string name="set_bkup_ok">Backup Success</string>
+    <string name="set_bkup_del">Backup Deleted</string>
+    <string name="set_bkup_fail">Backup Fail</string>
+    <string name="set_bkup_fail_hk">Backup Fail (Hawk)</string>
+    <string name="set_bkup_fail_db">Backup Fail (DB)</string>
+    <string name="set_rest_ok">Restore Success, Automatic Restart</string>
+    <string name="set_rest_fail_hk">Restore Fail (Hawk)</string>
+    <string name="set_rest_fail_db">Restore Fail (DB)</string>
+    <string name="set_permission_ok">Write Permission Granted</string>
+    <string name="set_permission_fail1">Failed to get Permission</string>
+    <string name="set_permission_fail2">Failed to get Permission, please grant in Settings</string>
+
+    // Activity Page //
+    <string name="act_app">Applications</string>
+    <string name="act_app_sel">Select to Uninstall</string>
+    <string name="act_app_rm">Uninstall</string>
+    <string name="act_fav">Favorite</string>
+    <string name="act_fav_sel">Select to Remove</string>
+    <string name="act_fav_rm">Remove</string>
+    <string name="act_drive">Drives</string>
+    <string name="act_hist">History</string>
+    <string name="act_hist_sel">Select to Remove</string>
+    <string name="act_hist_rm">Remove</string>
+    <string name="act_live_play_empty_live_url">The live url is not configured, please go to the settings page to configure it</string>
+    <string name="act_live_play_empty_channel">The channel list is empty</string>
+    <string name="act_live_play_network_error">The network request for the live-streaming address failed</string>
+    <string name="act_search">Search</string>
+    <string name="act_search_clr">Clear</string>
+    <string name="act_search_del">Backspace</string>
+    <string name="act_search_rem">Remote</string>
+    <string name="act_search_trend">Trending</string>
+    <string name="act_search_txt">Enter Search Title</string>
+    <string name="act_settings">Settings</string>
+    <string name="act_home">Home</string>
+    <string name="act_player">Play</string>
+    <string name="act_system">System</string>
+
+    // Search Page //
+    <string name="search_input">Input cannot be blank</string>
+    <string name="search_site">No source site selected</string>
+    <string name="search_checkAll">Select All</string>
+    <string name="search_clearAll">Select None</string>
+    <string name="search_filter">Search Filter</string>
+    <string name="search_current_mode">Search Mode:</string>
+    <string name="search_mode_normal">Normal Search</string>
+    <string name="search_mode_fast">Fast Search</string>
+    <string name="search_select_home">Home Source Only</string>
+    <string name="search_home_not_searchable">Home source does not support search</string>
+    <string name="search_selected_home">Selected home source: %s</string>
+
+    // Fast Search Page //
+    <string name="fs_show_all">All</string>
+    <string name="fs_results">Search Results</string>
+    <string name="global_search">global search</string>
+    <string name="search">search</string>
+    <string name="Select_source">Select source</string>
+
+    // VOD //
+    <string name="vod_audio">Select Audio Track</string>
+    <string name="vod_no_audio">No Audio Track</string>
+    <string name="vod_sub_option">Subtitle Options</string>
+    <string name="vod_sub_sel">Select Subtitle</string>
+    <string name="vod_sub_na">No Internal Subtitle</string>
+    <string name="vod_sub_int">Internal</string>
+    <string name="vod_sub_ext">External</string>
+    <string name="vod_sub_remote">Search</string>
+    <string name="vod_sub_close">Close</string>
+    <string name="vod_sub_size">Size</string>
+    <string name="vod_sub_delay">Delay</string>
+    <string name="vod_sub_search">Search</string>
+    <string name="vod_sub_off">Subtitle Off</string>
+    <string name="vod_sub_on">Subtitle On</string>
+    <string name="vod_sub_no_permission">No storage permission</string>
+    <string name="vod_remaining_time">Remaining Time</string>
+    <string name="vod_ends_at">Ends at</string>
+
+    // EXO Player
+    <string name="exo_track_selection_title_video">Video</string>
+    <string name="exo_track_selection_title_audio">Audio</string>
+    <string name="exo_track_selection_title_text">Text</string>
+    <string name="exo_track_selection_none">None</string>
+    <string name="exo_track_selection_auto">Auto</string>
+    <string name="exo_track_unknown">Unknown</string>
+    <string name="exo_track_resolution">%1$d × %2$d</string>
+    <string name="exo_track_mono">Mono</string>
+    <string name="exo_track_stereo">Stereo</string>
+    <string name="exo_track_surround">Surround Sound</string>
+    <string name="exo_track_surround_5_point_1">5.1 Surround Sound</string>
+    <string name="exo_track_surround_7_point_1">7.1 Surround Sound</string>
+    <string name="exo_track_role_alternate">Alternate</string>
+    <string name="exo_track_role_supplementary">Supplementary</string>
+    <string name="exo_track_role_commentary">Commentary</string>
+    <string name="exo_track_role_closed_captions">CC</string>
+    <string name="exo_track_bitrate">%1$.2f Mbps</string>
+    <string name="exo_item_list">%1$s，%2$s</string>
+    <string name="sub_size">Size</string>
+    <string name="sub_delay">Delay</string>
+    <string name="sub_style">Style</string>
+    <string name="sub_style_text">ABC.</string>
+
+    // Cast Screen //
+    <string name="cast_title">Cast to Device</string>
+    <string name="cast_scanning">Scanning for devices...</string>
+    <string name="cast_no_devices">No devices found</string>
+    <string name="cast_scan_error">Scan failed, please check network</string>
+    <string name="cast_refresh">Refresh</string>
+    <string name="cast_cancel">Cancel</string>
+    <string name="cast_success">Cast successful</string>
+    <string name="cast_failed">Cast failed</string>
+    <string name="cast_connecting">Connecting...</string>
+    <string name="cast_disconnect">Disconnect</string>
+
+    // Push to Device //
+    <string name="push_title">Push to Device</string>
+    <string name="push_scanning">Scanning for devices...</string>
+    <string name="push_no_devices">No devices found</string>
+    <string name="push_scan_error">Scan failed, please check network</string>
+    <string name="push_refresh">Refresh</string>
+    <string name="push_cancel">Cancel</string>
+    <string name="push_success">Push successful</string>
+    <string name="push_failed">Push failed</string>
+
+    <string-array name="doh_name">
+        <item>System</item>
+        <item>Tencent</item>
+        <item>Alibaba</item>
+        <item>360</item>
+    </string-array>
+
+    <string-array name="doh_url">
+        <item />
+        <item>https://doh.pub/dns-query</item>
+        <item>https://dns.alidns.com/dns-query</item>
+        <item>https://doh.360.cn/dns-query</item>
+    </string-array>
+
+    <!-- 视频设置 相关数据 -->
+    <string-array name="media_title">
+        <item>General</item>
+        <item>ExoPlayer</item>
+        <item>IjkPlayer</item>
+    </string-array>
+
+    <string-array name="media_title_tag">
+        <item>General</item>
+        <item>ExoPlayer</item>
+        <item>IjkPlayer</item>
+    </string-array>
+
+    <string-array name="media_content_tag_General">
+        <item>VodPlayerPreferred</item>
+        <item>PlayRender</item>
+        <item>AutoSwitchPlayer</item>
+    </string-array>
+
+    <string-array name="media_content_General" >
+        <item>Vod Player Preferred</item>
+        <item>Render Mode</item>
+        <item>Auto Switch Player</item>
+    </string-array>
+
+    <string-array name="media_content_IjkPlayer">
+        <item>Decode Mode</item>
+        <item>Cache to Local</item>
+        <item>Buffer Mode</item>
+    </string-array>
+
+    <string-array name="media_content_ExoPlayer">
+        <item>Renderer Mode</item>
+        <item>Renderer</item>
+        <item>Buffer Mode</item>
+    </string-array>
+
+    <string-array name="media_content_ExoPlayer_renderer">
+        <item>Default</item>
+        <item>NextLib</item>
+    </string-array>
+
+    <string-array name="media_content_ExoPlayer_renderer_mode">
+        <item>Prefer Core Renderer</item>
+        <item>Prefer Extension Renderer</item>
+        <item>Extension Renderer Off</item>
+    </string-array>
+
+    <string-array name="media_content_General_VodPlayerPreferred">
+        <item>Config Specified</item>
+        <item>System</item>
+        <item>IJK</item>
+        <item>Exo</item>
+        <item>MXPlayer</item>
+        <item>ReexPlayer</item>
+        <item>Kodi</item>
+    </string-array>
+
+    <string-array name="media_content_General_PlayRender">
+        <item>TextureView</item>
+        <item>SurfaceView</item>
+    </string-array>
+
+    <string-array name="media_content_tag_ExoPlayer">
+        <item>ExoRendererMode</item>
+        <item>ExoRenderer</item>
+        <item>ExoBufferMode</item>
+    </string-array>
+
+    <string-array name="media_content_tag_IjkPlayer">
+        <item>IjkMediaCodecMode</item>
+        <item>IjkCache</item>
+        <item>BufferMode</item>
+    </string-array>
+</resources>

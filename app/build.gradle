@@ -1,0 +1,227 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
+
+def static buildTime() {
+    return new Date().format("yyyyMMdd_HHmm", TimeZone.getTimeZone("GMT+08:00"))
+}
+
+def getSigningConfig() {
+    // 优先级：环境变量 > 本地 keystore.properties > 临时签名
+    def config = [:]
+
+    // 1. 尝试从环境变量读取（GitHub Actions 使用）
+    config.storeFile = System.getenv("SIGNING_KEYSTORE_FILE")
+    config.storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+    config.keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+    config.keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+
+    // 2. 如果环境变量不存在，尝试从本地文件读取
+    if (config.storeFile == null || config.storeFile.isEmpty()) {
+        // 先检查 app 目录下的 keystore.properties
+        def keystorePropsFile = project.file("keystore.properties")
+        if (!keystorePropsFile.exists()) {
+            // 再检查根目录
+            keystorePropsFile = rootProject.file("keystore.properties")
+        }
+        if (keystorePropsFile.exists()) {
+            def keystoreProps = new Properties()
+            keystoreProps.load(new FileInputStream(keystorePropsFile))
+            config.storeFile = keystoreProps['storeFile']
+            config.storePassword = keystoreProps['storePassword']
+            config.keyAlias = keystoreProps['keyAlias']
+            config.keyPassword = keystoreProps['keyPassword']
+        }
+    }
+
+    return config
+}
+
+android {
+    namespace 'com.github.tvbox.osc'
+    compileSdk 34
+
+    signingConfigs {
+        release {
+            def config = getSigningConfig()
+            if (config.storeFile != null && !config.storeFile.isEmpty()) {
+                storeFile file(config.storeFile)
+                storePassword config.storePassword
+                keyAlias config.keyAlias
+                keyPassword config.keyPassword
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId 'com.github.tvbox.osc.tk'
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0.".concat(buildTime())
+        multiDexEnabled true
+        minSdkVersion 21
+    }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        jniLibs {
+            useLegacyPackaging = true
+            excludes += ['lib/armeabi/**', 'lib/x86/**', 'lib/x86_64/**', 'lib/mips/**', 'lib/mips64/**']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            zipAlignEnabled true
+            signingConfig signingConfigs.release
+        }
+    }
+
+    // 构建后删除 ProGuard 映射文件
+    applicationVariants.configureEach { variant ->
+        if (variant.buildType.name == 'release') {
+            variant.getAssembleProvider().configure {
+                it.doLast {
+                    delete fileTree(dir: "$buildDir/outputs/mapping/${variant.name}", include: '**/mapping.txt')
+                    delete fileTree(dir: "$buildDir/outputs/mapping/${variant.name}", include: '**/seeds.txt')
+                    delete fileTree(dir: "$buildDir/outputs/mapping/${variant.name}", include: '**/usage.txt')
+                    delete fileTree(dir: "$buildDir/outputs/mapping/${variant.name}", include: '**/resources.txt')
+                }
+            }
+        }
+    }
+
+    flavorDimensions = ["abi", "brand"]
+    productFlavors {
+        arm64 {
+            dimension = "abi"
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+        }
+
+        arm32 {
+            dimension = "abi"
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        }
+
+        generic  {
+            dimension = "brand"
+        }
+    }
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
+            def flavorNames = variant.productFlavors.collect { it.name }.join('-')
+            def fileName = "TVBox_${variant.buildType.name}-${flavorNames}.apk"
+            outputFileName = fileName
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        dataBinding = true
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+        disable 'UnsafeOptInUsageError'
+    }
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas".toString())
+    }
+}
+
+dependencies {
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.0") {
+            because("kotlin-stdlib-jdk7 is now a part of kotlin-stdlib")
+        }
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") {
+            because("kotlin-stdlib-jdk8 is now a part of kotlin-stdlib")
+        }
+    }
+    api fileTree(dir: "libs", include: ['*.jar', '*.aar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation('com.github.thegrizzlylabs:sardine-android:0.8') {
+        exclude group: 'com.squareup.okhttp3'
+    }
+    implementation 'com.github.NanoHttpd.nanohttpd:nanohttpd:nanohttpd-project-2.3.1'
+    implementation 'com.github.NanoHttpd.nanohttpd:nanohttpd:nanohttpd-websocket-2.3.1'
+    implementation 'com.google.zxing:core:3.5.3'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation project(path: ':quickjs')
+    implementation project(":pyramid")
+    
+    kapt 'androidx.room:room-compiler:2.6.1'
+    implementation 'com.github.alidili:FlowLayout:v1.5'
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.11'
+    implementation 'com.squareup.okio:okio:3.6.0'
+    implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.49-androidx'
+    implementation 'com.kingja.loadsir:loadsir:1.3.8'
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'com.google.j2objc:j2objc-annotations:3.0.0'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    kapt 'com.github.bumptech.glide:compiler:4.16.0'
+    implementation 'me.jessyan:autosize:1.2.1'
+    implementation('com.thoughtworks.xstream:xstream:1.4.20') {
+        exclude group: 'xmlpull', module: 'xmlpull'
+    }
+    implementation 'org.greenrobot:eventbus:3.3.1'
+    implementation 'com.orhanobut:hawk:2.0.1'
+    implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
+    implementation 'androidx.annotation:annotation:1.9.0'
+    implementation "androidx.media3:media3-exoplayer:1.4.1"
+    implementation "androidx.media3:media3-ui:1.4.1"
+    implementation "androidx.media3:media3-exoplayer-dash:1.4.1"
+    implementation "androidx.media3:media3-exoplayer-hls:1.4.1"
+    implementation "androidx.media3:media3-exoplayer-rtsp:1.4.1"
+    implementation "androidx.media3:media3-datasource-rtmp:1.4.1"
+    implementation 'androidx.media3:media3-common:1.4.1'
+    implementation "com.github.anilbeesetti.nextlib:nextlib-media3ext:0.8.2"
+
+    implementation 'xyz.doikki.android.dkplayer:dkplayer-ui:3.3.7'
+    implementation 'xyz.doikki.android.dkplayer:videocache:3.3.7'
+
+    implementation 'com.lzy.net:okgo:3.0.4'
+    implementation 'com.owen:tv-recyclerview:3.0.0'
+    implementation 'com.blankj:utilcodex:1.31.0'
+    implementation 'com.github.getActivity:XXPermissions:18.5'
+    implementation 'org.jsoup:jsoup:1.15.4'
+    implementation 'com.github.hedzr:android-file-chooser:v1.2.0-final'
+    implementation 'commons-io:commons-io:2.18.0'
+    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
+    implementation 'org.apache.commons:commons-text:1.13.0'
+    implementation 'com.github.seven332:jcifs:1.3.19'
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
+    implementation 'io.github.inflationx:viewpump:2.1.1'
+    implementation 'io.github.inflationx:calligraphy3:3.1.1'
+    implementation 'com.github.ctiao:DanmakuFlameMaster:0.9.25'
+    implementation('org.simpleframework:simple-xml:2.7.1') {
+        exclude group: 'stax', module: 'stax-api'
+        exclude group: 'xpp3', module: 'xpp3'
+    }
+    configurations {
+        configureEach {
+            exclude group: 'xpp3', module: 'xpp3'
+        }
+    }
+}

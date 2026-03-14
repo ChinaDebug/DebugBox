@@ -1,0 +1,394 @@
+package xyz.doikki.videoplayer.player;
+
+import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.net.TrafficStats;
+import android.net.Uri;
+import android.os.Build;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+
+import com.github.tvbox.osc.player.TrackInfo;
+import com.github.tvbox.osc.player.TrackInfoBean;
+import com.github.tvbox.osc.util.PlayerHelper;
+
+import java.util.Map;
+import xyz.doikki.videoplayer.util.PlayerUtils;
+/**
+ * 封装系统的MediaPlayer，不推荐，系统的MediaPlayer兼容性较差，建议使用IjkPlayer或者ExoPlayer
+ */
+public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.OnErrorListener,
+        MediaPlayer.OnCompletionListener, MediaPlayer.OnInfoListener,
+        MediaPlayer.OnBufferingUpdateListener, MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnVideoSizeChangedListener, MediaPlayer.OnTimedTextListener {
+
+    protected MediaPlayer mMediaPlayer;
+    private int mBufferedPercent;
+    private boolean mIsBuffering;
+    private long mLastBufferingNotifyTime;
+    private static final long BUFFERING_NOTIFY_INTERVAL = 500;
+    protected Context mAppContext;
+    private boolean mIsPreparing;
+
+    private long speedLastTotalRxBytes = -1;
+    private long speedLastTimeStamp = -1;
+    private MediaPlayer.OnTimedTextListener mTimedTextListener;
+
+    public AndroidMediaPlayer(Context context) {
+        mAppContext = context.getApplicationContext();
+    }
+
+    @Override
+    public void initPlayer() {
+        mMediaPlayer = new MediaPlayer();
+        setOptions();
+        mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mMediaPlayer.setOnErrorListener(this);
+        mMediaPlayer.setOnCompletionListener(this);
+        mMediaPlayer.setOnInfoListener(this);
+        mMediaPlayer.setOnBufferingUpdateListener(this);
+        mMediaPlayer.setOnPreparedListener(this);
+        mMediaPlayer.setOnVideoSizeChangedListener(this);
+        mMediaPlayer.setOnTimedTextListener(this);
+    }
+
+    @Override
+    public void setDataSource(String path, Map<String, String> headers) {
+        try {
+            mMediaPlayer.setDataSource(mAppContext, Uri.parse(path), headers);
+        } catch (Exception e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void setDataSource(AssetFileDescriptor fd) {
+        try {
+            mMediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+        } catch (Exception e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void start() {
+        try {
+            mMediaPlayer.start();
+        } catch (IllegalStateException e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void pause() {
+        try {
+            mMediaPlayer.pause();
+        } catch (IllegalStateException e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void stop() {
+        try {
+            mMediaPlayer.stop();
+        } catch (IllegalStateException e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void prepareAsync() {
+        try {
+            mIsPreparing = true;
+            mMediaPlayer.prepareAsync();
+        } catch (IllegalStateException e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void reset() {
+        stop();
+        mMediaPlayer.reset();
+        mMediaPlayer.setSurface(null);
+        mMediaPlayer.setDisplay(null);
+        mMediaPlayer.setVolume(1, 1);
+    }
+
+    @Override
+    public boolean isPlaying() {
+        return mMediaPlayer.isPlaying();
+    }
+
+    @Override
+    public void seekTo(long time) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                //使用这个api seekTo定位更加准确 支持android 8.0以上的设备 https://developer.android.com/reference/android/media/MediaPlayer#SEEK_CLOSEST
+                mMediaPlayer.seekTo(time, MediaPlayer.SEEK_CLOSEST);
+            } else {
+                mMediaPlayer.seekTo((int) time);
+            }
+        } catch (IllegalStateException e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void release() {
+        mMediaPlayer.setOnErrorListener(null);
+        mMediaPlayer.setOnCompletionListener(null);
+        mMediaPlayer.setOnInfoListener(null);
+        mMediaPlayer.setOnBufferingUpdateListener(null);
+        mMediaPlayer.setOnPreparedListener(null);
+        mMediaPlayer.setOnVideoSizeChangedListener(null);
+        mMediaPlayer.setOnTimedTextListener(null);
+        mTimedTextListener = null;
+        stop();
+        // 修复：同步释放播放器资源，避免异步释放导致空指针异常
+        try {
+            mMediaPlayer.release();
+        } catch (Exception e) {
+        }
+        mMediaPlayer = null;
+    }
+
+    @Override
+    public long getCurrentPosition() {
+        return mMediaPlayer.getCurrentPosition();
+    }
+
+    @Override
+    public long getDuration() {
+        return mMediaPlayer.getDuration();
+    }
+
+    @Override
+    public int getBufferedPercentage() {
+        return mBufferedPercent;
+    }
+
+    @Override
+    public void setSurface(Surface surface) {
+        try {
+            mMediaPlayer.setSurface(surface);
+        } catch (Exception e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void setDisplay(SurfaceHolder holder) {
+        try {
+            mMediaPlayer.setDisplay(holder);
+        } catch (Exception e) {
+            mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+        }
+    }
+
+    @Override
+    public void setVolume(float v1, float v2) {
+        mMediaPlayer.setVolume(v1, v2);
+    }
+
+    @Override
+    public void setLooping(boolean isLooping) {
+        mMediaPlayer.setLooping(isLooping);
+    }
+
+    @Override
+    public void setOptions() {
+    }
+
+    @Override
+    public void setSpeed(float speed) {
+        // only support above Android M
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                mMediaPlayer.setPlaybackParams(mMediaPlayer.getPlaybackParams().setSpeed(speed));
+            } catch (Exception e) {
+                mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+            }
+        }
+    }
+
+    @Override
+    public float getSpeed() {
+        // only support above Android M
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                float speed = mMediaPlayer.getPlaybackParams().getSpeed();
+                if (speed == 0f) speed = 1f;
+                return speed;
+            } catch (Exception e) {
+                return 1f;
+            }
+        }
+        return 1f;
+    }
+
+    @Override
+    public long getTcpSpeed() {
+        if (mAppContext == null) {
+            return 0;
+        }
+        long uidRxBytes = TrafficStats.getUidRxBytes(mAppContext.getApplicationInfo().uid);
+        long nowTotalRxBytes = (uidRxBytes == TrafficStats.UNSUPPORTED) ? TrafficStats.getTotalRxBytes() : uidRxBytes;
+        long nowTimeStamp = System.currentTimeMillis();
+        if (speedLastTimeStamp <= 0) {
+            speedLastTimeStamp = nowTimeStamp;
+            speedLastTotalRxBytes = nowTotalRxBytes;
+            return 0;
+        }
+        long calculationTime = nowTimeStamp - speedLastTimeStamp;
+        if (calculationTime <= 0) {
+            return 0;
+        }
+        long speed = ((nowTotalRxBytes - speedLastTotalRxBytes) * 1000 / calculationTime);
+        speedLastTimeStamp = nowTimeStamp;
+        speedLastTotalRxBytes = nowTotalRxBytes;
+        return speed;
+    }
+
+    @Override
+    public boolean onError(MediaPlayer mp, int what, int extra) {
+        mPlayerEventListener.onError(-1, "未知播放错误");
+        return true;
+    }
+
+    @Override
+    public void onCompletion(MediaPlayer mp) {
+        mPlayerEventListener.onCompletion();
+    }
+
+    @Override
+    public boolean onInfo(MediaPlayer mp, int what, int extra) {
+        //解决MEDIA_INFO_VIDEO_RENDERING_START多次回调问题
+        if (what == AbstractPlayer.MEDIA_INFO_RENDERING_START) {
+            if (mIsPreparing) {
+                mPlayerEventListener.onInfo(what, extra);
+                mIsPreparing = false;
+            }
+        } else {
+            mPlayerEventListener.onInfo(what, extra);
+        }
+        return true;
+    }
+
+    @Override
+    public void onBufferingUpdate(MediaPlayer mp, int percent) {
+        mBufferedPercent = percent;
+        long currentTime = System.currentTimeMillis();
+        if (percent < 100 && !mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = true;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_START, percent);
+        } else if (percent >= 100 && mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = false;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_END, percent);
+        }
+    }
+
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+        mPlayerEventListener.onPrepared();
+        start();
+        // 修复播放纯音频时状态出错问题
+        if (!isVideo()) {
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_RENDERING_START, 0);
+        }
+    }
+
+    private boolean isVideo() {
+        try {
+            MediaPlayer.TrackInfo[] trackInfo = mMediaPlayer.getTrackInfo();
+            for (MediaPlayer.TrackInfo info :
+                    trackInfo) {
+                if (info.getTrackType() == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_VIDEO) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
+
+    @Override
+    public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
+        int videoWidth = mp.getVideoWidth();
+        int videoHeight = mp.getVideoHeight();
+        if (videoWidth != 0 && videoHeight != 0) {
+            mPlayerEventListener.onVideoSizeChanged(videoWidth, videoHeight);
+        }
+    }
+
+    public TrackInfo getTrackInfo() {
+        try {
+            if (mMediaPlayer == null) return null;
+            MediaPlayer.TrackInfo[] trackInfoArray = mMediaPlayer.getTrackInfo();
+            if (trackInfoArray == null || trackInfoArray.length == 0) return null;
+            TrackInfo data = new TrackInfo();
+            int audioSelected = -1;
+            int subtitleSelected = -1;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                try {
+                    audioSelected = mMediaPlayer.getSelectedTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO);
+                } catch (Exception ignored) {}
+                try {
+                    subtitleSelected = mMediaPlayer.getSelectedTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_SUBTITLE);
+                } catch (Exception ignored) {}
+            }
+            int index = 0;
+            for (MediaPlayer.TrackInfo info : trackInfoArray) {
+                int trackType = info.getTrackType();
+                if (trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO) {
+                    String language = info.getLanguage();
+                    String trackName = (data.getAudio().size() + 1) + "：" + (language != null && !language.isEmpty() && !language.equals("und") ? language : "音轨" + (data.getAudio().size() + 1));
+                    TrackInfoBean t = new TrackInfoBean();
+                    t.name = trackName;
+                    t.language = language != null ? language : "";
+                    t.trackId = index;
+                    t.selected = index == audioSelected;
+                    data.addAudio(t);
+                }
+                if (trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_SUBTITLE || trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT) {
+                    String language = info.getLanguage();
+                    String trackName = (data.getSubtitle().size() + 1) + "：" + (language != null && !language.isEmpty() && !language.equals("und") ? language : "字幕" + (data.getSubtitle().size() + 1));
+                    TrackInfoBean t = new TrackInfoBean();
+                    t.name = trackName;
+                    t.language = language != null ? language : "";
+                    t.trackId = index;
+                    t.selected = index == subtitleSelected;
+                    data.addSubtitle(t);
+                }
+                index++;
+            }
+            return data;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public void setTrack(int trackIndex) {
+        try {
+            mMediaPlayer.selectTrack(trackIndex);
+        } catch (Exception e) {
+        }
+    }
+
+    public void setOnTimedTextListener(MediaPlayer.OnTimedTextListener listener) {
+        mTimedTextListener = listener;
+    }
+
+    @Override
+    public void onTimedText(MediaPlayer mp, android.media.TimedText text) {
+        if (mTimedTextListener != null && text != null) {
+            mTimedTextListener.onTimedText(mp, text);
+        }
+    }
+}
