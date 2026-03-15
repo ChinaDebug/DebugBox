@@ -12,6 +12,6 @@ public class Proxy {
             }
         } catch (Throwable ignored) {
         }
-        return new Object[]{"error", "Proxy method not found"};
+        return null;
     }
 }

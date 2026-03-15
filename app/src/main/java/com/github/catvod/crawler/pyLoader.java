@@ -97,15 +97,13 @@ public class pyLoader implements IPyLoader {
 
     @Override
     public Object[] proxyInvoke(Map<String, String> params){
-        if(recentPyApi==null || !isInitialized || pythonLoader == null) {
-            return new Object[]{"error", "PyLoader not initialized"};
-        }
+        if(recentPyApi==null)return null;
         try {
             PythonSpider originalSpider = (PythonSpider) getSpider(MD5.string2MD5(recentPyApi), recentPyApi,"");
             return originalSpider.proxyLocal(params);
         } catch (Throwable th) {
         }
-        return new Object[]{"error", "Proxy method not found"};
+        return null;
     }
 
     private String getPyUrl(String api, String ext) throws UnsupportedEncodingException {

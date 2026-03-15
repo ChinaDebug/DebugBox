@@ -3,6 +3,7 @@ package com.github.tvbox.osc.player.danmu;
 import android.graphics.Color;
 import android.text.TextUtils;
 
+import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.Danmu;
 import com.github.tvbox.osc.util.ColorHelper;
 import com.github.tvbox.osc.util.FileUtils;
@@ -12,6 +13,15 @@ import com.lzy.okgo.OkGo;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
 
 import master.flame.danmaku.danmaku.model.AlphaValue;
 import master.flame.danmaku.danmaku.model.BaseDanmaku;
@@ -33,7 +43,12 @@ public class Parser extends BaseDanmakuParser {
     private int index;
 
     public Parser(String path) {
-        this.danmu = Danmu.fromXml(getContent(path));
+        String content = getContent(path);
+        this.danmu = Danmu.fromXml(content);
+    }
+    
+    public int getDanmuCount() {
+        return danmu != null ? danmu.getData().size() : 0;
     }
 
     private String getContent(String path) {
@@ -41,20 +56,64 @@ public class Parser extends BaseDanmakuParser {
     }
 
     public static String getXmlContent(String path) {
-        if (path.startsWith("file")) {
-            return FileUtils.read(path);
-        }
-        if (path.startsWith("http")) {
-            try {
-                String content = OkGo.<String>get(path).execute().body().string();
-                return content;
-            } catch (Throwable e) {
-                LOG.e("Danmu", "获取弹幕失败: " + e.getMessage());
+        try {
+            if (path.startsWith("file")) {
+                return FileUtils.read(path);
+            } else if (path.startsWith("http")) {
+                // 检查是否是本地代理请求
+                if (path.contains("127.0.0.1") || path.contains("localhost")) {
+                    return getXmlContentFromLocalProxy(path);
+                } else {
+                    return OkGo.<String>get(path).execute().body().string();
+                }
+            } else {
+                // 直接是XML内容
+                return path;
             }
+        } catch (Throwable e) {
+            LOG.e("Danmu", "获取弹幕失败: " + e.getMessage());
+            return "";
         }
-        return path;
     }
 
+    private static String getXmlContentFromLocalProxy(String path) {
+        try {
+            // 解析URL参数
+            URL url = new URL(path);
+            String query = url.getQuery();
+            Map<String, String> params = new HashMap<>();
+            if (query != null) {
+                for (String param : query.split("&")) {
+                    String[] pair = param.split("=");
+                    if (pair.length == 2) {
+                        params.put(pair[0], java.net.URLDecoder.decode(pair[1], "UTF-8"));
+                    }
+                }
+            }
+            
+            // 直接调用proxyLocal
+            Object[] rs = ApiConfig.get().proxyLocal(params);
+            
+            if (rs != null && rs.length >= 3 && rs[2] instanceof InputStream) {
+                InputStream stream = (InputStream) rs[2];
+                // 读取字节并过滤非法XML字符
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int len;
+                while ((len = stream.read(buffer)) != -1) {
+                    baos.write(buffer, 0, len);
+                }
+                stream.close();
+                // 将字节转换为字符串，使用UTF-8
+                return baos.toString("UTF-8");
+            }
+        } catch (Throwable e) {
+            LOG.e("Danmu", "获取本地代理弹幕失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return "";
+    }
+    
     @Override
     protected Danmakus parse() {
         Danmakus result = new Danmakus(IDanmakus.ST_BY_TIME);

@@ -791,13 +791,7 @@ public class ApiConfig {
             return jsLoader.proxyInvoke(param);
         }
         SourceBean sourceBean = ApiConfig.get().getHomeSourceBean(); 
-        if (sourceBean == null) {
-            return new Object[]{"error", "SourceBean is null"};
-        }
-        String apiString = sourceBean.getApi();
-        if (apiString == null) {
-            return new Object[]{"error", "API string is null"};
-        }
+        String apiString = sourceBean.getApi();   
         return apiString.contains(".py") ? pyLoader.proxyInvoke(param) : jarLoader.proxyInvoke(param);
     }
 

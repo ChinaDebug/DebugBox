@@ -196,6 +196,7 @@ public class PlayActivity extends BaseActivity {
     public static final int BROADCAST_ACTION_NEXT = 2;
 
     ExecutorService executorService;
+    private volatile boolean isDanmuLoadingCancelled = false; // 弹幕加载取消标志
     private DanmakuView mDanmuView;
     private DanmakuContext mDanmakuContext;
     private String danmuText;
@@ -291,6 +292,8 @@ public class PlayActivity extends BaseActivity {
         mDanmakuContext.setMaximumLines(maxLines).setScrollSpeedFactor(speed).setDanmakuTransparency(alpha).setScaleTextSize(sizeScale);
         mDanmakuContext.setDanmakuStyle(IDisplayer.DANMAKU_STYLE_STROKEN, 3).setDanmakuMargin(8);
         if (reload){
+            // 取消之前的弹幕加载任务
+            isDanmuLoadingCancelled = true;
             if (executorService != null){
                 executorService.shutdownNow();
                 executorService = null;
@@ -309,6 +312,11 @@ public class PlayActivity extends BaseActivity {
                 }
             });
             executorService.execute(() -> {
+                // 新任务开始时重置取消标志
+                isDanmuLoadingCancelled = false;
+                if (mDanmuView == null || mDanmakuContext == null) {
+                    return;
+                }
                 mDanmuView.release();
 
                 // 如果 effectiveDanmu 是 URL，先下载 XML 内容并保存
@@ -333,21 +341,60 @@ public class PlayActivity extends BaseActivity {
                         }
                     }
                 }
+                
+                // 检查内容是否为空
+                if (isDanmuLoadingCancelled || xmlContent == null || xmlContent.isEmpty()) {
+                    if (!isDanmuLoadingCancelled) {
+                        App.post(() -> {
+                            if (!isFinishing()) {
+                                Toast.makeText(this, "弹幕加载失败，请检查弹幕源", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                    return;
+                }
 
                 final String finalXmlContent = xmlContent;
-                mDanmuView.prepare(new Parser(finalXmlContent), mDanmakuContext);
+                Parser parser = new Parser(finalXmlContent);
+                mDanmuView.prepare(parser, mDanmakuContext);
                 // 弹幕加载完成后，在主线程显示弹幕
                 App.post(() -> {
                     if (!isFinishing() && mDanmuView != null && HawkUtils.getDanmuOpen()) {
                         mDanmuView.setVisibility(View.VISIBLE);
                         mDanmuView.show();
                         // 弹幕准备完成后，开始渲染并同步到当前播放位置
-                        if (mDanmuView.isPrepared()) {
-                            mDanmuView.start(mVideoView != null ? mVideoView.getCurrentPosition() : 0);
-                        }
+                        startDanmuWhenPrepared();
                     }
                 });
             });
+        }
+    }
+
+    private static final int DANMU_PREPARE_RETRY_DELAY = 100;
+    private static final int DANMU_PREPARE_MAX_RETRY = 50; // 最多重试5秒
+    private int danmuPrepareRetryCount = 0;
+
+    private void startDanmuWhenPrepared() {
+        if (mDanmuView == null || mVideoView == null) {
+            danmuPrepareRetryCount = 0;
+            return;
+        }
+        if (mDanmuView.isPrepared()) {
+            mDanmuView.start(mVideoView.getCurrentPosition());
+            danmuPrepareRetryCount = 0;
+        } else if (danmuPrepareRetryCount < DANMU_PREPARE_MAX_RETRY) {
+            // 弹幕还未准备好，延迟重试
+            danmuPrepareRetryCount++;
+            mHandler.postDelayed(() -> {
+                if (!isFinishing() && mDanmuView != null && HawkUtils.getDanmuOpen()) {
+                    startDanmuWhenPrepared();
+                } else {
+                    danmuPrepareRetryCount = 0;
+                }
+            }, DANMU_PREPARE_RETRY_DELAY);
+        } else {
+            // 超过最大重试次数，重置计数器
+            danmuPrepareRetryCount = 0;
         }
     }
     private void initView() {
@@ -1376,6 +1423,10 @@ public class PlayActivity extends BaseActivity {
                     String flag = info.optString("flag");
                     String url = info.getString("url");
                     String danmaku = info.optString("danmaku");
+                    // 修复Jar爬虫首次安装时弹幕URL端口为-1的问题
+                    if (danmaku != null && danmaku.contains("127.0.0.1:-1")) {
+                        danmaku = danmaku.replace("127.0.0.1:-1", "127.0.0.1:" + RemoteServer.serverPort);
+                    }
                     HashMap<String, String> headers = null;
                     webUserAgent = null;
                     webHeaderMap = null;
@@ -2189,6 +2240,8 @@ public class PlayActivity extends BaseActivity {
         String playTitleInfo = mVodInfo.name + " : " + vs.name;
         setTip("正在获取播放信息", true, false);
         mController.setTitle(playTitleInfo);
+        RemoteServer.vodName = mVodInfo.name;
+        RemoteServer.artist = vs.name;
 
         stopParse();
         initParseLoadFound();

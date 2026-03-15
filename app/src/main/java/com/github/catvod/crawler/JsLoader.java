@@ -158,6 +158,6 @@ public class JsLoader {
             }
         } catch (Throwable th) {
         }
-        return new Object[]{"error", "Proxy method not found"};
+        return null;
     }
 }

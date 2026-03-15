@@ -48,7 +48,6 @@ public class JarLoader {
 
     private boolean loadClassLoader(String jar, String key) {
         if (classLoaders.containsKey(key)){
-            LOG.i("JarLoader", "loadClassLoader jar缓存: " + key);
             return true;
         }
         boolean success = false;
@@ -75,7 +74,6 @@ public class JarLoader {
                         });
                         initThread.start();
                         initThread.join();
-                        LOG.i("JarLoader", "自定义爬虫代码加载成功!");
                         success = true;
                         try {
                             Class<?> proxy = classLoader.loadClass("com.github.catvod.spider.Proxy");
@@ -95,7 +93,7 @@ public class JarLoader {
 
             if (success) {
                 classLoaders.put(key, classLoader);
-            }
+            } 
         } catch (Throwable th) {
             LOG.e(th);
         }
@@ -104,7 +102,6 @@ public class JarLoader {
 
     private DexClassLoader loadJarInternal(String jar, String md5, String key) {
         if (classLoaders.containsKey(key)){
-            LOG.i("JarLoader", "loadJarInternal jar缓存: " + key);
             return classLoaders.get(key);
         }
         File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp/" + key + ".jar");
@@ -152,7 +149,6 @@ public class JarLoader {
 
     public Spider getSpider(String key, String cls, String ext, String jar) {
         if (spiders.containsKey(key)) {
-            LOG.i("JarLoader", "getSpider spider缓存: " + key);
             return spiders.get(key);
         }
         if (cls == null) {
@@ -172,10 +168,12 @@ public class JarLoader {
         }
         recentJarKey = jarKey;
         DexClassLoader classLoader = jarKey.equals("main")? classLoaders.get("main"):loadJarInternal(jarUrl, jarMd5, jarKey);
-        if (classLoader == null) return new SpiderNull();
+        if (classLoader == null) {
+            return new SpiderNull();
+        }
         try {
-            LOG.i("JarLoader", "getSpider 加载spider: " + key);
-            Spider sp = (Spider) classLoader.loadClass("com.github.catvod.spider." + clsKey).newInstance();
+            Class<?> spiderClass = classLoader.loadClass("com.github.catvod.spider." + clsKey);
+            Spider sp = (Spider) spiderClass.newInstance();
             sp.init(App.getInstance(), ext);
             if (!jar.isEmpty()) {
                 sp.homeContent(false);
@@ -230,6 +228,6 @@ public class JarLoader {
             }
         } catch (Throwable th) {
         }
-        return new Object[]{"error", "Proxy method not found"};
+        return null;
     }
 }
