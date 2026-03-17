@@ -785,6 +785,10 @@ public class ApiConfig {
     public Spider getPyCSP(String url) {
         return pyLoader.getSpider(MD5.string2MD5(url), url, "");
     }
+
+    public boolean isPyLoaderReady() {
+        return ((pyLoader) pyLoader).isInitialized();
+    }
 	
     public Object[] proxyLocal(Map<String,String> param) {
         if ("js".equals(param.get("do"))) {

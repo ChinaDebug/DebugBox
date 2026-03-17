@@ -36,10 +36,18 @@ public class pyLoader implements IPyLoader {
             try {
                 pythonLoader = PythonLoader.getInstance().setApplication(App.getInstance());
                 isInitialized = true;
+                // 发送初始化完成事件，通知首页重新加载
+                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PY_LOADER_READY));
             } catch (Exception e) {
                 e.printStackTrace();
+                // 初始化失败，发送失败事件
+                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PY_LOADER_ERROR));
             }
         });
+    }
+
+    public boolean isInitialized() {
+        return isInitialized;
     }
 
     @Override

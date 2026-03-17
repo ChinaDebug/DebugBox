@@ -469,7 +469,16 @@ public class HomeActivity extends BaseActivity {
         mGridView.requestFocus();
 
         if (dataInitOk && jarInitOk) {
-            sourceViewModel.getSort(ApiConfig.get().getHomeSourceBean().getKey());
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            // 检查是否是 py 源且 pyLoader 未初始化完成
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")
+                    && !ApiConfig.get().isPyLoaderReady()) {
+                // pyLoader 未就绪，保持 Loading 状态，等待初始化完成事件
+                showLoading();
+                return;
+            }
+            sourceViewModel.getSort(homeSource.getKey());
             if (Hawk.get(HawkConfig.HOME_DEFAULT_SHOW, false)) {
                 jumpActivity(LivePlayActivity.class);
             }
@@ -788,6 +797,22 @@ public class HomeActivity extends BaseActivity {
                     })
                     .setNegativeButton("取消", null)
                     .show();
+        } else if (event.type == RefreshEvent.TYPE_PY_LOADER_READY) {
+            // pyLoader 初始化完成，如果当前首页是 py 源则重新加载
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")
+                    && dataInitOk && jarInitOk) {
+                // 直接调用 initData 重新加载，会检查 pyLoader 状态并加载数据
+                initData();
+            }
+        } else if (event.type == RefreshEvent.TYPE_PY_LOADER_ERROR) {
+            // pyLoader 初始化失败，显示错误提示
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")) {
+                ToastHelper.showToast("当前数据源加载失败，可尝试切换其它数据源或重启应用");
+            }
         }
     }
 

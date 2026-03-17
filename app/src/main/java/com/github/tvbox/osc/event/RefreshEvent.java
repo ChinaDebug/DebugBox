@@ -30,6 +30,8 @@ public class RefreshEvent {
     public static final int TYPE_COLLECT_REFRESH = 20;
     public static final int TYPE_HOME_REC_CHANGE = 21;
     public static final int TYPE_STORAGE_PERMISSION_DENIED = 22;
+    public static final int TYPE_PY_LOADER_READY = 23;
+    public static final int TYPE_PY_LOADER_ERROR = 24;
     public int type;
     public Object obj;
 
