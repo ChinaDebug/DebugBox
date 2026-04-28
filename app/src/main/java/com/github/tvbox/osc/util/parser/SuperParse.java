@@ -44,7 +44,7 @@ public class SuperParse {
                             }
                             JSONArray flagsArray = new JSONObject(ext).getJSONArray("flag");
                             for (int j = 0; j < flagsArray.length(); j++) {
-                                String flagKey = flagsArray.getString(j);
+                                String flagKey = flagsArray.getString(j).trim().toLowerCase();
                                 ArrayList<String> flagJx = configs.get(flagKey);
                                 if (flagJx == null) {
                                     flagJx = new ArrayList<>();
@@ -62,7 +62,14 @@ public class SuperParse {
             // 根据配置构建 jsonJx 和 webJx
             jsonJx = new LinkedHashMap<>();
             webJx = new ArrayList<>();
-            List<String> targetKeys = configs.get(flag);
+            String normalizedFlag = flag.trim().toLowerCase();
+            List<String> targetKeys = new ArrayList<>();
+            for (String flagKey : configs.keySet()) {
+                String normalizedFlagKey = flagKey.trim().toLowerCase();
+                if (normalizedFlag.contains(normalizedFlagKey)) {
+                    targetKeys.addAll(configs.get(flagKey));
+                }
+            }
             if (targetKeys != null && !targetKeys.isEmpty()) {
                 for (String key : targetKeys) {
                     HashMap<String, String> parseBean = jx.get(key);
@@ -199,7 +206,7 @@ public class SuperParse {
             result[2] = baos;
             return result;
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
         return null;
     }

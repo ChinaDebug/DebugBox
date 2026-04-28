@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
@@ -22,9 +23,9 @@ public class UA {
             String s = dis.readUTF();
             return s;
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            LOG.e(e);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
     }

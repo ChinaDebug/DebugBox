@@ -2,6 +2,7 @@ package com.github.tvbox.osc.ui.tv;
 
 import android.graphics.Bitmap;
 
+import com.github.tvbox.osc.util.LOG;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
@@ -36,7 +37,7 @@ public class QRCodeGen {
             }
             return Bitmap.createBitmap(pixels, 0, width, width, height, Bitmap.Config.RGB_565);
         } catch (WriterException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }

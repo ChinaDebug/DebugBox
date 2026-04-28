@@ -99,7 +99,7 @@ public class DriveFolderFile {
     public String getFormattedLastModified() {
         if(this.lastModifiedDate != null) {
             Date date = new Date(this.lastModifiedDate);
-            Format fmt = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+            Format fmt = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
             return fmt.format(date);
         }
         return "";

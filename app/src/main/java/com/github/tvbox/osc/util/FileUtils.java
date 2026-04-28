@@ -7,6 +7,7 @@ import android.util.Base64;
 import com.github.catvod.utils.Path;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.server.ControlManager;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.StringUtils;
 import com.github.tvbox.osc.util.urlhttp.OkHttpUtil;
 import com.google.gson.Gson;
@@ -53,7 +54,7 @@ public class FileUtils {
             bos.close();
             return true;
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return false;
     }
@@ -67,7 +68,7 @@ public class FileUtils {
             bis.close();
             return data;
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }
@@ -84,7 +85,7 @@ public class FileUtils {
                 jsonString.append(thisLine);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         } finally {
             if (in != null) {
                 try {
@@ -128,7 +129,7 @@ public class FileUtils {
             }
             file.delete();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -177,7 +178,7 @@ public class FileUtils {
                 rel=get("http://" + substring.substring(0, indexOf) + "/file/" + substring.substring(indexOf + 1));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
             return name;
         }
         return rel;
@@ -209,7 +210,7 @@ public class FileUtils {
             is.read(data);
             return new String(data, "UTF-8");
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return "";
     }
@@ -253,7 +254,7 @@ public class FileUtils {
             jSONObject.put("data", data);
             writeSimple(jSONObject.toString().getBytes(), open(name));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -261,7 +262,7 @@ public class FileUtils {
         try {
             writeSimple(byteMerger("//DRPY".getBytes(),Base64.encode(data, Base64.URL_SAFE)), open("B_" + name));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -380,7 +381,7 @@ public class FileUtils {
             is.close();
             return new String(data, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
             return "";
         }
     }

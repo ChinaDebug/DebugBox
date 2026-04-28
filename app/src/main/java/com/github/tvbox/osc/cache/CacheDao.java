@@ -41,4 +41,10 @@ public interface CacheDao {
     //只能传递对象昂,删除时根据Cache中的主键 来比对的
     @Update(onConflict = OnConflictStrategy.REPLACE)
     int update(Cache cache);
+
+    @Query("delete from cache")
+    void deleteAll();
+
+    @Query("delete from cache where `key` like :keyPrefix || '%'")
+    void deleteByKeyPrefix(String keyPrefix);
 }

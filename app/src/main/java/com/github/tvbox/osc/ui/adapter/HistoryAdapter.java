@@ -14,6 +14,7 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.ImgUtil;
+import com.github.tvbox.osc.util.UpdateCheckManager;
 
 import java.util.ArrayList;
 import me.jessyan.autosize.utils.AutoSizeUtils;
@@ -75,7 +76,9 @@ public class HistoryAdapter extends BaseQuickAdapter<VodInfo, BaseViewHolder> {
             helper.setText(R.id.tvNote, item.note);
         }
         helper.setText(R.id.tvName, item.name);
-        // helper.setText(R.id.tvActor, item.actor);
+        TextView tvUpdateBadge = helper.getView(R.id.tvUpdateBadge);
+        boolean hasUpdate = UpdateCheckManager.get().hasVideoUpdate(item.sourceKey, item.id);
+        tvUpdateBadge.setVisibility(hasUpdate ? View.VISIBLE : View.GONE);
         ImageView ivThumb = helper.getView(R.id.ivThumb);
         //由于部分电视机使用glide报错
         if (!TextUtils.isEmpty(item.pic)) {

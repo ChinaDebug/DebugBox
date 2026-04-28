@@ -7,9 +7,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Parcelable;
-import android.util.Log;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -47,9 +47,9 @@ public class MXPlayer {
                 if (info.enabled)
                     return pkg;
                 else
-                    Log.v(TAG, "MX Player package `" + pkg.packageName + "` is disabled.");
+                    LOG.d(TAG, "MX Player package `" + pkg.packageName + "` is disabled.");
             } catch (PackageManager.NameNotFoundException ex) {
-                Log.v(TAG, "MX Player package `" + pkg.packageName + "` does not exist.");
+                LOG.d(TAG, "MX Player package `" + pkg.packageName + "` does not exist.");
             }
         }
         return null;
@@ -105,7 +105,7 @@ public class MXPlayer {
             activity.startActivity(intent);
             return true;
         } catch (Exception ex) {
-            Log.e(TAG, "Can't run MX Player(Pro)", ex);
+            LOG.e(TAG, "Can't run MX Player(Pro)", ex);
             return false;
         }
     }

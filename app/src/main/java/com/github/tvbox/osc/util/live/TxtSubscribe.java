@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.util.live;
 
+import com.github.tvbox.osc.util.LOG;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
@@ -58,7 +59,7 @@ public class TxtSubscribe {
             if (channel.isEmpty()) return;
             linkedHashMap.put("未分组", channel);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e("TxtSubscribe", e);
         }
     }
 

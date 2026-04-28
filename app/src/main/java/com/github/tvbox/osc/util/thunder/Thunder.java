@@ -8,6 +8,7 @@ import android.text.TextUtils;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.LOG;
 import com.xunlei.downloadlib.XLDownloadManager;
 import com.xunlei.downloadlib.XLTaskHelper;
 import com.xunlei.downloadlib.android.XLUtil;
@@ -132,7 +133,7 @@ public class Thunder {
                                             XLTaskHelper.instance().addMagentTask(url, cacheRoot, fileName) :
                                             XLTaskHelper.instance().addThunderTask(url, cacheRoot, fileName);
                                 } catch (Exception exception) {
-                                    exception.printStackTrace();
+                                    LOG.e(exception);
                                     currentTask = 0;
                                 }
                                 if (currentTask <= 0) {
@@ -168,7 +169,7 @@ public class Thunder {
                                                         }
                                                     }
                                                 } catch (Throwable throwable) {
-                                                    throwable.printStackTrace();
+                                                    LOG.e(throwable);
                                                 }
                                             }
                                             case 3: {
@@ -181,7 +182,7 @@ public class Thunder {
                                     try {
                                         Thread.sleep(100);
                                     } catch (InterruptedException e) {
-                                        e.printStackTrace();
+                                        LOG.e(e);
                                     }
                                 }
                             }else {
@@ -256,7 +257,7 @@ public class Thunder {
                         try {
                             Thread.sleep(1000);
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            LOG.e(e);
                         }
                     }
                 }
@@ -290,7 +291,7 @@ public class Thunder {
                         try {
                             Thread.sleep(1000);
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            LOG.e(e);
                         }
                     }
                 }
@@ -330,7 +331,7 @@ public class Thunder {
                         try {
                             Thread.sleep(1000);
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            LOG.e(e);
                         }
                     }
                 }

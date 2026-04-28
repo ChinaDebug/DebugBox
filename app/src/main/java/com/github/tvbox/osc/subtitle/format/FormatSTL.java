@@ -38,6 +38,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Locale;
 
 
 public class FormatSTL implements TimedTextFileFormat {
@@ -185,8 +186,6 @@ public class FormatSTL implements TimedTextFileFormat {
             tto.cleanUnusedStyles();
 
         } catch (Exception e) {
-            //format error
-            e.printStackTrace();
             throw new FatalParsingException("Format error in the file, migth be due to corrupt data.\n" + e.getMessage());
         }
 
@@ -221,7 +220,7 @@ public class FormatSTL implements TimedTextFileFormat {
 
         }
         //other info
-        DateFormat dateFormat = new SimpleDateFormat("yyMMdd");
+        DateFormat dateFormat = new SimpleDateFormat("yyMMdd", Locale.getDefault());
         Date date = new Date();
         String aux = dateFormat.format(date);
         aux += aux + "00"; //revision number

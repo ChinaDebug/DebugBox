@@ -159,7 +159,6 @@ public class Path {
             is.close();
             return new String(data, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
             return "";
         }
     }
@@ -224,8 +223,7 @@ public class Path {
                 if (entry.isDirectory()) out.mkdirs();
                 else copy(zip.getInputStream(entry), out);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ignored) {
         }
     }
 
@@ -234,8 +232,7 @@ public class Path {
             Process process = Runtime.getRuntime().exec("chmod 777 " + file);
             process.waitFor();
             return file;
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ignored) {
             return file;
         }
     }

@@ -12,20 +12,13 @@
 -printmapping proguardMapping.txt
 -optimizations !code/simplification/cast,!field/*,!class/merging/*
 -keepattributes *Annotation*,InnerClasses
--keepattributes EnclosingMethod, InnerClasses
--keepattributes *Annotation*
+-keepattributes EnclosingMethod
 -keepattributes Signature
 -keepattributes LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# 重新包装所有重命名的包并放在给定的单一包中
--flattenpackagehierarchy androidx.base
-
-# 将包里的类混淆成n个再重新打包到一个统一的package中  会覆盖flattenpackagehierarchy选项
+# 将包里的类混淆后重新打包到一个统一的package中
 -repackageclasses androidx.base
-
-# 把混淆类中的方法名也混淆了
--useuniqueclassmembernames
 #############################################
 #
 # Android开发中一些需要保留的公共部分
@@ -125,13 +118,6 @@
     void *(**On*Event);
     void *(**On*Listener);
 }
-#xwalk
--keep class org.xwalk.core.** { *; }
--keep class org.crosswalk.engine.** { *; }
--keep class org.chromium.** { *; }
--dontwarn android.view.**
--dontwarn android.media.**
--dontwarn org.chromium.**
 #okhttp
 -dontwarn okhttp3.**
 -keep class okhttp3.**{*;}
@@ -205,8 +191,8 @@
 -keep class jcifs.** { *; }
 -dontwarn jcifs.**
 
-# 实体类
-#-keep class com.github.tvbox.osc.bean.** { *; }
+# 实体类（使用 XStream 和 Gson 序列化，需要保留字段名）
+-keep class com.github.tvbox.osc.bean.** { <fields>; }
 -keep class com.github.tvbox.osc.ui.fragment.homes.**{*;}
 #CardView
 -keep class com.github.tvbox.osc.ui.tv.widget.card.**{*;}
@@ -215,6 +201,18 @@
     <methods>;
 }
 
+# 爬虫相关（关键：动态加载的类不能被混淆）
+-keep interface com.github.catvod.crawler.Spider { *; }
+-keep class * implements com.github.catvod.crawler.Spider {
+    <init>();
+    public <methods>;
+}
+-keep class com.github.catvod.spider.Init {
+    public static void init(android.content.Context);
+}
+-keep class com.github.catvod.spider.Proxy {
+    public static java.lang.String proxy(java.util.Map);
+}
 -keep class com.github.catvod.crawler.*{*;}
 
 # magnet：解决模拟器推送 磁力链接 闪退
@@ -223,21 +221,30 @@
 # quickjs引擎
 -keep class com.whl.quickjs.** {*;}
 
-# 支持影视的ali相关的jar
+# Gson
 -keep class com.google.gson.**{*;}
-# 某些类会反射调用zxing导致生成阿里云二维码报错
+# 某些类会反射调用zxing导致生成二维码报错
 -keep class com.google.zxing.** {*;}
-#阿里云播放器
--keep class com.alivc.**{*;}
--keep class com.aliyun.**{*;}
--keep class com.cicada.**{*;}
--dontwarn com.alivc.**
--dontwarn com.aliyun.**
--dontwarn com.cicada.**
 
 # from app -> build -> outputs -> mapping -> your_app_name -> missing_rules.txt
 # Please add these rules to your existing keep rules in order to suppress warnings.
 # This is generated automatically by the Android Gradle plugin.
+
+# 保留 JavaScript 接口（WebView 调用）
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# 保留 Room 数据库实体和 DAO
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+
+# 保留 Kotlin 元数据（用于反射）
+-keep class kotlin.Metadata { *; }
+-keepclassmembers class **$WhenMappings {
+    <fields>;
+}
 -dontwarn com.android.org.conscrypt.SSLParametersImpl
 -dontwarn com.ctc.wstx.stax.WstxInputFactory
 -dontwarn com.ctc.wstx.stax.WstxOutputFactory
@@ -321,3 +328,9 @@
 -keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Element <fields>; }
 -keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Attribute <fields>; }
 -keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.ElementList <fields>; }
+
+# Python支持
+-keep public class com.undcover.freedom.pyramid.** { *; }
+-dontwarn com.undcover.freedom.pyramid.**
+-keep public class com.chaquo.python.** { *; }
+-dontwarn com.chaquo.python.**

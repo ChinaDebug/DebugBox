@@ -33,7 +33,7 @@ public class CollectActivity extends BaseActivity {
     private ImageView tvDelete;
     private ImageView tvClear;
     private TvRecyclerView mGridView;
-    public static CollectAdapter collectAdapter;
+    private CollectAdapter collectAdapter;
     private boolean delMode = false;
 
     @Override
@@ -161,7 +161,11 @@ public class CollectActivity extends BaseActivity {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
-        if (event.type == RefreshEvent.TYPE_HISTORY_REFRESH) {
+        // 检查Activity是否正在销毁或已销毁,避免在销毁后处理事件
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (event.type == RefreshEvent.TYPE_HISTORY_REFRESH || event.type == RefreshEvent.TYPE_COLLECT_REFRESH) {
             initData();
         }
     }

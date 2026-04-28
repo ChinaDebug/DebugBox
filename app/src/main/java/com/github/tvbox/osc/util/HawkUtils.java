@@ -24,7 +24,7 @@ public class HawkUtils {
     private static final String DANMU_COLOR = "danmu_color";
 
     public static boolean getDanmuOpen() {
-        return Hawk.get(DANMU_OPEN, true);
+        return Hawk.get(DANMU_OPEN, false);
     }
 
     public static void setDanmuOpen(boolean danmuOpen) {
@@ -103,12 +103,65 @@ public class HawkUtils {
     }
 
     /**
+     * 获取IJK缓冲模式显示文本
+     * @param mode 模式值
+     * @return {@link String }
+     */
+    public static String getBufferModeDisplay(int mode) {
+        switch (mode) {
+            case 0: return "默认内置";
+            case 1: return "配置地址调整";
+            case 2: return "流畅模式";
+            case 3: return "均衡模式";
+            case 4: return "原画模式";
+            default: return "默认内置";
+        }
+    }
+
+    /**
+     * 获取IJK缓冲模式描述
+     * @return {@link String }
+     */
+    public static String getBufferModeDesc() {
+        int mode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+        return getBufferModeDisplay(mode);
+    }
+
+    /**
+     * 获取Exo缓冲模式显示文本
+     * @param mode 模式值
+     * @return {@link String }
+     */
+    public static String getExoBufferModeDisplay(int mode) {
+        switch (mode) {
+            case 0: return "默认内置";
+            case 1: return "流畅模式";
+            case 2: return "均衡模式";
+            case 3: return "原画模式";
+            default: return "默认内置";
+        }
+    }
+
+    /**
+     * 获取Exo缓冲模式描述
+     * @return {@link String }
+     */
+    public static String getExoBufferModeDesc() {
+        int mode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 2);
+        return getExoBufferModeDisplay(mode);
+    }
+
+    /**
      * 获取exo渲染器 自己存储的数据
      *
      * @return int
      */
     public static int getExoRenderer() {
         return Hawk.get(HawkConfig.EXO_RENDERER, 0);
+    }
+
+    public static void setExoRenderer(int value) {
+        Hawk.put(HawkConfig.EXO_RENDERER, value);
     }
 
     public static void nextExoRenderer() {
@@ -148,13 +201,26 @@ public class HawkUtils {
         return array[getExoRenderer()];
     }
 
+    public static String getExoRendererDisplay(int val) {
+        App app = App.getInstance();
+        String[] array = app.getResources().getStringArray(R.array.media_content_ExoPlayer_renderer);
+        if (val >= 0 && val < array.length) {
+            return array[val];
+        }
+        return "";
+    }
+
     /**
      * 获取exo渲染器模式 自己存储的 值
      *
      * @return int
      */
     public static int getExoRendererMode() {
-        return Hawk.get(HawkConfig.EXO_RENDERER_MODE, 1);
+        return Hawk.get(HawkConfig.EXO_RENDERER_MODE, 2);
+    }
+
+    public static void setExoRendererMode(int value) {
+        Hawk.put(HawkConfig.EXO_RENDERER_MODE, value);
     }
 
     public static void nextExoRendererMode() {
@@ -194,6 +260,15 @@ public class HawkUtils {
         return array[getExoRendererMode()];
     }
 
+    public static String getExoRendererModeDisplay(int val) {
+        App app = App.getInstance();
+        String[] array = app.getResources().getStringArray(R.array.media_content_ExoPlayer_renderer_mode);
+        if (val >= 0 && val < array.length) {
+            return array[val];
+        }
+        return "";
+    }
+
     // Vod 播放器首选
     public static int getVodPlayerPreferred() {
         return Hawk.get(HawkConfig.VOD_PLAYER_PREFERRED, 0);
@@ -208,6 +283,19 @@ public class HawkUtils {
         Hawk.put(HawkConfig.VOD_PLAYER_PREFERRED, index);
     }
 
+    public static void setVodPlayerPreferred(int value) {
+        Hawk.put(HawkConfig.VOD_PLAYER_PREFERRED, value);
+    }
+
+    public static String getVodPlayerPreferredDisplay(int val) {
+        App app = App.getInstance();
+        String[] array = app.getResources().getStringArray(R.array.media_content_General_VodPlayerPreferred);
+        if (val >= 0 && val < array.length) {
+            return array[val];
+        }
+        return "";
+    }
+
     public static boolean getVodPlayerPreferredConfigurationFile() {
         int i = getVodPlayerPreferred();
         return i == 0;
@@ -217,6 +305,47 @@ public class HawkUtils {
         App app = App.getInstance();
         String[] array = app.getResources().getStringArray(R.array.media_content_General_VodPlayerPreferred);
         return array[getVodPlayerPreferred()];
+    }
+
+    public static int getPlayRender() {
+        return Hawk.get(HawkConfig.PLAY_RENDER, 0);
+    }
+
+    public static void setPlayRender(int value) {
+        Hawk.put(HawkConfig.PLAY_RENDER, value);
+    }
+
+    public static String getPlayRenderDesc() {
+        App app = App.getInstance();
+        String[] array = app.getResources().getStringArray(R.array.media_content_General_PlayRender);
+        return array[getPlayRender()];
+    }
+
+    public static String getPlayRenderDisplay(int val) {
+        App app = App.getInstance();
+        String[] array = app.getResources().getStringArray(R.array.media_content_General_PlayRender);
+        if (val >= 0 && val < array.length) {
+            return array[val];
+        }
+        return "";
+    }
+
+    // 自动切换播放器
+    public static boolean getAutoSwitchPlayer() {
+        return Hawk.get(HawkConfig.AUTO_SWITCH_PLAYER, false);
+    }
+
+    public static void setAutoSwitchPlayer(boolean value) {
+        Hawk.put(HawkConfig.AUTO_SWITCH_PLAYER, value);
+    }
+
+    public static void nextAutoSwitchPlayer() {
+        boolean autoSwitch = getAutoSwitchPlayer();
+        Hawk.put(HawkConfig.AUTO_SWITCH_PLAYER, !autoSwitch);
+    }
+
+    public static String getAutoSwitchPlayerDesc() {
+        return getAutoSwitchPlayer() ? "开启" : "关闭";
     }
 
     public static String getLastLiveChannelGroup() {

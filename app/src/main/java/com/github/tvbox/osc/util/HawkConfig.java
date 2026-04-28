@@ -17,6 +17,7 @@ public class HawkConfig {
     public static final String LIVE_HISTORY = "live_history";
     public static final String EPG_URL = "epg_url";
     public static final String EPG_HISTORY = "epg_history";
+    public static final String LOGO_URL = "logo_url";
     public static final String PROXY_SERVER = "proxy_server";
     // Settings
     public static final String DEBUG_OPEN = "debug_open";
@@ -40,21 +41,26 @@ public class HawkConfig {
     public static final String PIC_IN_PIC = "pic_in_pic";   // true = on, false = off
     public static final String VIDEO_PURIFY = "video_purify";
     public static final String IJK_CACHE_PLAY = "ijk_cache_play";
+    public static final String BUFFER_MODE = "buffer_mode"; // 0 默认内置 1 API配置 2 流畅模式 3 均衡模式 4 原画模式
+    public static final String BUFFER_MODE_EXO = "buffer_mode_exo"; // 0 默认内置 1 流畅模式 2 均衡模式 3 原画模式
 
     public static final String EXO_RENDERER = "exo_renderer";
     public static final String EXO_RENDERER_MODE = "exo_renderer_mode";
     public static final String VOD_PLAYER_PREFERRED = "vod_player_preferred";
+    public static final String AUTO_SWITCH_PLAYER = "auto_switch_player";
 
 
     // Other Settings
     public static final String DOH_URL = "doh_url";         // DNS
     public static final String DEFAULT_PARSE = "parse_default";
-    public static final String PARSE_WEBVIEW = "parse_webview"; // true 系统 false xwalk
     public static final String SEARCH_VIEW = "search_view";     // 0 列表 1 缩略图
     public static final String SOURCES_FOR_SEARCH = "checked_sources_for_search";
     public static final String STORAGE_DRIVE_SORT = "storage_drive_sort";
     public static final String SUBTITLE_TEXT_SIZE = "subtitle_text_size";
     public static final String SUBTITLE_TEXT_STYLE = "subtitle_text_style";
+    public static final String SUBTITLE_TEXT_COLOR = "subtitle_text_color";
+    public static final String SUBTITLE_STROKE_COLOR = "subtitle_stroke_color";
+    public static final String SUBTITLE_TEXT_BOLD = "subtitle_text_bold";
     public static final String SUBTITLE_TIME_DELAY = "subtitle_time_delay";
     public static final String THEME_SELECT = "theme_select";
     public static final String BACKGROUND_PLAY_TYPE = "background_play_type";

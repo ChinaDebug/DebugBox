@@ -6,7 +6,7 @@
     android:layout_height="match_parent">
 
     <LinearLayout
-        android:layout_width="@dimen/vs_480"
+        android:layout_width="@dimen/vs_400"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:background="@drawable/shape_dialog_bg_main"
@@ -32,8 +32,7 @@
             android:textColor="@color/color_FFFFFF"
             android:textSize="@dimen/ts_26"
             android:textStyle="bold"
-            android:text="@string/dia_confirm"
-            tools:text="@string/dia_confirm" />
+            tools:text="确定清除所有数据吗？" />
 
         <TableRow
             android:layout_width="match_parent"
@@ -55,7 +54,7 @@
             android:shadowDx="0"
             android:shadowDy="0"
             android:shadowRadius="5"
-            android:text="Yes"
+            android:text="确定"
             android:textColor="@color/color_FFFFFF"
             android:textColorHint="@color/color_FFFFFF_50"
             android:textSize="@dimen/ts_20" />
@@ -76,7 +75,7 @@
             android:shadowDx="0"
             android:shadowDy="0"
             android:shadowRadius="5"
-            android:text="No"
+            android:text="取消"
             android:textColor="@color/color_FFFFFF"
             android:textColorHint="@color/color_FFFFFF_50"
             android:textSize="@dimen/ts_20" />

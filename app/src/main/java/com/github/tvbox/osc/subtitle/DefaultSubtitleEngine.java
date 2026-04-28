@@ -5,7 +5,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import androidx.annotation.Nullable;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.cache.CacheManager;
@@ -13,6 +12,7 @@ import com.github.tvbox.osc.player.EXOmPlayer;
 import com.github.tvbox.osc.subtitle.model.Subtitle;
 import com.github.tvbox.osc.subtitle.model.Time;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.SubtitleHelper;
 
@@ -58,7 +58,7 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
         initWorkThread();
         reset();
         if (TextUtils.isEmpty(path)) {
-            Log.w(TAG, "loadSubtitleFromRemote: path is null.");
+            LOG.d(TAG, "loadSubtitleFromRemote: path is null.");
             return;
         }
 
@@ -66,16 +66,16 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
             @Override
             public void onSuccess(final SubtitleLoadSuccessResult subtitleLoadSuccessResult) {
                 if (subtitleLoadSuccessResult == null) {
-                    Log.d(TAG, "onSuccess: subtitleLoadSuccessResult is null.");
+                    LOG.d(TAG, "onSuccess: subtitleLoadSuccessResult is null.");
                     return;
                 }
                 if (subtitleLoadSuccessResult.timedTextObject == null) {
-                    Log.d(TAG, "onSuccess: timedTextObject is null.");
+                    LOG.d(TAG, "onSuccess: timedTextObject is null.");
                     return;
                 }
                 final TreeMap<Integer, Subtitle> captions = subtitleLoadSuccessResult.timedTextObject.captions;
                 if (captions == null) {
-                    Log.d(TAG, "onSuccess: captions is null.");
+                    LOG.d(TAG, "onSuccess: captions is null.");
                     return;
                 }
                 mSubtitles = new ArrayList<>(captions.values());
@@ -102,7 +102,7 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
 
             @Override
             public void onError(final Exception exception) {
-                Log.e(TAG, "onError: " + exception.getMessage());
+                LOG.e(TAG, "onError", exception);
             }
         });
     }
@@ -153,9 +153,9 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
 
     @Override
     public void start() {
-        Log.d(TAG, "start: ");
+        LOG.d(TAG, "start: ");
         if (mMediaPlayer == null) {
-            Log.w(TAG, "MediaPlayer is not bind, You must bind MediaPlayer to "
+            LOG.d(TAG, "MediaPlayer is not bind, You must bind MediaPlayer to "
                     + SubtitleEngine.class.getSimpleName()
                     + " before start() method be called,"
                     + " you can do this by call " +
@@ -188,7 +188,7 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
 
     @Override
     public void destroy() {
-        Log.d(TAG, "destroy: ");
+        LOG.d(TAG, "destroy: ");
         stopWorkThread();
         reset();
 

@@ -2,6 +2,8 @@ package com.github.tvbox.osc.util.urlhttp;
 
 import android.text.TextUtils;
 
+import com.github.tvbox.osc.util.LOG;
+
 import java.io.BufferedWriter;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -231,7 +233,7 @@ import java.util.Map;
         if(conn != null){
             conn.disconnect();
         }
-        e.printStackTrace();
+        LOG.e(e);
         RealResponse response = new RealResponse();
         response.exception = e;
         return response;

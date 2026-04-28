@@ -300,7 +300,7 @@ public class JsSpider extends Spider {
             if (classes.length == 0) invokeSingle(clz, obj);
             if (classes.length >= 1) invokeMultiple(clz, obj);
         } catch (Throwable e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -368,7 +368,7 @@ public class JsSpider extends Spider {
                     result[2] = new ByteArrayInputStream(Base64.decode(content, Base64.DEFAULT));
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         }
         return result;

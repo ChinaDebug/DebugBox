@@ -19,7 +19,6 @@ proguardMapping.txt
 bin/
 gen/
 out/
-.idea/
 #  Uncomment the following line in case you need and you don't have the release build type files in your app
 # release/
 
@@ -49,6 +48,12 @@ captures/
 .idea/tasks.xml
 .idea/gradle.xml
 .idea/assetWizardSettings.xml
+
+# Signing files
+keystore.properties
+*.jks
+*.keystore
+*.p12
 .idea/dictionaries
 .idea/libraries
 .idea/shelf

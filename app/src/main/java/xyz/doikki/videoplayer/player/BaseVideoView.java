@@ -26,9 +26,12 @@ import androidx.annotation.Nullable;
 import com.github.tvbox.osc.R;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import xyz.doikki.videoplayer.controller.BaseVideoController;
 import xyz.doikki.videoplayer.controller.MediaPlayerControl;
@@ -117,6 +120,23 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
      */
     @Nullable
     protected ProgressManager mProgressManager;
+
+    /**
+     * 定时保存进度相关
+     */
+    private volatile long mLastSaveProgressTime = 0;
+    private static final long SAVE_PROGRESS_INTERVAL = 30000; // 30秒定时保存
+    private static final long SAVE_PROGRESS_DEBOUNCE = 2000; // 2秒防抖
+
+    /**
+     * 后台线程池，用于异步保存进度，避免阻塞主线程导致掉帧
+     */
+    private ExecutorService mProgressSaveExecutor;
+    
+    /**
+     * 标记是否已释放，防止异步任务在释放后继续执行
+     */
+    private volatile boolean mIsReleased = false;
 
     /**
      * 循环播放
@@ -212,6 +232,10 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
         if (mEnableAudioFocus) {
             mAudioFocusHelper = new AudioFocusHelper(this);
         }
+        
+        //重置释放标志，允许新的播放
+        mIsReleased = false;
+        
         if (!mPlayFromZeroPosition) {
             //读取播放进度
             if (mProgressManager != null) {
@@ -373,6 +397,9 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
      */
     public void release() {
         if (!isInIdleState()) {
+            //设置释放标志，防止异步任务继续执行
+            mIsReleased = true;
+            
             //释放播放器
             if (mMediaPlayer != null) {
                 mMediaPlayer.release();
@@ -399,8 +426,32 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
             }
             //关闭屏幕常亮
             mPlayerContainer.setKeepScreenOn(false);
-            //保存播放进度
-            saveProgress();
+            
+            //保存播放进度（release时同步保存，确保数据不丢失）
+            if (mProgressManager != null && mCurrentPosition > 0) {
+                L.d("saveProgress on release: " + mCurrentPosition);
+                try {
+                    mProgressManager.saveProgress(mProgressKey == null ? mUrl : mProgressKey, mCurrentPosition);
+                } catch (Exception e) {
+                    L.e("saveProgress on release error: " + e.getMessage());
+                }
+            }
+            
+            //关闭进度保存线程池
+            if (mProgressSaveExecutor != null) {
+                try {
+                    mProgressSaveExecutor.shutdownNow();
+                    if (!mProgressSaveExecutor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                        L.w("Progress save executor did not terminate gracefully");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    L.e("Interrupted while shutting down progress save executor: " + e.getMessage());
+                } finally {
+                    mProgressSaveExecutor = null;
+                }
+            }
+            
             //重置播放进度
             mCurrentPosition = 0;
             //切换转态
@@ -412,9 +463,73 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
      * 保存播放进度
      */
     protected void saveProgress() {
+        if (mIsReleased) {
+            return;
+        }
+        
         if (mProgressManager != null && mCurrentPosition > 0) {
             L.d("saveProgress: " + mCurrentPosition);
-            mProgressManager.saveProgress(mProgressKey == null ? mUrl : mProgressKey, mCurrentPosition);
+            final String key = mProgressKey == null ? mUrl : mProgressKey;
+            final long progress = mCurrentPosition;
+            final ProgressManager progressManager = mProgressManager;
+            
+            if (key == null || progressManager == null) {
+                return;
+            }
+            
+            if (mProgressSaveExecutor == null) {
+                mProgressSaveExecutor = Executors.newSingleThreadExecutor();
+            }
+            
+            // 使用WeakReference避免内存泄漏
+            final WeakReference<BaseVideoView> weakSelf = new WeakReference<>(this);
+            
+            mProgressSaveExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    BaseVideoView view = weakSelf.get();
+                    if (view == null || view.mIsReleased) {
+                        return;
+                    }
+                    
+                    try {
+                        progressManager.saveProgress(key, progress);
+                        view.mLastSaveProgressTime = System.currentTimeMillis();
+                    } catch (Exception e) {
+                        L.e("saveProgress error: " + e.getMessage());
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * 定时保存进度（30秒间隔）
+     */
+    public void saveProgressOnInterval() {
+        if (mIsReleased) {
+            return;
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - mLastSaveProgressTime >= SAVE_PROGRESS_INTERVAL) {
+            mCurrentPosition = mMediaPlayer != null ? mMediaPlayer.getCurrentPosition() : 0;
+            saveProgress();
+        }
+    }
+
+    /**
+     * 用户操作后保存进度（2秒防抖）
+     */
+    public void saveProgressDebounced() {
+        if (mIsReleased) {
+            return;
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - mLastSaveProgressTime >= SAVE_PROGRESS_DEBOUNCE) {
+            mCurrentPosition = mMediaPlayer != null ? mMediaPlayer.getCurrentPosition() : 0;
+            saveProgress();
         }
     }
 
@@ -620,6 +735,14 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
     @Override
     public long getTcpSpeed() {
         return mMediaPlayer != null ? mMediaPlayer.getTcpSpeed() : 0;
+    }
+
+    /**
+     * 判断当前播放的是否是直播流
+     */
+    @Override
+    public boolean isLive() {
+        return mMediaPlayer != null && mMediaPlayer.isLive();
     }
 
     /**

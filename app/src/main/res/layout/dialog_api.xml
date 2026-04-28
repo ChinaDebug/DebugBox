@@ -84,11 +84,11 @@
 
                         <LinearLayout
                             android:id="@+id/apiHistory"
-                            android:layout_width="@dimen/vs_80"
+                            android:layout_width="@dimen/vs_50"
                             android:layout_height="match_parent"
                             android:layout_marginStart="@dimen/vs_5"
                             android:layout_marginLeft="@dimen/vs_5"
-                            android:background="@drawable/shape_setting_model_focus"
+                            android:background="@drawable/button_dialog_main"
                             android:focusable="true"
                             android:gravity="center"
                             android:orientation="horizontal"
@@ -99,6 +99,25 @@
                                 android:layout_height="@dimen/vs_30"
                                 android:focusable="true"
                                 android:src="@drawable/hm_history" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/apiClear"
+                            android:layout_width="@dimen/vs_50"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/button_dialog_main"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:padding="@dimen/vs_10">
+
+                            <ImageView
+                                android:layout_width="@dimen/vs_30"
+                                android:layout_height="@dimen/vs_30"
+                                android:focusable="true"
+                                android:src="@drawable/icon_clear" />
                         </LinearLayout>
 
                     </LinearLayout>
@@ -134,11 +153,11 @@
 
                         <LinearLayout
                             android:id="@+id/liveHistory"
-                            android:layout_width="@dimen/vs_80"
+                            android:layout_width="@dimen/vs_50"
                             android:layout_height="match_parent"
                             android:layout_marginStart="@dimen/vs_5"
                             android:layout_marginLeft="@dimen/vs_5"
-                            android:background="@drawable/shape_setting_model_focus"
+                            android:background="@drawable/button_dialog_main"
                             android:focusable="true"
                             android:gravity="center"
                             android:orientation="horizontal"
@@ -149,6 +168,25 @@
                                 android:layout_height="@dimen/vs_30"
                                 android:focusable="true"
                                 android:src="@drawable/hm_history" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/liveClear"
+                            android:layout_width="@dimen/vs_50"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/button_dialog_main"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:padding="@dimen/vs_10">
+
+                            <ImageView
+                                android:layout_width="@dimen/vs_30"
+                                android:layout_height="@dimen/vs_30"
+                                android:focusable="true"
+                                android:src="@drawable/icon_clear" />
                         </LinearLayout>
 
                     </LinearLayout>
@@ -184,11 +222,11 @@
 
                         <LinearLayout
                             android:id="@+id/EPGHistory"
-                            android:layout_width="@dimen/vs_80"
+                            android:layout_width="@dimen/vs_50"
                             android:layout_height="match_parent"
                             android:layout_marginStart="@dimen/vs_5"
                             android:layout_marginLeft="@dimen/vs_5"
-                            android:background="@drawable/shape_setting_model_focus"
+                            android:background="@drawable/button_dialog_main"
                             android:focusable="true"
                             android:gravity="center"
                             android:orientation="horizontal"
@@ -199,6 +237,25 @@
                                 android:layout_height="@dimen/vs_30"
                                 android:focusable="true"
                                 android:src="@drawable/hm_history" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/epgClear"
+                            android:layout_width="@dimen/vs_50"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/button_dialog_main"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:padding="@dimen/vs_10">
+
+                            <ImageView
+                                android:layout_width="@dimen/vs_30"
+                                android:layout_height="@dimen/vs_30"
+                                android:focusable="true"
+                                android:src="@drawable/icon_clear" />
                         </LinearLayout>
 
                     </LinearLayout>
@@ -231,6 +288,25 @@
                             android:textColor="@color/color_FFFFFF"
                             android:textColorHint="@color/color_FFFFFF_50"
                             android:textSize="@dimen/ts_22" />
+
+                        <LinearLayout
+                            android:id="@+id/proxyClear"
+                            android:layout_width="@dimen/vs_50"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="@dimen/vs_5"
+                            android:layout_marginLeft="@dimen/vs_5"
+                            android:background="@drawable/button_dialog_main"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:padding="@dimen/vs_10">
+
+                            <ImageView
+                                android:layout_width="@dimen/vs_30"
+                                android:layout_height="@dimen/vs_30"
+                                android:focusable="true"
+                                android:src="@drawable/icon_clear" />
+                        </LinearLayout>
                     </LinearLayout>
 
                 </LinearLayout>
@@ -242,28 +318,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/vs_10"
                 android:padding="@dimen/vs_5"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/storagePermission"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_dialog_main"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:padding="@dimen/vs_10"
-                    android:text="存储权限"
-                    android:textColor="@color/color_FFFFFF"
-                    android:textSize="@dimen/ts_22" />
+                android:orientation="horizontal"
+                android:gravity="end">
 
                 <TextView
                     android:id="@+id/inputSubmit"
-                    android:layout_width="@dimen/vs_80"
+                    android:layout_width="@dimen/vs_120"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_marginLeft="@dimen/vs_5"
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"

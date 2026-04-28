@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.viewmodel.drive;
 
 import com.github.tvbox.osc.bean.DriveFolderFile;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.UA;
 import com.github.tvbox.osc.util.urlhttp.OkHttpUtil;
 import com.google.gson.JsonElement;
@@ -16,6 +17,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.text.DateFormat;
@@ -23,8 +25,11 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class AlistDriveViewModel extends AbstractDriveViewModel {
+
+    private Thread loadThread;
 
     private void setRequestHeader(PostRequest request, String origin) {
         request.headers("User-Agent", UA.random());
@@ -51,7 +56,7 @@ public class AlistDriveViewModel extends AbstractDriveViewModel {
                 return url.getProtocol() + "://" + url.getHost() + str2;
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         }
         return "";
@@ -67,141 +72,11 @@ public class AlistDriveViewModel extends AbstractDriveViewModel {
         String targetPath = currentDriveNote.getAccessingPathStr() + currentDriveNote.name;
 
         if (currentDriveNote.getChildren() == null) {
-            new Thread() {
-                public void run() {
-                    String webLink = getUrl(config.get("url").getAsString());
-                    try {
-                        if (currentDrive.version == 0) {
-                            String result = OkHttpUtil.get(webLink + "/api/public/settings");
-                            JSONObject opt = new JSONObject(result);
-                            Object obj = new JSONTokener(opt.optString("data")).nextValue();
-                            if (obj instanceof JSONObject) {
-                                currentDrive.version = 3;
-                            } else if (obj instanceof JSONArray) {
-                                currentDrive.version = 2;
-                            }
-                        }
-
-                        if (currentDrive.version == 2) {
-                            PostRequest<String> request = OkGo.<String>post(webLink + "/api/public/path").tag("drive");
-                            JSONObject requestBody = new JSONObject();
-                            requestBody.put("path", targetPath.isEmpty() ? "/" : targetPath);
-                            requestBody.put("password", currentDrive.getConfig().get("password").getAsString());
-                            requestBody.put("page_num", 1);
-                            requestBody.put("page_size", 200);
-                            request.upJson(requestBody);
-                            setRequestHeader(request, webLink);
-                            request.execute(new AbsCallback<String>() {
-
-                                @Override
-                                public String convertResponse(okhttp3.Response response) throws Throwable {
-                                    return response.body().string();
-                                }
-
-                                @Override
-                                public void onSuccess(Response<String> response) {
-                                    String respBody = response.body();
-                                    try {
-                                        JsonObject respData = JsonParser.parseString(respBody).getAsJsonObject();
-                                        List<DriveFolderFile> items = new ArrayList<>();
-                                        if (respData.get("code").getAsInt() == 200) {
-                                            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                                            for (JsonElement file : respData.get("data").getAsJsonObject().get("files").getAsJsonArray()) {
-                                                JsonObject fileObj = file.getAsJsonObject();
-                                                String fileName = fileObj.get("name").getAsString();
-                                                int extNameStartIndex = fileName.lastIndexOf(".");
-                                                boolean isFile = fileObj.get("type").getAsInt() != 1;
-                                                String fileUrl = null;
-                                                if (fileObj.has("url") && !fileObj.get("url").getAsString().isEmpty())
-                                                    fileUrl = fileObj.get("url").getAsString();
-                                                try {
-                                                    DriveFolderFile driveFile = new DriveFolderFile(currentDriveNote, fileName, currentDrive.version, isFile,
-                                                            isFile && extNameStartIndex >= 0 && extNameStartIndex < fileName.length() ?
-                                                                    fileName.substring(extNameStartIndex + 1) : null,
-                                                            dateFormat.parse(fileObj.get("updated_at").getAsString()).getTime());
-                                                    if (fileUrl != null)
-                                                        driveFile.fileUrl = fileUrl;
-                                                    items.add(driveFile);
-                                                } catch (ParseException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                        }
-                                        sortData(items);
-                                        DriveFolderFile backItem = new DriveFolderFile(null, null, 0, false, null, null);
-                                        backItem.parentFolder = backItem;
-                                        items.add(0, backItem);
-                                        currentDriveNote.setChildren(items);
-                                        if (callback != null)
-                                            callback.callback(currentDriveNote.getChildren(), false);
-                                    } catch (Exception ex) {
-                                        if (callback != null)
-                                            callback.fail("无法访问，请注意地址格式");
-                                    }
-                                }
-                            });
-                        } else if (currentDrive.version == 3) {
-                            PostRequest<String> request = OkGo.<String>post(webLink + "/api/fs/list").tag("drive");
-                            JSONObject requestBody = new JSONObject();
-                            requestBody.put("path", targetPath.isEmpty() ? "/" : targetPath);
-                            requestBody.put("password", currentDrive.getConfig().get("password").getAsString());
-                            requestBody.put("page", 1);
-                            requestBody.put("per_page", 200);
-                            requestBody.put("refresh", false);
-
-                            request.upJson(requestBody);
-                            setRequestHeader(request, webLink);
-                            request.execute(new AbsCallback<String>() {
-
-                                @Override
-                                public String convertResponse(okhttp3.Response response) throws Throwable {
-                                    return response.body().string();
-                                }
-
-                                @Override
-                                public void onSuccess(Response<String> response) {
-                                    String respBody = response.body();
-                                    try {
-                                        JsonObject respData = JsonParser.parseString(respBody).getAsJsonObject();
-                                        List<DriveFolderFile> items = new ArrayList<>();
-                                        if (respData.get("code").getAsInt() == 200) {
-                                            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-                                            for (JsonElement file : respData.get("data").getAsJsonObject().get("content").getAsJsonArray()) {
-                                                JsonObject fileObj = file.getAsJsonObject();
-                                                String fileName = fileObj.get("name").getAsString();
-                                                int extNameStartIndex = fileName.lastIndexOf(".");
-                                                boolean isFile = !fileObj.get("is_dir").getAsBoolean();
-
-                                                try {
-                                                    DriveFolderFile driveFile = new DriveFolderFile(currentDriveNote, fileName, currentDrive.version, isFile,
-                                                            isFile && extNameStartIndex >= 0 && extNameStartIndex < fileName.length() ?
-                                                                    fileName.substring(extNameStartIndex + 1) : null,
-                                                            dateFormat.parse(fileObj.get("modified").getAsString()).getTime());
-                                                    items.add(driveFile);
-                                                } catch (ParseException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                        }
-                                        sortData(items);
-                                        DriveFolderFile backItem = new DriveFolderFile(null, null, 0, false, null, null);
-                                        backItem.parentFolder = backItem;
-                                        items.add(0, backItem);
-                                        currentDriveNote.setChildren(items);
-                                        if (callback != null)
-                                            callback.callback(currentDriveNote.getChildren(), false);
-                                    } catch (Exception ex) {
-                                        if (callback != null)
-                                            callback.fail("无法访问，请注意地址格式");
-                                    }
-                                }
-                            });
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
-            }.start();
+            if (loadThread != null && loadThread.isAlive()) {
+                loadThread.interrupt();
+            }
+            loadThread = new Thread(new LoadDataRunnable(this, config, targetPath, callback));
+            loadThread.start();
             return targetPath;
         } else {
             sortData(currentDriveNote.getChildren());
@@ -209,6 +84,177 @@ public class AlistDriveViewModel extends AbstractDriveViewModel {
                 callback.callback(currentDriveNote.getChildren(), true);
         }
         return targetPath;
+    }
+
+    private static class LoadDataRunnable implements Runnable {
+        private final WeakReference<AlistDriveViewModel> vmRef;
+        private final JsonObject config;
+        private final String targetPath;
+        private final LoadDataCallback callback;
+
+        LoadDataRunnable(AlistDriveViewModel vm, JsonObject config, String targetPath, LoadDataCallback callback) {
+            this.vmRef = new WeakReference<>(vm);
+            this.config = config;
+            this.targetPath = targetPath;
+            this.callback = callback;
+        }
+
+        @Override
+        public void run() {
+            if (Thread.currentThread().isInterrupted()) return;
+            
+            AlistDriveViewModel vm = vmRef.get();
+            if (vm == null) return;
+            
+            String webLink = vm.getUrl(config.get("url").getAsString());
+            try {
+                if (vm.currentDrive.version == 0) {
+                    String result = OkHttpUtil.get(webLink + "/api/public/settings");
+                    JSONObject opt = new JSONObject(result);
+                    Object obj = new JSONTokener(opt.optString("data")).nextValue();
+                    if (obj instanceof JSONObject) {
+                        vm.currentDrive.version = 3;
+                    } else if (obj instanceof JSONArray) {
+                        vm.currentDrive.version = 2;
+                    }
+                }
+
+                if (Thread.currentThread().isInterrupted()) return;
+
+                if (vm.currentDrive.version == 2) {
+                    PostRequest<String> request = OkGo.<String>post(webLink + "/api/public/path").tag("drive");
+                    JSONObject requestBody = new JSONObject();
+                    requestBody.put("path", targetPath.isEmpty() ? "/" : targetPath);
+                    requestBody.put("password", vm.currentDrive.getConfig().get("password").getAsString());
+                    requestBody.put("page_num", 1);
+                    requestBody.put("page_size", 200);
+                    request.upJson(requestBody);
+                    vm.setRequestHeader(request, webLink);
+                    request.execute(new AbsCallback<String>() {
+
+                        @Override
+                        public String convertResponse(okhttp3.Response response) throws Throwable {
+                            return response.body().string();
+                        }
+
+                        @Override
+                        public void onSuccess(Response<String> response) {
+                            AlistDriveViewModel vm = vmRef.get();
+                            if (vm == null) return;
+                            
+                            String respBody = response.body();
+                            try {
+                                JsonObject respData = JsonParser.parseString(respBody).getAsJsonObject();
+                                List<DriveFolderFile> items = new ArrayList<>();
+                                if (respData.get("code").getAsInt() == 200) {
+                                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+                                    for (JsonElement file : respData.get("data").getAsJsonObject().get("files").getAsJsonArray()) {
+                                        JsonObject fileObj = file.getAsJsonObject();
+                                        String fileName = fileObj.get("name").getAsString();
+                                        int extNameStartIndex = fileName.lastIndexOf(".");
+                                        boolean isFile = fileObj.get("type").getAsInt() != 1;
+                                        String fileUrl = null;
+                                        if (fileObj.has("url") && !fileObj.get("url").getAsString().isEmpty())
+                                            fileUrl = fileObj.get("url").getAsString();
+                                        try {
+                                            DriveFolderFile driveFile = new DriveFolderFile(vm.currentDriveNote, fileName, vm.currentDrive.version, isFile,
+                                                    isFile && extNameStartIndex >= 0 && extNameStartIndex < fileName.length() ?
+                                                            fileName.substring(extNameStartIndex + 1) : null,
+                                                    dateFormat.parse(fileObj.get("updated_at").getAsString()).getTime());
+                                            if (fileUrl != null)
+                                                driveFile.fileUrl = fileUrl;
+                                            items.add(driveFile);
+                                        } catch (ParseException e) {
+                                            LOG.e(e);
+                                        }
+                                    }
+                                }
+                                vm.sortData(items);
+                                DriveFolderFile backItem = new DriveFolderFile(null, null, 0, false, null, null);
+                                backItem.parentFolder = backItem;
+                                items.add(0, backItem);
+                                vm.currentDriveNote.setChildren(items);
+                                if (callback != null)
+                                    callback.callback(vm.currentDriveNote.getChildren(), false);
+                            } catch (Exception ex) {
+                                if (callback != null)
+                                    callback.fail("无法访问，请注意地址格式");
+                            }
+                        }
+                    });
+                } else if (vm.currentDrive.version == 3) {
+                    PostRequest<String> request = OkGo.<String>post(webLink + "/api/fs/list").tag("drive");
+                    JSONObject requestBody = new JSONObject();
+                    requestBody.put("path", targetPath.isEmpty() ? "/" : targetPath);
+                    requestBody.put("password", vm.currentDrive.getConfig().get("password").getAsString());
+                    requestBody.put("page", 1);
+                    requestBody.put("per_page", 200);
+                    requestBody.put("refresh", false);
+
+                    request.upJson(requestBody);
+                    vm.setRequestHeader(request, webLink);
+                    request.execute(new AbsCallback<String>() {
+
+                        @Override
+                        public String convertResponse(okhttp3.Response response) throws Throwable {
+                            return response.body().string();
+                        }
+
+                        @Override
+                        public void onSuccess(Response<String> response) {
+                            AlistDriveViewModel vm = vmRef.get();
+                            if (vm == null) return;
+                            
+                            String respBody = response.body();
+                            try {
+                                JsonObject respData = JsonParser.parseString(respBody).getAsJsonObject();
+                                List<DriveFolderFile> items = new ArrayList<>();
+                                if (respData.get("code").getAsInt() == 200) {
+                                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+                                    for (JsonElement file : respData.get("data").getAsJsonObject().get("content").getAsJsonArray()) {
+                                        JsonObject fileObj = file.getAsJsonObject();
+                                        String fileName = fileObj.get("name").getAsString();
+                                        int extNameStartIndex = fileName.lastIndexOf(".");
+                                        boolean isFile = !fileObj.get("is_dir").getAsBoolean();
+
+                                        try {
+                                            DriveFolderFile driveFile = new DriveFolderFile(vm.currentDriveNote, fileName, vm.currentDrive.version, isFile,
+                                                    isFile && extNameStartIndex >= 0 && extNameStartIndex < fileName.length() ?
+                                                            fileName.substring(extNameStartIndex + 1) : null,
+                                                    dateFormat.parse(fileObj.get("modified").getAsString()).getTime());
+                                            items.add(driveFile);
+                                        } catch (ParseException e) {
+                                            LOG.e(e);
+                                        }
+                                    }
+                                }
+                                vm.sortData(items);
+                                DriveFolderFile backItem = new DriveFolderFile(null, null, 0, false, null, null);
+                                backItem.parentFolder = backItem;
+                                items.add(0, backItem);
+                                vm.currentDriveNote.setChildren(items);
+                                if (callback != null)
+                                    callback.callback(vm.currentDriveNote.getChildren(), false);
+                            } catch (Exception ex) {
+                                if (callback != null)
+                                    callback.fail("无法访问，请注意地址格式");
+                            }
+                        }
+                    });
+                }
+            } catch (Exception ex) {
+                LOG.e(ex);
+            }
+        }
+    }
+    
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        if (loadThread != null && loadThread.isAlive()) {
+            loadThread.interrupt();
+        }
+        OkGo.getInstance().cancelTag("drive");
     }
 
     public void loadFile(DriveFolderFile targetFile, LoadFileCallback callback) {
@@ -224,7 +270,7 @@ public class AlistDriveViewModel extends AbstractDriveViewModel {
                 }
             }
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            LOG.e(e);
             callback.fail(e.getMessage());
         }
 

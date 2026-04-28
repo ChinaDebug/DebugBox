@@ -18,15 +18,19 @@ import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.LiveChannelItem;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.util.AES;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HawkListHelper;
 import com.github.tvbox.osc.util.M3U8;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.OkGoHelper;
+import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -36,8 +40,12 @@ import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.AbsCallback;
 import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Call;
 
 import org.apache.commons.lang3.StringUtils;
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -77,6 +85,7 @@ public class ApiConfig {
 
     private final JarLoader jarLoader = new JarLoader();
     private final JsLoader jsLoader = new JsLoader();
+    private Call currentCall;
     private final IPyLoader pyLoader =  new pyLoader();
     private final String userAgent = "okhttp/3.15";
 
@@ -98,6 +107,13 @@ public class ApiConfig {
             }
         }
         return instance;
+    }
+
+    public void cancelCurrentRequest() {
+        if (currentCall != null && !currentCall.isCanceled()) {
+            currentCall.cancel();
+            currentCall = null;
+        }
     }
 
     public static String FindResult(String json, String configKey) {
@@ -122,7 +138,7 @@ public class ApiConfig {
                 json = content;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return json;
     }
@@ -151,7 +167,7 @@ public class ApiConfig {
                 callback.success();
                 return;
             } catch (Throwable th) {
-                th.printStackTrace();
+                LOG.e(th);
             }
         }
         String TempKey = null, configUrl = "", pk = ";pk;";
@@ -172,66 +188,63 @@ public class ApiConfig {
         } else {
             configUrl = apiUrl;
         }
-        System.out.println("API URL :" + configUrl);
+        LOG.i("API URL: " + configUrl);
         String configKey = TempKey;
-        OkGo.<String>get(configUrl)
-                .headers("User-Agent", userAgent)
-                .headers("Accept", requestAccept)
-                .execute(new AbsCallback<String>() {
-                    @Override
-                    public void onSuccess(Response<String> response) {
-                        try {
-                            String json = response.body();
-                            parseJson(apiUrl, json);
-                            try {
-                                File cacheDir = cache.getParentFile();
-                                if (!cacheDir.exists())
-                                    cacheDir.mkdirs();
-                                if (cache.exists())
-                                    cache.delete();
-                                FileOutputStream fos = new FileOutputStream(cache);
-                                fos.write(json.getBytes("UTF-8"));
-                                fos.flush();
-                                fos.close();
-                            } catch (Throwable th) {
-                                th.printStackTrace();
-                            }
-                            callback.success();
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                            callback.error("解析配置失败");
-                        }
+        OkHttpClient checkClient = OkGoHelper.getCheckApiClient();
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(configUrl)
+                .header("User-Agent", userAgent)
+                .header("Accept", requestAccept);
+        currentCall = checkClient.newCall(requestBuilder.build());
+        currentCall.enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (cache.exists()) {
+                    try {
+                        parseJson(apiUrl, cache);
+                        callback.success();
+                        return;
+                    } catch (Throwable th) {
+                        LOG.e(th);
                     }
+                }
+                callback.error("拉取配置失败\n" + e.getMessage());
+            }
 
-                    @Override
-                    public void onError(Response<String> response) {
-                        super.onError(response);
-                        if (cache.exists()) {
-                            try {
-                                parseJson(apiUrl, cache);
-                                callback.success();
-                                return;
-                            } catch (Throwable th) {
-                                th.printStackTrace();
-                            }
-                        }
-                        callback.error("拉取配置失败\n" + (response.getException() != null ? response.getException().getMessage() : ""));
-                    }
-
-                    public String convertResponse(okhttp3.Response response) throws Throwable {
-                        String result = "";
-                        if (response.body() == null) {
-                            result = "";
-                        } else {
-                            result = FindResult(response.body().string(), configKey);
-                        }
+            @Override
+            public void onResponse(Call call, okhttp3.Response response) throws IOException {
+                try {
+                    String json = "";
+                    if (response.body() != null) {
+                        String result = response.body().string();
+                        result = FindResult(result, configKey);
                         if (apiUrl.startsWith("clan")) {
                             result = clanContentFix(clanToAddress(apiUrl), result);
                         }
                         result = fixContentPath(apiUrl, result);
-                        return result;
+                        json = result;
                     }
-                });
+                    parseJson(apiUrl, json);
+                    try {
+                        File cacheDir = cache.getParentFile();
+                        if (!cacheDir.exists())
+                            cacheDir.mkdirs();
+                        if (cache.exists())
+                            cache.delete();
+                        FileOutputStream fos = new FileOutputStream(cache);
+                        fos.write(json.getBytes("UTF-8"));
+                        fos.flush();
+                        fos.close();
+                    } catch (Throwable th) {
+                        LOG.e(th);
+                    }
+                    callback.success();
+                } catch (Throwable th) {
+                    LOG.e(th);
+                    callback.error("解析配置失败");
+                }
+            }
+        });
     }
 
     public void loadJar(boolean useCache, String spider, LoadConfigCallback callback) {
@@ -332,7 +345,7 @@ public class ApiConfig {
     }
 
     private void parseJson(String apiUrl, File f) throws Throwable {
-        System.out.println("从本地缓存加载" + f.getAbsolutePath());
+        LOG.i("从本地缓存加载: " + f.getAbsolutePath());
         BufferedReader bReader = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
         StringBuilder sb = new StringBuilder();
         String s = "";
@@ -357,58 +370,68 @@ public class ApiConfig {
         // 远端站点源
         SourceBean firstSite = null;
         JsonArray sites = infoJson.has("video") ? infoJson.getAsJsonObject("video").getAsJsonArray("sites") : infoJson.get("sites").getAsJsonArray();
-        for (JsonElement opt : sites) {
-            JsonObject obj = (JsonObject) opt;
-            SourceBean sb = new SourceBean();
-            String siteKey = obj.get("key").getAsString().trim();
-            sb.setKey(siteKey);
-            sb.setName(obj.has("name")?obj.get("name").getAsString().trim():siteKey);
-            sb.setType(obj.get("type").getAsInt());
-            sb.setApi(obj.get("api").getAsString().trim());
-            sb.setSearchable(DefaultConfig.safeJsonInt(obj, "searchable", 1));
-            sb.setQuickSearch(DefaultConfig.safeJsonInt(obj, "quickSearch", 1));
-            if(siteKey.startsWith("py_")){
-                sb.setFilterable(1);
-            }else {
-                sb.setFilterable(DefaultConfig.safeJsonInt(obj, "filterable", 1));
+        synchronized (sourceBeanList) {
+            for (JsonElement opt : sites) {
+                JsonObject obj = (JsonObject) opt;
+                SourceBean sb = new SourceBean();
+                String siteKey = obj.get("key").getAsString().trim();
+                sb.setKey(siteKey);
+                sb.setName(obj.has("name")?obj.get("name").getAsString().trim():siteKey);
+                sb.setType(obj.get("type").getAsInt());
+                sb.setApi(obj.get("api").getAsString().trim());
+                sb.setSearchable(DefaultConfig.safeJsonInt(obj, "searchable", 1));
+                sb.setQuickSearch(DefaultConfig.safeJsonInt(obj, "quickSearch", 1));
+                if(siteKey.startsWith("py_")){
+                    sb.setFilterable(1);
+                }else {
+                    sb.setFilterable(DefaultConfig.safeJsonInt(obj, "filterable", 1));
+                }
+                sb.setHide(DefaultConfig.safeJsonInt(obj, "hide", 0));
+                sb.setPlayerUrl(DefaultConfig.safeJsonString(obj, "playUrl", ""));
+                sb.setExt(DefaultConfig.safeJsonString(obj, "ext", ""));
+                sb.setJar(DefaultConfig.safeJsonString(obj, "jar", ""));
+                sb.setPlayerType(DefaultConfig.safeJsonInt(obj, "playerType", -1));
+                sb.setCategories(DefaultConfig.safeJsonStringList(obj, "categories"));
+                sb.setClickSelector(DefaultConfig.safeJsonString(obj, "click", ""));
+                sb.setStyle(DefaultConfig.safeJsonString(obj, "style", ""));
+                if (firstSite == null && sb.getHide() == 0)
+                    firstSite = sb;
+                sourceBeanList.put(siteKey, sb);
             }
-            sb.setHide(DefaultConfig.safeJsonInt(obj, "hide", 0));
-            sb.setPlayerUrl(DefaultConfig.safeJsonString(obj, "playUrl", ""));
-            sb.setExt(DefaultConfig.safeJsonString(obj, "ext", ""));
-            sb.setJar(DefaultConfig.safeJsonString(obj, "jar", ""));
-            sb.setPlayerType(DefaultConfig.safeJsonInt(obj, "playerType", -1));
-            sb.setCategories(DefaultConfig.safeJsonStringList(obj, "categories"));
-            sb.setClickSelector(DefaultConfig.safeJsonString(obj, "click", ""));
-            sb.setStyle(DefaultConfig.safeJsonString(obj, "style", ""));
-            if (firstSite == null && sb.getHide() == 0)
-                firstSite = sb;
-            sourceBeanList.put(siteKey, sb);
-        }
-        if (sourceBeanList != null && sourceBeanList.size() > 0) {
-            String home = Hawk.get(HawkConfig.HOME_API, "");
-            SourceBean sh = getSource(home);
-            if (sh == null || sh.getHide() == 1)
-                setSourceBean(firstSite);
-            else
-                setSourceBean(sh);
+            if (sourceBeanList != null && sourceBeanList.size() > 0) {
+                String home = Hawk.get(HawkConfig.HOME_API, "");
+                SourceBean sh = getSource(home);
+                if (sh == null || sh.getHide() == 1)
+                    setSourceBean(firstSite);
+                else
+                    setSourceBean(sh);
+            }
         }
         // 需要使用vip解析的flag
         vipParseFlags = DefaultConfig.safeJsonStringList(infoJson, "flags");
         // 解析地址
         parseBeanList.clear();
+        boolean hasSuperParseFlag = false;
         if (infoJson.has("parses")) {
             JsonArray parses = infoJson.get("parses").getAsJsonArray();
             for (JsonElement opt : parses) {
                 JsonObject obj = (JsonObject) opt;
+                String url = obj.get("url").getAsString().trim();
+                // 检测超级解析标记：url为"SuperParse"时不添加到列表，但标记需要添加超级解析
+                if ("SuperParse".equals(url)) {
+                    hasSuperParseFlag = true;
+                    continue;
+                }
                 ParseBean pb = new ParseBean();
                 pb.setName(obj.get("name").getAsString().trim());
-                pb.setUrl(obj.get("url").getAsString().trim());
+                pb.setUrl(url);
                 String ext = obj.has("ext") ? obj.get("ext").getAsJsonObject().toString() : "";
                 pb.setExt(ext);
                 pb.setType(DefaultConfig.safeJsonInt(obj, "type", 0));
                 parseBeanList.add(pb);
             }
-            if(!parseBeanList.isEmpty()){
+            // 有解析配置或超级解析标记时，添加超级解析
+            if(!parseBeanList.isEmpty() || hasSuperParseFlag){
                 addSuperParse();
             }
         }
@@ -454,7 +477,7 @@ public class ApiConfig {
                         }
 
                         // takagen99: Capture Live URL into Config
-                        System.out.println("Live URL :" + extUrlFix);
+                        LOG.i("Live URL: " + extUrlFix);
                         putLiveHistory(extUrlFix);
                         // Overwrite with Live URL from Settings
                         if (StringUtils.isBlank(liveURL)) {
@@ -474,7 +497,7 @@ public class ApiConfig {
                     // takagen99 : Getting EPG URL from File Config & put into Settings
                     if (livesOBJ.has("epg")) {
                         String epg = livesOBJ.get("epg").getAsString();
-                        System.out.println("EPG URL :" + epg);
+                        LOG.i("EPG URL: " + epg);
                         putEPGHistory(epg);
                         // Overwrite with EPG URL from Settings
                         if (StringUtils.isBlank(epgURL)) {
@@ -482,6 +505,12 @@ public class ApiConfig {
                         } else {
                             Hawk.put(HawkConfig.EPG_URL, epgURL);
                         }
+                    }
+                    
+                    if (livesOBJ.has("logo")) {
+                        String logo = livesOBJ.get("logo").getAsString();
+                        LOG.i("Logo URL: " + logo);
+                        Hawk.put(HawkConfig.LOGO_URL, logo);
                     }
 
 //                // Populate Live Channel Listing
@@ -504,7 +533,7 @@ public class ApiConfig {
                             // takagen99 : Getting EPG URL from File Config & put into Settings
                             if (fengMiLives.has("epg")) {
                                 String epg = fengMiLives.get("epg").getAsString();
-                                System.out.println("EPG URL :" + epg);
+                                LOG.i("EPG URL: " + epg);
                                 putEPGHistory(epg);
                                 // Overwrite with EPG URL from Settings
                                 if (StringUtils.isBlank(epgURL)) {
@@ -513,10 +542,16 @@ public class ApiConfig {
                                     Hawk.put(HawkConfig.EPG_URL, epgURL);
                                 }
                             }
+                            
+                            if (fengMiLives.has("logo")) {
+                                String logo = fengMiLives.get("logo").getAsString();
+                                LOG.i("Logo URL: " + logo);
+                                Hawk.put(HawkConfig.LOGO_URL, logo);
+                            }
 
                             if (url.startsWith("http")) {
                                 // takagen99: Capture Live URL into Settings
-                                System.out.println("Live URL :" + url);
+                                LOG.i("Live URL: " + url);
                                 putLiveHistory(url);
                                 // Overwrite with Live URL from Settings
                                 if (StringUtils.isBlank(liveURL)) {
@@ -547,7 +582,7 @@ public class ApiConfig {
 
 
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
 
         // Video parse rule for host
@@ -615,7 +650,8 @@ public class ApiConfig {
             }
         }
 
-        String defaultIJKADS = "{\"ijk\":[{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"0\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"0\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"}],\"group\":\"软解码\"},{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"0\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"1\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"}],\"group\":\"硬解码\"}],\"ads\":[\"mimg.0c1q0l.cn\",\"www.googletagmanager.com\",\"www.google-analytics.com\",\"mc.usihnbcq.cn\",\"mg.g1mm3d.cn\",\"mscs.svaeuzh.cn\",\"cnzz.hhttm.top\",\"tp.vinuxhome.com\",\"cnzz.mmstat.com\",\"www.baihuillq.com\",\"s23.cnzz.com\",\"z3.cnzz.com\",\"c.cnzz.com\",\"stj.v1vo.top\",\"z12.cnzz.com\",\"img.mosflower.cn\",\"tips.gamevvip.com\",\"ehwe.yhdtns.com\",\"xdn.cqqc3.com\",\"www.jixunkyy.cn\",\"sp.chemacid.cn\",\"hm.baidu.com\",\"s9.cnzz.com\",\"z6.cnzz.com\",\"um.cavuc.com\",\"mav.mavuz.com\",\"wofwk.aoidf3.com\",\"z5.cnzz.com\",\"xc.hubeijieshikj.cn\",\"tj.tianwenhu.com\",\"xg.gars57.cn\",\"k.jinxiuzhilv.com\",\"cdn.bootcss.com\",\"ppl.xunzhuo123.com\",\"xomk.jiangjunmh.top\",\"img.xunzhuo123.com\",\"z1.cnzz.com\",\"s13.cnzz.com\",\"xg.huataisangao.cn\",\"z7.cnzz.com\",\"xg.huataisangao.cn\",\"z2.cnzz.com\",\"s96.cnzz.com\",\"q11.cnzz.com\",\"thy.dacedsfa.cn\",\"xg.whsbpw.cn\",\"s19.cnzz.com\",\"z8.cnzz.com\",\"s4.cnzz.com\",\"f5w.as12df.top\",\"ae01.alicdn.com\",\"www.92424.cn\",\"k.wudejia.com\",\"vivovip.mmszxc.top\",\"qiu.xixiqiu.com\",\"cdnjs.hnfenxun.com\",\"cms.qdwght.com\"]}";
+        // 优化后的IJK默认配置，添加缓冲相关参数以减少卡顿
+        String defaultIJKADS = "{\"ijk\":[{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"0\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"},{\"name\":\"max-buffer-size\",\"category\":1,\"value\":\"15728640\"},{\"name\":\"min-frames\",\"category\":4,\"value\":\"5\"},{\"name\":\"max_cached_duration\",\"category\":4,\"value\":\"5000\"},{\"name\":\"analyzeduration\",\"category\":1,\"value\":\"1000000\"},{\"name\":\"probesize\",\"category\":1,\"value\":\"16384\"}],\"group\":\"软解码\"},{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"1\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"},{\"name\":\"max-buffer-size\",\"category\":1,\"value\":\"15728640\"},{\"name\":\"min-frames\",\"category\":4,\"value\":\"5\"},{\"name\":\"max_cached_duration\",\"category\":4,\"value\":\"5000\"},{\"name\":\"analyzeduration\",\"category\":1,\"value\":\"1000000\"},{\"name\":\"probesize\",\"category\":1,\"value\":\"16384\"}],\"group\":\"硬解码\"}],\"ads\":[\"mimg.0c1q0l.cn\",\"www.googletagmanager.com\",\"www.google-analytics.com\",\"mc.usihnbcq.cn\",\"mg.g1mm3d.cn\",\"mscs.svaeuzh.cn\",\"cnzz.hhttm.top\",\"tp.vinuxhome.com\",\"cnzz.mmstat.com\",\"www.baihuillq.com\",\"s23.cnzz.com\",\"z3.cnzz.com\",\"c.cnzz.com\",\"stj.v1vo.top\",\"z12.cnzz.com\",\"img.mosflower.cn\",\"tips.gamevvip.com\",\"ehwe.yhdtns.com\",\"xdn.cqqc3.com\",\"www.jixunkyy.cn\",\"sp.chemacid.cn\",\"hm.baidu.com\",\"s9.cnzz.com\",\"z6.cnzz.com\",\"um.cavuc.com\",\"mav.mavuz.com\",\"wofwk.aoidf3.com\",\"z5.cnzz.com\",\"xc.hubeijieshikj.cn\",\"tj.tianwenhu.com\",\"xg.gars57.cn\",\"k.jinxiuzhilv.com\",\"cdn.bootcss.com\",\"ppl.xunzhuo123.com\",\"xomk.jiangjunmh.top\",\"img.xunzhuo123.com\",\"z1.cnzz.com\",\"s13.cnzz.com\",\"xg.huataisangao.cn\",\"z7.cnzz.com\",\"xg.huataisangao.cn\",\"z2.cnzz.com\",\"s96.cnzz.com\",\"q11.cnzz.com\",\"thy.dacedsfa.cn\",\"xg.whsbpw.cn\",\"s19.cnzz.com\",\"z8.cnzz.com\",\"s4.cnzz.com\",\"f5w.as12df.top\",\"ae01.alicdn.com\",\"www.92424.cn\",\"k.wudejia.com\",\"vivovip.mmszxc.top\",\"qiu.xixiqiu.com\",\"cdnjs.hnfenxun.com\",\"cms.qdwght.com\"]}";
         JsonObject defaultJson = new Gson().fromJson(defaultIJKADS, JsonObject.class);
         // 广告地址
         if(AdBlocker.isEmpty()){
@@ -632,12 +668,22 @@ public class ApiConfig {
                 }
             }
         }
-        // IJK解码配置
-        if (ijkCodes == null) {
+        // IJK解码配置 - 根据缓冲模式决定是否重新加载
+        // 0=默认内置, 1=配置地址调整, 2=流畅模式, 3=均衡模式, 4=原画模式
+        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+        // 只有使用配置地址调整模式(1)或未初始化时才重新加载
+        if (ijkCodes == null || bufferMode == 1) {
             ijkCodes = new ArrayList<>();
             boolean foundOldSelect = false;
             String ijkCodec = Hawk.get(HawkConfig.IJK_CODEC, "");
-            JsonArray ijkJsonArray = infoJson.has("ijk") ? infoJson.get("ijk").getAsJsonArray() : defaultJson.get("ijk").getAsJsonArray();
+            JsonArray ijkJsonArray;
+            if (bufferMode == 1) {
+                // 使用API配置
+                ijkJsonArray = infoJson.has("ijk") ? infoJson.get("ijk").getAsJsonArray() : defaultJson.get("ijk").getAsJsonArray();
+            } else {
+                // 使用内置默认配置（包括自定义的缓冲模式）
+                ijkJsonArray = defaultJson.get("ijk").getAsJsonArray();
+            }
             for (JsonElement opt : ijkJsonArray) {
                 JsonObject obj = (JsonObject) opt;
                 String name = obj.get("group").getAsString();
@@ -668,23 +714,13 @@ public class ApiConfig {
 
     private void putLiveHistory(String url) {
         if (!url.isEmpty()) {
-            ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
-            if (!liveHistory.contains(url))
-                liveHistory.add(0, url);
-            if (liveHistory.size() > 20)
-                liveHistory.remove(20);
-            Hawk.put(HawkConfig.LIVE_HISTORY, liveHistory);
+            HawkListHelper.addToList(HawkConfig.LIVE_HISTORY, url, 20);
         }
     }
 
     public static void putEPGHistory(String url) {
         if (!url.isEmpty()) {
-            ArrayList<String> epgHistory = Hawk.get(HawkConfig.EPG_HISTORY, new ArrayList<String>());
-            if (!epgHistory.contains(url))
-                epgHistory.add(0, url);
-            if (epgHistory.size() > 20)
-                epgHistory.remove(20);
-            Hawk.put(HawkConfig.EPG_HISTORY, epgHistory);
+            HawkListHelper.addToList(HawkConfig.EPG_HISTORY, url, 20);
         }
     }
 
@@ -749,13 +785,17 @@ public class ApiConfig {
     public Spider getPyCSP(String url) {
         return pyLoader.getSpider(MD5.string2MD5(url), url, "");
     }
+
+    public boolean isPyLoaderReady() {
+        return ((pyLoader) pyLoader).isInitialized();
+    }
 	
     public Object[] proxyLocal(Map<String,String> param) {
         if ("js".equals(param.get("do"))) {
             return jsLoader.proxyInvoke(param);
         }
         SourceBean sourceBean = ApiConfig.get().getHomeSourceBean(); 
-        String apiString = sourceBean.getApi();
+        String apiString = sourceBean.getApi();   
         return apiString.contains(".py") ? pyLoader.proxyInvoke(param) : jarLoader.proxyInvoke(param);
     }
 
@@ -782,14 +822,17 @@ public class ApiConfig {
     }
 
     public SourceBean getSource(String key) {
-        if (!sourceBeanList.containsKey(key))
-            return null;
-        return sourceBeanList.get(key);
+        synchronized (sourceBeanList) {
+            if (!sourceBeanList.containsKey(key))
+                return null;
+            return sourceBeanList.get(key);
+        }
     }
 
     public void setSourceBean(SourceBean sourceBean) {
         this.mHomeSource = sourceBean;
         Hawk.put(HawkConfig.HOME_API, sourceBean.getKey());
+        UpdateCheckManager.get().clearCache();
     }
 
     public void setDefaultParse(ParseBean parseBean) {
@@ -805,7 +848,9 @@ public class ApiConfig {
     }
 
     public List<SourceBean> getSourceBeanList() {
-        return new ArrayList<>(sourceBeanList.values());
+        synchronized (sourceBeanList) {
+            return new ArrayList<>(sourceBeanList.values());
+        }
     }
 
     public List<ParseBean> getParseBeanList() {
@@ -814,6 +859,20 @@ public class ApiConfig {
 
     public List<String> getVipParseFlags() {
         return vipParseFlags;
+    }
+
+    public boolean containsFlag(String flag) {
+        if (vipParseFlags == null || vipParseFlags.isEmpty()) {
+            return false;
+        }
+        String normalizedFlag = flag.trim().toLowerCase();
+        for (String vipFlag : vipParseFlags) {
+            String processedFlag = vipFlag.trim().toLowerCase();
+            if (normalizedFlag.contains(processedFlag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public SourceBean getHomeSourceBean() {
@@ -847,12 +906,27 @@ public class ApiConfig {
 
     String clanToAddress(String lanLink) {
         if (lanLink.startsWith("clan://localhost/")) {
+            if (!hasStoragePermission()) {
+                // 发送权限不足事件，通知UI层提示用户
+                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_STORAGE_PERMISSION_DENIED));
+                return "";
+            }
             return lanLink.replace("clan://localhost/", ControlManager.get().getAddress(true) + "file/");
         } else {
             String link = lanLink.substring(7);
             int end = link.indexOf('/');
             return "http://" + link.substring(0, end) + "/file/" + link.substring(end + 1);
         }
+    }
+
+    private boolean hasStoragePermission() {
+        // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && App.getInstance().getApplicationInfo().targetSdkVersion >= android.os.Build.VERSION_CODES.R) {
+            return android.os.Environment.isExternalStorageManager();
+        }
+        // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+        return androidx.core.content.ContextCompat.checkSelfPermission(App.getInstance(), android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
     }
 
     String clanContentFix(String lanLink, String content) {
@@ -889,6 +963,62 @@ public class ApiConfig {
         pyLoader.clear();
         jsLoader.clear();
     }
+
+    public void clearAllCache() {
+        try {
+            clearLoader();
+
+            File cspDir = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp");
+            if (cspDir.exists()) {
+                FileUtils.deleteFile(cspDir);
+            }
+
+            File catvodCspDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_csp");
+            if (catvodCspDir.exists()) {
+                FileUtils.deleteFile(catvodCspDir);
+            }
+
+            File catvodJsDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_jsapi");
+            if (catvodJsDir.exists()) {
+                FileUtils.deleteFile(catvodJsDir);
+            }
+
+            File httpCacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/http_cache");
+            if (httpCacheDir.exists()) {
+                FileUtils.deleteFile(httpCacheDir);
+            }
+
+            // 清理配置文件缓存
+            String apiUrl = Hawk.get(HawkConfig.API_URL, "");
+            if (!apiUrl.isEmpty()) {
+                File configCache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + MD5.encode(apiUrl));
+                if (configCache.exists()) {
+                    configCache.delete();
+                }
+            }
+
+            // 重置首页源选择，让新配置使用默认首页源
+            Hawk.put(HawkConfig.HOME_API, "");
+
+            synchronized (sourceBeanList) {
+                sourceBeanList.clear();
+            }
+            synchronized (liveChannelGroupList) {
+                liveChannelGroupList.clear();
+            }
+            synchronized (parseBeanList) {
+                parseBeanList.clear();
+            }
+            mHomeSource = null;
+            mDefaultParse = null;
+            spider = null;
+            wallpaper = "";
+            livePlayHeaders = null;
+        } catch (Exception e) {
+            LOG.e("清理缓存失败: " + e.getMessage());
+        }
+    }
+
     String miTV(String url) {
         if (url.startsWith("p") || url.startsWith("mitv")) {
 

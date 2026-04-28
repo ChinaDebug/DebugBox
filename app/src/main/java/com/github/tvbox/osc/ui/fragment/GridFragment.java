@@ -8,6 +8,8 @@ import android.view.ViewGroup;
 import android.view.animation.BounceInterpolator;
 import androidx.core.content.ContextCompat;
 import android.widget.Toast;
+
+import com.github.tvbox.osc.util.ToastHelper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Observer;
@@ -326,7 +328,7 @@ public class GridFragment extends BaseLazyFragment {
                         showEmpty();
                     }
                     if (page > maxPage && maxPage!=0) {
-                        Toast.makeText(getContext(), "没有更多了", Toast.LENGTH_SHORT).show();
+                        ToastHelper.showToast(getContext(), "没有更多了");
                         gridAdapter.loadMoreEnd();
                     } else {
                         gridAdapter.loadMoreComplete();
@@ -449,5 +451,13 @@ public class GridFragment extends BaseLazyFragment {
     public void forceRefresh() {
         page = 1;
         initData();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (mGrids != null) {
+            mGrids.clear();
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.github.tvbox.osc.util;
 import android.content.res.AssetManager;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -47,7 +48,7 @@ public class EpgUtil {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -60,8 +61,35 @@ public class EpgUtil {
                         obj.get("epgid").getAsString()
                 };
             }
+            for (String key : epgHashMap.keySet()) {
+                if (channelName.contains(key) || key.contains(channelName)) {
+                    JsonObject obj = epgHashMap.get(key);
+                    return new String[]{
+                            obj.get("logo").getAsString(),
+                            obj.get("epgid").getAsString()
+                    };
+                }
+            }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.e(ex);
+        }
+        return null;
+    }
+
+    public static String getTvid(String channelName) {
+        try {
+            if (epgHashMap.containsKey(channelName)) {
+                JsonObject obj = epgHashMap.get(channelName);
+                return obj.get("tvid").getAsString();
+            }
+            for (String key : epgHashMap.keySet()) {
+                if (channelName.contains(key) || key.contains(channelName)) {
+                    JsonObject obj = epgHashMap.get(key);
+                    return obj.get("tvid").getAsString();
+                }
+            }
+        } catch (Exception ex) {
+            LOG.e(ex);
         }
         return null;
     }

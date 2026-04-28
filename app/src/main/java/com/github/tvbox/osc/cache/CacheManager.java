@@ -1,11 +1,16 @@
 package com.github.tvbox.osc.cache;
 
+import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.util.MD5;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 类描述:
@@ -23,7 +28,7 @@ public class CacheManager {
             ois = new ObjectInputStream(bais);
             return ois.readObject();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         } finally {
             try {
                 if (bais != null) {
@@ -33,7 +38,7 @@ public class CacheManager {
                     ois.close();
                 }
             } catch (Exception ignore) {
-                ignore.printStackTrace();
+                LOG.e(ignore);
             }
         }
         return null;
@@ -50,7 +55,7 @@ public class CacheManager {
             oos.flush();
             return baos.toByteArray();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         } finally {
             try {
                 if (baos != null) {
@@ -60,7 +65,7 @@ public class CacheManager {
                     oos.close();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         }
         return new byte[0];
@@ -86,5 +91,34 @@ public class CacheManager {
             return toObject(cache.data);
         }
         return null;
+    }
+
+    public static void deleteAll() {
+        AppDataManager.get().getCacheDao().deleteAll();
+    }
+
+    public static void deleteByKeyPrefix(String keyPrefix) {
+        AppDataManager.get().getCacheDao().deleteByKeyPrefix(keyPrefix);
+    }
+
+    public static void deleteVodCache(String sourceKey, VodInfo vodInfo) {
+        if (sourceKey == null || vodInfo == null || vodInfo.id == null) {
+            return;
+        }
+        if (vodInfo.seriesMap != null) {
+            for (Map.Entry<String, List<VodInfo.VodSeries>> entry : vodInfo.seriesMap.entrySet()) {
+                String playFlag = entry.getKey();
+                List<VodInfo.VodSeries> seriesList = entry.getValue();
+                if (seriesList != null) {
+                    for (int i = 0; i < seriesList.size(); i++) {
+                        VodInfo.VodSeries vs = seriesList.get(i);
+                        if (vs != null) {
+                            String progressKey = sourceKey + vodInfo.id + playFlag + vs.getEpisodeId();
+                            delete(MD5.string2MD5(progressKey), 0);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -33,6 +33,7 @@
     <color name="color_FFFFFF_90">#E6FFFFFF</color>
     <color name="color_FFFFFF_80">#CCFFFFFF</color>
     <color name="color_FFFFFF_70">#B3FFFFFF</color>
+    <color name="color_FFFFFF_60">#99FFFFFF</color>
     <color name="color_FFFFFF_50">#80FFFFFF</color>
     <color name="color_FFFFFF_40">#66FFFFFF</color>
     <color name="color_FFFFFF_20">#32FFFFFF</color>
@@ -65,16 +66,20 @@
     <color name="color_CCFFFFFF">#CCFFFFFF</color>
 
 
-    <color name="subtitle_text_color_1">#FFFFFF</color>
-    <color name="subtitle_text_color_2">#E5E5E5</color>
-    <color name="subtitle_text_color_3">#CCCCCC</color>
-    <color name="subtitle_text_color_4">#B2B2B2</color>
-    <color name="subtitle_text_color_5">#999999</color>
-    <color name="subtitle_text_color_6">#7F7F7F</color>
-    <color name="subtitle_text_color_7">#666666</color>
-    <color name="subtitle_text_color_8">#4C4C4C</color>
-    <color name="subtitle_text_color_9">#333333</color>
+    <!-- 字幕样式颜色 -->
+    <color name="subtitle_text_color_1">#FFFFFF</color>  <!-- 白 -->
+    <color name="subtitle_text_color_2">#E5E5E5</color>  <!-- 灰 -->
+    <color name="subtitle_text_color_3">#FFFF00</color>  <!-- 黄 -->
+    <color name="subtitle_text_color_4">#FFEB3B</color>  <!-- 浅黄 -->
+    <color name="subtitle_text_color_5">#00FF00</color>  <!-- 绿 -->
+    <color name="subtitle_text_color_6">#00E5FF</color>  <!-- 青 -->
+    <color name="subtitle_text_color_7">#FF9800</color>  <!-- 橙 -->
+    <color name="subtitle_text_color_8">#FFB6C1</color>  <!-- 粉 -->
 
+    <!-- 字幕背景颜色 -->
+    <color name="subtitle_bg_black">#CC000000</color>
+    <color name="subtitle_bg_dark">#99000000</color>
+    <color name="subtitle_bg_transparent">#00000000</color>
 
     <!-- 定义颜色数组 -->
     <array name="subtitle_text_color">
@@ -86,23 +91,23 @@
         <item>@color/subtitle_text_color_6</item>
         <item>@color/subtitle_text_color_7</item>
         <item>@color/subtitle_text_color_8</item>
-        <item>@color/subtitle_text_color_9</item>
-        <item>@color/color_FFB6C1</item>
-
     </array>
     <array name="subtitle_text_shadow_color">
         <item>@color/color_000000_80F</item>
         <item>@color/color_000000_8A</item>
         <item>@color/color_000000_94</item>
         <item>@color/color_000000_9E</item>
-        <item>@color/color_000000_A8</item>
-        <item>@color/color_000000_B2</item>
-        <item>@color/color_000000_BC</item>
-        <item>@color/color_000000_C6</item>
         <item>@color/color_000000_FF</item>
-        <item>@color/color_000000_80F</item>
+        <item>@color/color_000000_FF</item>
+        <item>@color/color_000000_FF</item>
+        <item>@color/color_000000_FF</item>
+    </array>
 
-
+    <!-- 字幕背景样式 -->
+    <array name="subtitle_bg_style">
+        <item>@color/subtitle_bg_transparent</item>
+        <item>@color/subtitle_bg_black</item>
+        <item>@color/subtitle_bg_dark</item>
     </array>
 
 </resources>

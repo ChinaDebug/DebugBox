@@ -6,6 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.ImageView;
 
+import com.github.tvbox.osc.util.LOG;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -130,7 +132,7 @@ public abstract class CallBackUtil<T> {
             try {
                 data = input2byte(inputStream);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
@@ -219,7 +221,7 @@ public abstract class CallBackUtil<T> {
                 return file;
 
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.e(e);
             } finally {
                 try {
                     fos.close();

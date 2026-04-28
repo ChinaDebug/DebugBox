@@ -140,6 +140,21 @@ public class ControlWrapper implements MediaPlayerControl, IVideoController {
         return mPlayerControl.isTinyScreen();
     }
 
+    @Override
+    public void saveProgressDebounced() {
+        mPlayerControl.saveProgressDebounced();
+    }
+
+    @Override
+    public void saveProgressOnInterval() {
+        mPlayerControl.saveProgressOnInterval();
+    }
+
+    @Override
+    public boolean isLive() {
+        return mPlayerControl.isLive();
+    }
+
     /**
      * 播放和暂停
      */

@@ -45,6 +45,11 @@ public class HomePageAdapter extends FragmentPagerAdapter {
     }
 
     @Override
+    public int getItemPosition(Object object) {
+        return POSITION_NONE;
+    }
+
+    @Override
     public Fragment instantiateItem(ViewGroup container, int position) {
         Fragment fragment = (Fragment) super.instantiateItem(container, position);
         fragmentManager.beginTransaction().show(fragment).commitAllowingStateLoss();

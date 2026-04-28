@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.LOG;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,10 +45,9 @@ public class AppDataManager {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
             try {
-                //database.execSQL("ALTER TABLE sourceState ADD COLUMN tidSort TEXT");
                 database.execSQL("CREATE TABLE IF NOT EXISTS `storageDrive` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` INTEGER NOT NULL, `configJson` TEXT)");
             } catch (SQLiteException e) {
-                e.printStackTrace();
+                LOG.e("MIGRATION_1_2", e);
             }
         }
     };
@@ -56,22 +56,10 @@ public class AppDataManager {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
             try {
-                //database.execSQL("ALTER TABLE sourceState ADD COLUMN tidSort TEXT");
                 database.execSQL("CREATE TABLE IF NOT EXISTS t_search (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)");
-                //添加索引
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)");
-
-                /*database.execSQL("CREATE TABLE IF NOT EXISTS t_search_temp (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)");
-                // Copy the data
-                database.execSQL("INSERT INTO t_search_temp (id, searchKeyWords) SELECT id, searchKeyWords FROM t_search");
-                // Remove the old table
-                database.execSQL("DROP TABLE t_search");
-                // Change the table name to the correct one
-                database.execSQL("ALTER TABLE t_search_temp RENAME TO t_search");
-                //添加索引
-                database.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)");*/
             } catch (SQLiteException e) {
-                e.printStackTrace();
+                LOG.e("MIGRATION_2_3", e);
             }
         }
     };

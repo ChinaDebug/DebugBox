@@ -27,7 +27,13 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
 
     protected IjkMediaPlayer mMediaPlayer;
     private int mBufferedPercent;
+    private boolean mIsBuffering;
+    private long mLastBufferingNotifyTime;
+    private static final long BUFFERING_NOTIFY_INTERVAL = 500;
     protected final Context mAppContext;
+    private String path;
+    private Map<String, String> headers;
+    private int retriedTimes = 0;
 
     public IjkPlayer(Context context) {
         mAppContext = context;
@@ -54,6 +60,8 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
 
     @Override
     public void setDataSource(String path, Map<String, String> headers) {
+        this.path = path;
+        this.headers = headers;
         try {
             Uri uri = Uri.parse(path);
             if (ContentResolver.SCHEME_ANDROID_RESOURCE.equals(uri.getScheme())) {
@@ -117,6 +125,7 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
         mMediaPlayer.reset();
         mMediaPlayer.setOnVideoSizeChangedListener(this);
         setOptions();
+        retriedTimes = 0;
     }
 
     @Override
@@ -141,16 +150,12 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
         mMediaPlayer.setOnBufferingUpdateListener(null);
         mMediaPlayer.setOnPreparedListener(null);
         mMediaPlayer.setOnVideoSizeChangedListener(null);
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    mMediaPlayer.release();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }.start();
+        // 修复：同步释放播放器资源，避免异步释放导致空指针异常
+        try {
+            mMediaPlayer.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -205,6 +210,25 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
 
     @Override
     public boolean onError(IMediaPlayer mp, int what, int extra) {
+        if (retriedTimes == 0) {
+            retriedTimes = 1;
+            mMediaPlayer.stop();
+            mMediaPlayer.reset();
+            try {
+                Uri uri = Uri.parse(path);
+                if (ContentResolver.SCHEME_ANDROID_RESOURCE.equals(uri.getScheme())) {
+                    RawDataSourceProvider rawDataSourceProvider = RawDataSourceProvider.create(mAppContext, uri);
+                    mMediaPlayer.setDataSource(rawDataSourceProvider);
+                } else {
+                    mMediaPlayer.setDataSource(mAppContext, uri);
+                }
+                mMediaPlayer.prepareAsync();
+                return true;
+            } catch (Exception e) {
+                mPlayerEventListener.onError(-1, PlayerHelper.getRootCauseMessage(e));
+                return true;
+            }
+        }
         mPlayerEventListener.onError(-1, "未知播放错误");
         return true;
     }
@@ -223,6 +247,16 @@ public class IjkPlayer extends AbstractPlayer implements IMediaPlayer.OnErrorLis
     @Override
     public void onBufferingUpdate(IMediaPlayer mp, int percent) {
         mBufferedPercent = percent;
+        long currentTime = System.currentTimeMillis();
+        if (percent < 100 && !mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = true;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_START, percent);
+        } else if (percent >= 100 && mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = false;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_END, percent);
+        }
     }
 
     @Override

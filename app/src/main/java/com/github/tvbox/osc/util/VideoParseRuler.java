@@ -2,6 +2,7 @@ package com.github.tvbox.osc.util;
 
 import static com.github.tvbox.osc.util.RegexUtils.getPattern;
 import android.net.Uri;
+import com.github.tvbox.osc.util.LOG;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -79,7 +80,7 @@ public class VideoParseRuler {
             }
             return isVideo;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return false;
     }
@@ -126,7 +127,7 @@ public class VideoParseRuler {
             }
             return isFilter;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return false;
     }

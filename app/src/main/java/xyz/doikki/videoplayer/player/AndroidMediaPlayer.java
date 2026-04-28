@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.Build;
 import android.view.Surface;
@@ -21,12 +22,19 @@ import xyz.doikki.videoplayer.util.PlayerUtils;
 public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener, MediaPlayer.OnInfoListener,
         MediaPlayer.OnBufferingUpdateListener, MediaPlayer.OnPreparedListener,
-        MediaPlayer.OnVideoSizeChangedListener {
+        MediaPlayer.OnVideoSizeChangedListener, MediaPlayer.OnTimedTextListener {
 
     protected MediaPlayer mMediaPlayer;
     private int mBufferedPercent;
+    private boolean mIsBuffering;
+    private long mLastBufferingNotifyTime;
+    private static final long BUFFERING_NOTIFY_INTERVAL = 500;
     protected Context mAppContext;
     private boolean mIsPreparing;
+
+    private long speedLastTotalRxBytes = -1;
+    private long speedLastTimeStamp = -1;
+    private MediaPlayer.OnTimedTextListener mTimedTextListener;
 
     public AndroidMediaPlayer(Context context) {
         mAppContext = context.getApplicationContext();
@@ -43,6 +51,7 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
         mMediaPlayer.setOnBufferingUpdateListener(this);
         mMediaPlayer.setOnPreparedListener(this);
         mMediaPlayer.setOnVideoSizeChangedListener(this);
+        mMediaPlayer.setOnTimedTextListener(this);
     }
 
     @Override
@@ -136,19 +145,15 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
         mMediaPlayer.setOnBufferingUpdateListener(null);
         mMediaPlayer.setOnPreparedListener(null);
         mMediaPlayer.setOnVideoSizeChangedListener(null);
+        mMediaPlayer.setOnTimedTextListener(null);
+        mTimedTextListener = null;
         stop();
-        final MediaPlayer mediaPlayer = mMediaPlayer;
+        // 修复：同步释放播放器资源，避免异步释放导致空指针异常
+        try {
+            mMediaPlayer.release();
+        } catch (Exception e) {
+        }
         mMediaPlayer = null;
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    mediaPlayer.release();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }.start();
     }
 
     @Override
@@ -227,7 +232,25 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
 
     @Override
     public long getTcpSpeed() {
-        return PlayerUtils.getNetSpeed(mAppContext);
+        if (mAppContext == null) {
+            return 0;
+        }
+        long uidRxBytes = TrafficStats.getUidRxBytes(mAppContext.getApplicationInfo().uid);
+        long nowTotalRxBytes = (uidRxBytes == TrafficStats.UNSUPPORTED) ? TrafficStats.getTotalRxBytes() : uidRxBytes;
+        long nowTimeStamp = System.currentTimeMillis();
+        if (speedLastTimeStamp <= 0) {
+            speedLastTimeStamp = nowTimeStamp;
+            speedLastTotalRxBytes = nowTotalRxBytes;
+            return 0;
+        }
+        long calculationTime = nowTimeStamp - speedLastTimeStamp;
+        if (calculationTime <= 0) {
+            return 0;
+        }
+        long speed = ((nowTotalRxBytes - speedLastTotalRxBytes) * 1000 / calculationTime);
+        speedLastTimeStamp = nowTimeStamp;
+        speedLastTotalRxBytes = nowTotalRxBytes;
+        return speed;
     }
 
     @Override
@@ -258,6 +281,16 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
         mBufferedPercent = percent;
+        long currentTime = System.currentTimeMillis();
+        if (percent < 100 && !mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = true;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_START, percent);
+        } else if (percent >= 100 && mIsBuffering && (currentTime - mLastBufferingNotifyTime) >= BUFFERING_NOTIFY_INTERVAL) {
+            mIsBuffering = false;
+            mLastBufferingNotifyTime = currentTime;
+            mPlayerEventListener.onInfo(AbstractPlayer.MEDIA_INFO_BUFFERING_END, percent);
+        }
     }
 
     @Override
@@ -301,9 +334,13 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
             if (trackInfoArray == null || trackInfoArray.length == 0) return null;
             TrackInfo data = new TrackInfo();
             int audioSelected = -1;
+            int subtitleSelected = -1;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 try {
                     audioSelected = mMediaPlayer.getSelectedTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO);
+                } catch (Exception ignored) {}
+                try {
+                    subtitleSelected = mMediaPlayer.getSelectedTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_SUBTITLE);
                 } catch (Exception ignored) {}
             }
             int index = 0;
@@ -319,11 +356,20 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
                     t.selected = index == audioSelected;
                     data.addAudio(t);
                 }
+                if (trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_SUBTITLE || trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT) {
+                    String language = info.getLanguage();
+                    String trackName = (data.getSubtitle().size() + 1) + "：" + (language != null && !language.isEmpty() && !language.equals("und") ? language : "字幕" + (data.getSubtitle().size() + 1));
+                    TrackInfoBean t = new TrackInfoBean();
+                    t.name = trackName;
+                    t.language = language != null ? language : "";
+                    t.trackId = index;
+                    t.selected = index == subtitleSelected;
+                    data.addSubtitle(t);
+                }
                 index++;
             }
             return data;
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -332,7 +378,17 @@ public class AndroidMediaPlayer extends AbstractPlayer implements MediaPlayer.On
         try {
             mMediaPlayer.selectTrack(trackIndex);
         } catch (Exception e) {
-            e.printStackTrace();
+        }
+    }
+
+    public void setOnTimedTextListener(MediaPlayer.OnTimedTextListener listener) {
+        mTimedTextListener = listener;
+    }
+
+    @Override
+    public void onTimedText(MediaPlayer mp, android.media.TimedText text) {
+        if (mTimedTextListener != null && text != null) {
+            mTimedTextListener.onTimedText(mp, text);
         }
     }
 }

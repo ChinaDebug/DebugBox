@@ -1,12 +1,16 @@
 package com.github.tvbox.osc.ui.fragment;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.github.tvbox.osc.util.ToastHelper;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -17,10 +21,13 @@ import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.BaseActivity;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.player.thirdparty.Kodi;
 import com.github.tvbox.osc.player.thirdparty.MXPlayer;
 import com.github.tvbox.osc.player.thirdparty.ReexPlayer;
+import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.ui.activity.SettingActivity;
+import com.github.tvbox.osc.ui.activity.SplashActivity;
 import com.github.tvbox.osc.ui.adapter.ApiHistoryDialogAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.dialog.AboutDialog;
@@ -29,14 +36,17 @@ import com.github.tvbox.osc.ui.dialog.ApiHistoryDialog;
 import com.github.tvbox.osc.ui.dialog.BackupDialog;
 import com.github.tvbox.osc.ui.dialog.HomeIconDialog;
 import com.github.tvbox.osc.ui.dialog.MediaSettingDialog;
-import com.github.tvbox.osc.ui.dialog.ResetDialog;
+import com.github.tvbox.osc.ui.dialog.CleanResetDialog;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
-import com.github.tvbox.osc.ui.dialog.XWalkInitDialog;
+import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HawkListHelper;
 import com.github.tvbox.osc.util.HistoryHelper;
+import com.github.tvbox.osc.util.LocaleHelper;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.FileCallback;
 import com.lzy.okgo.model.Progress;
@@ -45,6 +55,7 @@ import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 
+import com.github.tvbox.osc.event.RefreshEvent;
 import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
 
@@ -75,17 +86,21 @@ public class ModelSettingFragment extends BaseLazyFragment {
     // Player Section
     private TextView tvShowPreviewText;
     private TextView tvScale;
-    private TextView tvPlay;
     private TextView tvVideoPurifyText;
 
     // System Section
     private TextView tvLocale;
     private TextView tvTheme;
-    private TextView tvRender;
-    private TextView tvParseWebView;
     private TextView tvSearchView;
     private TextView tvDns;
     private TextView tvFastSearchText;
+    private TextView tvUpdateCheckEnable;
+    private TextView tvUpdateCheckStartup;
+    private TextView tvUpdateCheckInterval;
+    private TextView tvUpdateCheckWifiOnly;
+    private LinearLayout llUpdateCheckStartup;
+    private LinearLayout llUpdateCheckInterval;
+    private LinearLayout llUpdateCheckWifiOnly;
 
     public static ModelSettingFragment newInstance() {
         return new ModelSettingFragment().setArguments();
@@ -119,11 +134,9 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvHomeNum.setText(HistoryHelper.getHomeRecName(Hawk.get(HawkConfig.HOME_NUM, 0)));
         // Player Section
         tvShowPreviewText = findViewById(R.id.showPreviewText);
-        tvShowPreviewText.setText(Hawk.get(HawkConfig.SHOW_PREVIEW, true) ? "开启" : "关闭");
+        tvShowPreviewText.setText(getDetailPageModeName(Hawk.get(HawkConfig.SHOW_PREVIEW, true)));
         tvScale = findViewById(R.id.tvScaleType);
         tvScale.setText(PlayerHelper.getScaleName(Hawk.get(HawkConfig.PLAY_SCALE, 0)));
-        tvPlay = findViewById(R.id.tvPlay);
-        tvPlay.setText(PlayerHelper.getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0)));
         tvVideoPurifyText = findViewById(R.id.tvVideoPurifyText);
         tvVideoPurifyText.setText(Hawk.get(HawkConfig.VIDEO_PURIFY, true) ? "开启" : "关闭");
         // System Section
@@ -131,16 +144,26 @@ public class ModelSettingFragment extends BaseLazyFragment {
         tvLocale.setText(getLocaleView(Hawk.get(HawkConfig.HOME_LOCALE, 0)));
         tvTheme = findViewById(R.id.tvTheme);
         tvTheme.setText(getThemeView(Hawk.get(HawkConfig.THEME_SELECT, 0)));
-        tvRender = findViewById(R.id.tvRenderType);
-        tvRender.setText(PlayerHelper.getRenderName(Hawk.get(HawkConfig.PLAY_RENDER, 0)));
-        tvParseWebView = findViewById(R.id.tvParseWebView);
-        tvParseWebView.setText(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? "系统自带" : "XWalkView");
         tvSearchView = findViewById(R.id.tvSearchView);
         tvSearchView.setText(getSearchView(Hawk.get(HawkConfig.SEARCH_VIEW, 0)));
         tvDns = findViewById(R.id.tvDns);
         tvDns.setText(OkGoHelper.dnsHttpsList.get(Hawk.get(HawkConfig.DOH_URL, 0)));
         tvHomeDefaultShow = findViewById(R.id.tvHomeDefaultShow);
         tvHomeDefaultShow.setText(Hawk.get(HawkConfig.HOME_DEFAULT_SHOW, false) ? "开启" : "关闭");
+
+        tvUpdateCheckEnable = findViewById(R.id.tvUpdateCheckEnable);
+        tvUpdateCheckEnable.setText(UpdateCheckManager.get().isEnable() ? "开启" : "关闭");
+        tvUpdateCheckStartup = findViewById(R.id.tvUpdateCheckStartup);
+        tvUpdateCheckStartup.setText(UpdateCheckManager.get().isStartupCheck() ? "开启" : "关闭");
+        tvUpdateCheckInterval = findViewById(R.id.tvUpdateCheckInterval);
+        tvUpdateCheckInterval.setText(UpdateCheckManager.get().getIntervalDisplay());
+        tvUpdateCheckWifiOnly = findViewById(R.id.tvUpdateCheckWifiOnly);
+        tvUpdateCheckWifiOnly.setText(UpdateCheckManager.get().isWifiOnly() ? "开启" : "关闭");
+        
+        llUpdateCheckStartup = findViewById(R.id.llUpdateCheckStartup);
+        llUpdateCheckInterval = findViewById(R.id.llUpdateCheckInterval);
+        llUpdateCheckWifiOnly = findViewById(R.id.llUpdateCheckWifiOnly);
+        updateEnabledState();
 
         //takagen99 : Set HomeApi as default
         findViewById(R.id.llHomeApi).requestFocus();
@@ -158,20 +181,46 @@ public class ModelSettingFragment extends BaseLazyFragment {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
+                // 检查Activity是否有效
+                if (mActivity == null || mActivity.isFinishing() || mActivity.isDestroyed()) {
+                    return;
+                }
+                // 确保服务已启动
+                if (ControlManager.mContext != null) {
+                    ControlManager.get().startServer();
+                } else {
+                    ToastHelper.showToast(mActivity, "服务初始化中，请稍后再试");
+                    return;
+                }
                 ApiDialog dialog = new ApiDialog(mActivity);
-                EventBus.getDefault().register(dialog);
+                try {
+                    EventBus.getDefault().register(dialog);
+                } catch (Exception e) {
+                    // EventBus注册失败，不显示对话框
+                    return;
+                }
                 dialog.setOnListener(new ApiDialog.OnListener() {
                     @Override
-                    public void onchange(String api) {
-                        Hawk.put(HawkConfig.API_URL, api);
-                        tvApi.setText(api);
+                    public void onchange(String api, boolean changed) {
+                        if (changed) {
+                            Hawk.put(HawkConfig.API_URL, api);
+                            UpdateCheckManager.get().clearCache();
+                            tvApi.setText(api);
+                        }
                     }
                 });
                 dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        ((BaseActivity) mActivity).hideSystemUI(true);
-                        EventBus.getDefault().unregister(dialog);
+                        // 检查Activity是否仍然有效
+                        if (mActivity != null && !mActivity.isFinishing() && !mActivity.isDestroyed()) {
+                            ((BaseActivity) mActivity).hideSystemUI(true);
+                        }
+                        try {
+                            EventBus.getDefault().unregister(dialog);
+                        } catch (Exception e) {
+                            // 忽略注销失败
+                        }
                     }
                 });
                 dialog.show();
@@ -180,26 +229,46 @@ public class ModelSettingFragment extends BaseLazyFragment {
         findViewById(R.id.llApiHistory).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArrayList<String> history = Hawk.get(HawkConfig.API_HISTORY, new ArrayList<String>());
-                if (history.isEmpty())
+                FastClickCheckUtil.check(v);
+                // 使用Hawk读取API历史记录
+                ArrayList<String> history = HawkListHelper.getList(HawkConfig.API_HISTORY);
+                if (history.isEmpty()) {
+                    ToastHelper.showToast(mActivity, "暂无历史配置地址");
                     return;
+                }
                 String current = Hawk.get(HawkConfig.API_URL, "");
                 int idx = 0;
-                if (history.contains(current))
-                    idx = history.indexOf(current);
-                ApiHistoryDialog dialog = new ApiHistoryDialog(getContext());
+                // 如果当前地址在历史记录中，临时将其移到顶部（仅用于显示）
+                if (history.contains(current)) {
+                    history.remove(current);
+                    history.add(0, current);
+                    idx = 0;
+                }
+                ApiHistoryDialog dialog = new ApiHistoryDialog(mActivity);
                 dialog.setTip(getString(R.string.dia_history_list));
                 dialog.setAdapter(new ApiHistoryDialogAdapter.SelectDialogInterface() {
                     @Override
                     public void click(String api) {
-                        Hawk.put(HawkConfig.API_URL, api);
-                        tvApi.setText(api);
+                        String oldApi = Hawk.get(HawkConfig.API_URL, "");
+                        boolean apiChanged = !oldApi.equals(api);
+
+                        if (apiChanged) {
+                            Hawk.put(HawkConfig.API_URL, api);
+                            ToastHelper.showToast(mActivity, "正在清理缓存并切换配置");
+                            UpdateCheckManager.get().clearCache();
+                            ApiConfig.get().clearAllCache();
+                            UpdateCheckManager.get().resetCheckState();
+                            ToastHelper.showToast(mActivity, "缓存清理完成");
+                            tvApi.setText(api);
+                        }
+
                         dialog.dismiss();
                     }
 
                     @Override
                     public void del(String value, ArrayList<String> data) {
-                        Hawk.put(HawkConfig.API_HISTORY, data);
+                        // 使用Hawk删除历史记录
+                        HawkListHelper.putList(HawkConfig.API_HISTORY, data);
                     }
                 }, history, idx);
                 dialog.show();
@@ -280,7 +349,8 @@ public class ModelSettingFragment extends BaseLazyFragment {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                int defaultPos = Hawk.get(HawkConfig.HOME_REC, 0);
+                final int oldHomeRec = Hawk.get(HawkConfig.HOME_REC, 0);
+                int defaultPos = oldHomeRec;
                 ArrayList<Integer> types = new ArrayList<>();
                 types.add(0);
                 types.add(1);
@@ -292,6 +362,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
                     public void click(Integer value, int pos) {
                         Hawk.put(HawkConfig.HOME_REC, value);
                         tvHomeRec.setText(getHomeRecName(value));
+                        dialog.dismiss();
                     }
 
                     @Override
@@ -309,6 +380,15 @@ public class ModelSettingFragment extends BaseLazyFragment {
                         return oldItem.intValue() == newItem.intValue();
                     }
                 }, types, defaultPos);
+                dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                        int newHomeRec = Hawk.get(HawkConfig.HOME_REC, 0);
+                        if (oldHomeRec != newHomeRec) {
+                            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_HOME_REC_CHANGE));
+                        }
+                    }
+                });
                 dialog.show();
             }
         });
@@ -352,13 +432,43 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         });
         // 2. PLAYER Configuration -------------------------------------------------------------- //
-        // Switch for Preview Window -------------------------------
+        // Select Detail Page Mode -------------------------------
         findViewById(R.id.showPreview).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                Hawk.put(HawkConfig.SHOW_PREVIEW, !Hawk.get(HawkConfig.SHOW_PREVIEW, true));
-                tvShowPreviewText.setText(Hawk.get(HawkConfig.SHOW_PREVIEW, true) ? "开启" : "关闭");
+                boolean currentMode = Hawk.get(HawkConfig.SHOW_PREVIEW, true);
+                int defaultPos = currentMode ? 0 : 1;
+                ArrayList<String> modes = new ArrayList<>();
+                modes.add(getString(R.string.detail_page_preview));
+                modes.add(getString(R.string.detail_page_poster));
+                SelectDialog<String> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip(getString(R.string.dia_detail_page));
+                dialog.setCanceledOnTouchOutside(true);
+                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<String>() {
+                    @Override
+                    public void click(String value, int pos) {
+                        boolean isPreviewMode = (pos == 0);
+                        Hawk.put(HawkConfig.SHOW_PREVIEW, isPreviewMode);
+                        tvShowPreviewText.setText(getDetailPageModeName(isPreviewMode));
+                    }
+
+                    @Override
+                    public String getDisplay(String val) {
+                        return val;
+                    }
+                }, new DiffUtil.ItemCallback<String>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull String oldItem, @NonNull @NotNull String newItem) {
+                        return oldItem.equals(newItem);
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull String oldItem, @NonNull @NotNull String newItem) {
+                        return oldItem.equals(newItem);
+                    }
+                }, modes, defaultPos);
+                dialog.show();
             }
         });
         // Select Screen Ratio -------------------------------------
@@ -437,54 +547,6 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }, bgPlayTypes,bgPlayTypePos);
             dialog.show();
         });
-        // Select PLAYER Type --------------------------------------------
-        findViewById(R.id.llPlay).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                int defaultPos = Hawk.get(HawkConfig.PLAY_TYPE, 0);
-                ArrayList<Integer> players = new ArrayList<>();
-                players.add(0);
-                players.add(1);
-                players.add(2);
-                players.add(3);
-                if (MXPlayer.getPackageInfo()!=null){
-                    players.add(10);
-                }
-                if (ReexPlayer.getPackageInfo() != null){
-                    players.add(11);
-                }
-                if (Kodi.getPackageInfo() != null){
-                    players.add(12);
-                }
-                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
-                dialog.setTip(getString(R.string.dia_player));
-                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
-                    @Override
-                    public void click(Integer value, int pos) {
-                        Hawk.put(HawkConfig.PLAY_TYPE, value);
-                        tvPlay.setText(PlayerHelper.getPlayerName(value));
-                        PlayerHelper.init();
-                    }
-
-                    @Override
-                    public String getDisplay(Integer val) {
-                        return PlayerHelper.getPlayerName(val);
-                    }
-                }, new DiffUtil.ItemCallback<Integer>() {
-                    @Override
-                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-
-                    @Override
-                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-                }, players, defaultPos);
-                dialog.show();
-            }
-        });
 
 
         // Select DECODER Type --------------------------------------------
@@ -502,64 +564,6 @@ public class ModelSettingFragment extends BaseLazyFragment {
             tvVideoPurifyText.setText(Hawk.get(HawkConfig.VIDEO_PURIFY, true) ? "开启" : "关闭");
         });
 
-        // 3. SYSTEM Configuration -------------------------------------------------------------- //
-        // Select Webview ---------------------------------------------
-        findViewById(R.id.llParseWebVew).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                boolean useSystem = !Hawk.get(HawkConfig.PARSE_WEBVIEW, true);
-                Hawk.put(HawkConfig.PARSE_WEBVIEW, useSystem);
-                tvParseWebView.setText(Hawk.get(HawkConfig.PARSE_WEBVIEW, true) ? "系统自带" : "XWalkView");
-                if (!useSystem) {
-                    Toast.makeText(mContext, "注意: XWalkView只适用于部分低Android版本，Android5.0以上推荐使用系统自带", Toast.LENGTH_LONG).show();
-                    XWalkInitDialog dialog = new XWalkInitDialog(mContext);
-                    dialog.setOnListener(new XWalkInitDialog.OnListener() {
-                        @Override
-                        public void onchange() {
-                        }
-                    });
-                    dialog.show();
-                }
-            }
-        });
-        // Select System Render ( Surface/Texture View ) ---------------------
-        findViewById(R.id.llRender).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                int defaultPos = Hawk.get(HawkConfig.PLAY_RENDER, 0);
-                ArrayList<Integer> renders = new ArrayList<>();
-                renders.add(0);
-                renders.add(1);
-                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
-                dialog.setTip(getString(R.string.dia_render));
-                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
-                    @Override
-                    public void click(Integer value, int pos) {
-                        Hawk.put(HawkConfig.PLAY_RENDER, value);
-                        tvRender.setText(PlayerHelper.getRenderName(value));
-                        PlayerHelper.init();
-                    }
-
-                    @Override
-                    public String getDisplay(Integer val) {
-                        return PlayerHelper.getRenderName(val);
-                    }
-                }, new DiffUtil.ItemCallback<Integer>() {
-                    @Override
-                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-
-                    @Override
-                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
-                        return oldItem.intValue() == newItem.intValue();
-                    }
-                }, renders, defaultPos);
-                dialog.show();
-            }
-        });
         // Select DNS ---------------------------------------------
         findViewById(R.id.llDns).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -611,7 +615,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                ResetDialog dialog = new ResetDialog(mActivity);
+                CleanResetDialog dialog = new CleanResetDialog(mActivity);
                 dialog.show();
             }
         });
@@ -621,7 +625,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
                 if (!ApiConfig.get().wallpaper.isEmpty())
-                    Toast.makeText(mContext, getString(R.string.mn_wall_load), Toast.LENGTH_SHORT).show();
+                    ToastHelper.showToast(mContext, getString(R.string.mn_wall_load));
                 OkGo.<File>get(ApiConfig.get().wallpaper).execute(new FileCallback(requireActivity().getFilesDir().getAbsolutePath(), "wp") {
                     @Override
                     public void onSuccess(Response<File> response) {
@@ -811,6 +815,174 @@ public class ModelSettingFragment extends BaseLazyFragment {
             }
         });
 
+        findViewById(R.id.llUpdateCheckEnable).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int defaultPos = UpdateCheckManager.get().isEnable() ? 0 : 1;
+                ArrayList<Integer> types = new ArrayList<>();
+                types.add(1);
+                types.add(0);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip(getString(R.string.update_check_enable));
+                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        UpdateCheckManager.get().setEnable(value == 1);
+                        tvUpdateCheckEnable.setText(value == 1 ? "开启" : "关闭");
+                        updateEnabledState();
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        return val == 1 ? "开启" : "关闭";
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, types, defaultPos);
+                dialog.show();
+            }
+        });
+
+        findViewById(R.id.llUpdateCheckStartup).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int defaultPos = UpdateCheckManager.get().isStartupCheck() ? 0 : 1;
+                ArrayList<Integer> types = new ArrayList<>();
+                types.add(1);
+                types.add(0);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip(getString(R.string.update_check_startup));
+                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        UpdateCheckManager.get().setStartupCheck(value == 1);
+                        tvUpdateCheckStartup.setText(value == 1 ? "开启" : "关闭");
+                        checkAndDisableFeature();
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        return val == 1 ? "开启" : "关闭";
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, types, defaultPos);
+                dialog.show();
+            }
+        });
+
+        findViewById(R.id.llUpdateCheckInterval).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int currentInterval = UpdateCheckManager.get().getCheckInterval();
+                int defaultPos = 0;
+                if (currentInterval == UpdateCheckManager.INTERVAL_OFF) {
+                    defaultPos = 0;
+                } else if (currentInterval == UpdateCheckManager.INTERVAL_30MIN) {
+                    defaultPos = 1;
+                } else if (currentInterval == UpdateCheckManager.INTERVAL_1HOUR) {
+                    defaultPos = 2;
+                } else if (currentInterval == UpdateCheckManager.INTERVAL_2HOURS) {
+                    defaultPos = 3;
+                }
+                ArrayList<Integer> types = new ArrayList<>();
+                types.add(UpdateCheckManager.INTERVAL_OFF);
+                types.add(UpdateCheckManager.INTERVAL_30MIN);
+                types.add(UpdateCheckManager.INTERVAL_1HOUR);
+                types.add(UpdateCheckManager.INTERVAL_2HOURS);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip(getString(R.string.update_check_interval));
+                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        UpdateCheckManager.get().setCheckInterval(value);
+                        tvUpdateCheckInterval.setText(UpdateCheckManager.get().getIntervalDisplay());
+                        checkAndDisableFeature();
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        if (val == UpdateCheckManager.INTERVAL_OFF) {
+                            return "关闭";
+                        } else if (val == UpdateCheckManager.INTERVAL_30MIN) {
+                            return "30分钟";
+                        } else if (val == UpdateCheckManager.INTERVAL_1HOUR) {
+                            return "1小时";
+                        } else if (val == UpdateCheckManager.INTERVAL_2HOURS) {
+                            return "2小时";
+                        }
+                        return "关闭";
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, types, defaultPos);
+                dialog.show();
+            }
+        });
+
+        findViewById(R.id.llUpdateCheckWifiOnly).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FastClickCheckUtil.check(v);
+                int defaultPos = UpdateCheckManager.get().isWifiOnly() ? 0 : 1;
+                ArrayList<Integer> types = new ArrayList<>();
+                types.add(1);
+                types.add(0);
+                SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
+                dialog.setTip(getString(R.string.update_check_wifi_only));
+                dialog.setAdapter(null, new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+                    @Override
+                    public void click(Integer value, int pos) {
+                        UpdateCheckManager.get().setWifiOnly(value == 1);
+                        tvUpdateCheckWifiOnly.setText(value == 1 ? "开启" : "关闭");
+                    }
+
+                    @Override
+                    public String getDisplay(Integer val) {
+                        return val == 1 ? "开启" : "关闭";
+                    }
+                }, new DiffUtil.ItemCallback<Integer>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull @NotNull Integer oldItem, @NonNull @NotNull Integer newItem) {
+                        return oldItem.intValue() == newItem.intValue();
+                    }
+                }, types, defaultPos);
+                dialog.show();
+            }
+        });
+
         SettingActivity.callback = new SettingActivity.DevModeCallback() {
             @Override
             public void onChange() {
@@ -833,6 +1005,14 @@ public class ModelSettingFragment extends BaseLazyFragment {
             return "观看历史";
         } else {
             return "豆瓣热播";
+        }
+    }
+
+    String getDetailPageModeName(boolean isPreviewMode) {
+        if (isPreviewMode) {
+            return getString(R.string.detail_page_preview);
+        } else {
+            return getString(R.string.detail_page_poster);
         }
     }
 
@@ -870,16 +1050,45 @@ public class ModelSettingFragment extends BaseLazyFragment {
         }
     }
 
+    void updateEnabledState() {
+        boolean enabled = UpdateCheckManager.get().isEnable();
+        float alpha = enabled ? 1.0f : 0.5f;
+        llUpdateCheckWifiOnly.setAlpha(alpha);
+        llUpdateCheckStartup.setAlpha(alpha);
+        llUpdateCheckInterval.setAlpha(alpha);
+        llUpdateCheckWifiOnly.setEnabled(enabled);
+        llUpdateCheckStartup.setEnabled(enabled);
+        llUpdateCheckInterval.setEnabled(enabled);
+    }
+
+    void checkAndDisableFeature() {
+        boolean startupCheck = UpdateCheckManager.get().isStartupCheck();
+        int interval = UpdateCheckManager.get().getCheckInterval();
+        boolean intervalOff = interval == UpdateCheckManager.INTERVAL_OFF;
+
+        if (!startupCheck && intervalOff) {
+            UpdateCheckManager.get().setEnable(false);
+            tvUpdateCheckEnable.setText("关闭");
+            updateEnabledState();
+        }
+    }
+
     void reloadActivity() {
-        Intent intent = getActivity().getApplicationContext().getPackageManager().getLaunchIntentForPackage(getActivity().getApplication().getPackageName());
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        if (getActivity() == null || getActivity().isFinishing()) {
+            return;
+        }
+        if (Hawk.get(HawkConfig.HOME_LOCALE, 0) == 0) {
+            LocaleHelper.setLocale(getActivity().getApplicationContext(), "zh");
+        } else {
+            LocaleHelper.setLocale(getActivity().getApplicationContext(), "");
+        }
+        Intent intent = new Intent(getActivity().getApplicationContext(), SplashActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         Bundle bundle = new Bundle();
         bundle.putBoolean("useCache", true);
         intent.putExtras(bundle);
         getActivity().getApplicationContext().startActivity(intent);
-        //  android.os.Process.killProcess(android.os.Process.myPid());
-        //  System.exit(0);
+        getActivity().overridePendingTransition(0, 0);
     }
 
 }

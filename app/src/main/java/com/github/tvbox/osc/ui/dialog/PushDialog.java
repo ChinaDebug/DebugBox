@@ -3,17 +3,20 @@ package com.github.tvbox.osc.ui.dialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.chad.library.adapter.base.BaseQuickAdapter;
+import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.cast.CastBridge;
+import com.github.tvbox.osc.cast.model.CastDevice;
 import com.github.tvbox.osc.event.RefreshEvent;
-import com.github.tvbox.osc.server.RemoteServer;
-import com.github.tvbox.osc.util.HawkConfig;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.util.ToastHelper;
 
 import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
@@ -21,11 +24,22 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 推送设备选择对话框
+ * 采用类似投屏的设备发现方式，自动搜索局域网内的TVBox设备
+ */
 public class PushDialog extends BaseDialog {
 
-    private EditText etAddr;
-    private EditText etPort;
-    private TextView etCurrent;
+    private RecyclerView recyclerView;
+    private ProgressBar progressBar;
+    private TextView tvEmpty;
+    private TextView tvScanning;
+    private DeviceAdapter adapter;
+    private List<CastDevice> deviceList = new ArrayList<>();
+    private CastBridge castBridge;
+    private String vodId;
+    private String sourceKey;
+    private boolean isPushing = false;
 
     public PushDialog(@NonNull @NotNull Context context) {
         super(context);
@@ -35,66 +49,145 @@ public class PushDialog extends BaseDialog {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Current IP
-        etCurrent = findViewById(R.id.etCurrent);
 
-        // Push IP / Port
-        etAddr = findViewById(R.id.etAddr);
-        etPort = findViewById(R.id.etPort);
-        String cfgAddr = Hawk.get(HawkConfig.PUSH_TO_ADDR, "");
-        String cfgPort = Hawk.get(HawkConfig.PUSH_TO_PORT, "");
+        recyclerView = findViewById(R.id.recyclerView);
+        progressBar = findViewById(R.id.progressBar);
+        tvEmpty = findViewById(R.id.tvEmpty);
+        tvScanning = findViewById(R.id.tvScanning);
 
-        if (cfgAddr.isEmpty()) {
-            String ipAddress = RemoteServer.getLocalIPAddress(PushDialog.this.getContext());
-            int lp = ipAddress.lastIndexOf('.');
-            if (lp > 0)
-                etAddr.setText(ipAddress.substring(0, lp + 1));
-        } else {
-            etAddr.setText(cfgAddr);
-        }
-        if (cfgPort.isEmpty()) {
-            etPort.setText("" + RemoteServer.serverPort);
-        } else {
-            etPort.setText(cfgPort);
-        }
+        // 设置RecyclerView
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        adapter = new DeviceAdapter(deviceList);
+        recyclerView.setAdapter(adapter);
 
-        // Get Current IP
-        String currIP = getCurrentIP();
-        etCurrent.setText(currIP);
-
-        findViewById(R.id.btnConfirm).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String addr = etAddr.getText().toString();
-                String port = etPort.getText().toString();
-                if (addr == null || addr.length() == 0) {
-                    Toast.makeText(PushDialog.this.getContext(), "请输入远端tvbox地址", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (port == null || port.length() == 0) {
-                    Toast.makeText(PushDialog.this.getContext(), "请输入远端tvbox端口", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Hawk.put(HawkConfig.PUSH_TO_ADDR, addr);
-                Hawk.put(HawkConfig.PUSH_TO_PORT, port);
-                List<String> list = new ArrayList<>();
-                list.add(addr);
-                list.add(port);
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PUSH_VOD, list));
-                PushDialog.this.dismiss();
-            }
+        // 设备点击事件
+        adapter.setOnItemClickListener((adapter1, view, position) -> {
+            // 防止重复点击
+            if (isPushing) return;
+            isPushing = true;
+            CastDevice device = deviceList.get(position);
+            pushToDevice(device);
         });
-        findViewById(R.id.btnCancel).setOnClickListener(new View.OnClickListener() {
+
+        // 刷新按钮
+        findViewById(R.id.btnRefresh).setOnClickListener(v -> {
+            startDiscovery();
+        });
+
+        // 取消按钮
+        findViewById(R.id.btnCancel).setOnClickListener(v -> {
+            dismiss();
+        });
+
+        castBridge = CastBridge.getInstance(getContext());
+
+        // 开始搜索设备
+        startDiscovery();
+    }
+
+    /**
+     * 设置推送数据
+     */
+    public void setPushData(String vodId, String sourceKey) {
+        this.vodId = vodId;
+        this.sourceKey = sourceKey;
+    }
+
+    /**
+     * 开始搜索设备
+     */
+    private void startDiscovery() {
+        deviceList.clear();
+        adapter.notifyDataSetChanged();
+
+        progressBar.setVisibility(View.VISIBLE);
+        tvScanning.setVisibility(View.VISIBLE);
+        tvScanning.setText(R.string.push_scanning);
+        tvEmpty.setVisibility(View.GONE);
+
+        castBridge.startDeviceDiscovery(new CastBridge.DeviceDiscoveryCallback() {
             @Override
-            public void onClick(View view) {
-                Toast.makeText(PushDialog.this.getContext(), "功能还没实现~", Toast.LENGTH_SHORT).show();
+            public void onDeviceFound(CastDevice device) {
+                // 只添加TVBox类型的设备（用于推送）
+                if (device.getDeviceType() == CastDevice.DeviceType.TVBOX) {
+                    // 过滤重复设备
+                    boolean exists = false;
+                    for (CastDevice d : deviceList) {
+                        if (d.getHostAddress().equals(device.getHostAddress()) && d.getPort() == device.getPort()) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        deviceList.add(device);
+                        adapter.notifyDataSetChanged();
+                    }
+                }
+
+                tvEmpty.setVisibility(deviceList.isEmpty() ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onDiscoveryComplete() {
+                progressBar.setVisibility(View.GONE);
+                tvScanning.setVisibility(View.GONE);
+
+                if (deviceList.isEmpty()) {
+                    tvEmpty.setVisibility(View.VISIBLE);
+                    tvEmpty.setText(R.string.push_no_devices);
+                }
+            }
+
+            @Override
+            public void onDiscoveryError(String error) {
+                progressBar.setVisibility(View.GONE);
+                tvScanning.setVisibility(View.GONE);
+                tvEmpty.setVisibility(View.VISIBLE);
+                tvEmpty.setText(R.string.push_scan_error);
             }
         });
     }
 
-    private String getCurrentIP() {
-        String ipAddress = RemoteServer.getLocalIPAddress(PushDialog.this.getContext());
-        return ipAddress;
+    /**
+     * 推送到指定设备
+     */
+    private void pushToDevice(CastDevice device) {
+        if (vodId == null || sourceKey == null) {
+            ToastHelper.showLong(getContext(), "推送数据为空");
+            return;
+        }
+
+        ToastHelper.showToast(getContext(), "正在推送到: " + device.getName());
+
+        List<String> list = new ArrayList<>();
+        list.add(device.getHostAddress());
+        // 推送使用 RemoteServer 的端口 9978，而不是投屏端口 9979
+        list.add(String.valueOf(9978));
+        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PUSH_VOD, list));
+
+        dismiss();
     }
 
+    @Override
+    public void dismiss() {
+        castBridge.stopDeviceDiscovery();
+        super.dismiss();
+    }
+
+    /**
+     * 设备列表适配器
+     */
+    private static class DeviceAdapter extends BaseQuickAdapter<CastDevice, BaseViewHolder> {
+
+        public DeviceAdapter(List<CastDevice> data) {
+            super(R.layout.item_push_device, data);
+        }
+
+        @Override
+        protected void convert(BaseViewHolder helper, CastDevice item) {
+            helper.setText(R.id.tvDeviceName, item.getName());
+            // 显示推送端口 9978
+            helper.setText(R.id.tvDeviceIp, item.getHostAddress() + ":9978");
+        }
+    }
 }

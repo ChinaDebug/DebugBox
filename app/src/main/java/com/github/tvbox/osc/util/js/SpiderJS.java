@@ -90,7 +90,7 @@ public class SpiderJS extends Spider {
                     try {
                         javaObj = classe.getDeclaredConstructor(cls).newInstance(cls.getDeclaredConstructor(QuickJSContext.class).newInstance(runtime));
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.e(e);
                     }
                     if (javaObj == null) {
                         throw new NullPointerException("The JavaObj cannot be null. An error occurred in newInstance!");

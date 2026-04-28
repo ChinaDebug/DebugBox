@@ -202,7 +202,8 @@
             <com.owen.tvrecyclerview.widget.TvRecyclerView
                 android:id="@+id/mEpgDateGridView"
                 android:layout_width="@dimen/vs_120"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:layout_marginStart="@dimen/vs_10"
                 android:layout_marginLeft="@dimen/vs_10"
                 android:layout_marginTop="@dimen/vs_10"
@@ -371,7 +372,7 @@
                     android:shadowDy="0"
                     android:shadowRadius="3"
                     android:singleLine="true"
-                    android:text="No information"
+                    android:text="暂无节目信息"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_36"
                     android:textStyle="bold" />
@@ -399,7 +400,7 @@
 
             <LinearLayout
                 android:id="@+id/ll_line2"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="horizontal"
@@ -412,7 +413,6 @@
                     android:layout_gravity="bottom|center"
                     android:layout_marginStart="@dimen/vs_20"
                     android:layout_marginEnd="@dimen/vs_20"
-                    android:layout_weight="1"
                     android:ellipsize="marquee"
                     android:background="@drawable/channel_num_bg"
                     android:fontFamily="sans-serif"
@@ -438,7 +438,6 @@
                     android:layout_gravity="bottom|center"
                     android:layout_marginEnd="@dimen/vs_20"
                     android:layout_marginRight="@dimen/vs_20"
-                    android:layout_weight="1"
                     android:ellipsize="marquee"
                     android:background="@drawable/channel_num_bg"
                     android:fontFamily="sans-serif"
@@ -464,7 +463,6 @@
                     android:layout_gravity="bottom|center"
                     android:layout_marginEnd="@dimen/vs_20"
                     android:layout_marginRight="@dimen/vs_20"
-                    android:layout_weight="1"
                     android:background="@drawable/channel_num_bg"
                     android:fontFamily="sans-serif"
                     android:gravity="center"
@@ -486,7 +484,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|center"
-                    android:layout_weight="1"
                     android:background="@drawable/channel_num_bg"
                     android:fontFamily="sans-serif"
                     android:gravity="center"
@@ -503,11 +500,34 @@
                     android:textSize="@dimen/ts_15"
                     android:textStyle="bold" />
 
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_week"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|right"
+                    android:fontFamily="sans-serif"
+                    android:gravity="center_vertical|right"
+                    android:maxLines="1"
+                    android:paddingRight="@dimen/vs_60"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_18"
+                    android:textStyle="normal"
+                    android:visibility="visible" />
+
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/ll_line3"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="horizontal"
@@ -518,7 +538,6 @@
                     android:layout_width="@dimen/vs_160"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|left"
-                    android:layout_weight="1"
                     android:ellipsize="marquee"
                     android:fontFamily="sans-serif-condensed"
                     android:gravity="left"
@@ -539,7 +558,6 @@
                     android:layout_width="@dimen/vs_440"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|left"
-                    android:layout_weight="1"
                     android:ellipsize="marquee"
                     android:fontFamily="sans-serif-condensed"
                     android:gravity="left"
@@ -551,10 +569,33 @@
                     android:shadowDy="0"
                     android:shadowRadius="3"
                     android:singleLine="true"
-                    android:text="No information"
+                    android:text="暂无节目信息"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20"
                     android:textStyle="normal" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical|right"
+                    android:fontFamily="sans-serif"
+                    android:gravity="center_vertical|right"
+                    android:maxLines="1"
+                    android:paddingRight="@dimen/vs_60"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_18"
+                    android:textStyle="normal"
+                    android:visibility="visible" />
             </LinearLayout>
 
             <LinearLayout

@@ -6,6 +6,7 @@ import com.bumptech.glide.load.model.ModelLoader
 import com.bumptech.glide.load.model.ModelLoader.LoadData
 import com.bumptech.glide.load.model.ModelLoaderFactory
 import com.bumptech.glide.load.model.MultiModelLoaderFactory
+import java.util.concurrent.TimeUnit
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import java.io.InputStream
@@ -45,7 +46,13 @@ class OkHttpUrlLoader(
         }
 
         companion object {
-            private val internalClient: Call.Factory = OkHttpClient().newBuilder().followRedirects(false).followSslRedirects(false).build()//modify by muziling
+            private val internalClient: Call.Factory = OkHttpClient().newBuilder()
+                    .connectTimeout(3, TimeUnit.SECONDS)
+                    .readTimeout(3, TimeUnit.SECONDS)
+                    .writeTimeout(3, TimeUnit.SECONDS)
+                    .followRedirects(false)
+                    .followSslRedirects(false)
+                    .build()
         }
     }
 

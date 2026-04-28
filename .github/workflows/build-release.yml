@@ -1,0 +1,58 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Decode Keystore
+        if: env.SIGNING_KEYSTORE_BASE64 != ''
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > app/release.keystore
+
+      - name: Build with Gradle
+        env:
+          SIGNING_KEYSTORE_FILE: ${{ secrets.SIGNING_KEYSTORE_FILE }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --build-cache --parallel --daemon --warning-mode all
+
+      - name: Prepare APK
+        run: |
+          mkdir -p ${{ github.workspace }}/apk/
+          find app/build/outputs/apk -name "*.apk" -exec cp {} ${{ github.workspace }}/apk/ \;
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVBox-Release
+          path: ${{ github.workspace }}/apk/*.apk
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ github.workspace }}/apk/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

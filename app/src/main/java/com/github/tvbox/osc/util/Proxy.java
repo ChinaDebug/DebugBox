@@ -7,13 +7,10 @@ public class Proxy {
     public static Object[] proxy(Map<String, String> params) {
         try {
             String what = params.get("go");
-            assert what != null;
-            if (what.equals("SuperParse")) {
+            if (what != null && what.equals("SuperParse")) {
                 return SuperParse.loadHtml(params.get("flag"), params.get("url"));
             }
-
         } catch (Throwable ignored) {
-
         }
         return null;
     }

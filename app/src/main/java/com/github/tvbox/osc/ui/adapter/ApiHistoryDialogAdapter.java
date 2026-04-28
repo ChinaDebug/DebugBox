@@ -82,8 +82,6 @@ public class ApiHistoryDialogAdapter extends ListAdapter<String, ApiHistoryDialo
         holder.itemView.findViewById(R.id.tvName).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (select.equals(value))
-                    return;
                 notifyItemChanged(data.indexOf(select));
                 select = value;
                 notifyItemChanged(data.indexOf(value));

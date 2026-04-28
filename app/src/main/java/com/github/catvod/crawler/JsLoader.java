@@ -1,8 +1,6 @@
 package com.github.catvod.crawler;
 
 
-import android.util.Log;
-
 import com.github.tvbox.osc.base.App;
 
 import com.github.tvbox.osc.util.FileUtils;
@@ -59,13 +57,13 @@ public class JsLoader {
                 try {
                     classInit = classLoader.loadClass("com.github.catvod.js.Method");
                     if (classInit != null) {
-                        Log.i("JSLoader", "echo-自定义jsapi代码加载成功!");
+                        LOG.i("JsLoader", "自定义jsapi代码加载成功!");
                         success = true;
                         break;
                     }
                     Thread.sleep(200);
                 } catch (Throwable th) {
-                    th.printStackTrace();
+                    LOG.e(th);
                 }
                 count++;
             } while (count < 5);
@@ -74,14 +72,14 @@ public class JsLoader {
                 classes.put(key, classInit);
             }
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
         return success;
     }
 
     private Class<?> loadJarInternal(String jar, String md5, String key) {
         if (classes.containsKey(key)){
-            Log.i("JSLoader", "echo-loadJarInternal cached");
+            LOG.i("JsLoader", "loadJarInternal cached");
             return classes.get(key);
         }
         File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp/" + key + ".jar");
@@ -112,21 +110,24 @@ public class JsLoader {
                     is.close();
                     os.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             loadClassLoader(cache.getAbsolutePath(), key);
             return classes.get(key);
         } catch (Throwable e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
         if (spiders.containsKey(key)){
-            Log.i("JSLoader", "echo-getSpider cached");
+            LOG.i("JsLoader", "getSpider cached");
             return spiders.get(key);
+        }
+        if (api == null) {
+            return new SpiderNull();
         }
         Class<?> classLoader = null;
         if (!jar.isEmpty()) {
@@ -138,13 +139,13 @@ public class JsLoader {
         }
         recentKey = key;
         try {
-            Log.i("JSLoader", "echo-getSpider load");
+            LOG.i("JsLoader", "getSpider load");
             Spider sp = new JsSpider(key, api, classLoader);
             sp.init(App.getInstance(), ext);
             spiders.put(key, sp);
             return sp;
         } catch (Throwable th) {
-            LOG.i("echo-getSpider-error "+th.getMessage());
+            LOG.e("JsLoader", "getSpider error: " + th.getMessage());
         }
         return new SpiderNull();
     }

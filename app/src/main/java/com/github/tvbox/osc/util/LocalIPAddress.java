@@ -3,9 +3,12 @@ package com.github.tvbox.osc.util;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+
+import com.github.tvbox.osc.util.LOG;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -42,7 +45,7 @@ public class LocalIPAddress {
                     }
                 }
             } catch (SocketException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         } else {
             return String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
@@ -63,11 +66,11 @@ public class LocalIPAddress {
             }
             return intToIp(ipAddress);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
             try {
                 return getLocalIPAddress();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                LOG.e(e1);
             }
         }
         return "127.0.0.1";
@@ -89,7 +92,7 @@ public class LocalIPAddress {
                 }
             }
         } catch (SocketException ex) {
-            System.err.print("error");
+            LOG.e("LocalIPAddress", ex);
         }
         return "127.0.0.1";
     }
@@ -129,27 +132,27 @@ public class LocalIPAddress {
     }
 
     public static boolean isNetworkAvailable(final Context context) {
-        boolean hasWifoCon = false;
-        boolean hasMobileCon = false;
-
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(context.CONNECTIVITY_SERVICE);
-        NetworkInfo[] netInfos = cm.getAllNetworkInfo();
-        for (NetworkInfo net : netInfos) {
-
-            String type = net.getTypeName();
-            if (type.equalsIgnoreCase("WIFI")) {
-                if (net.isConnected()) {
-                    hasWifoCon = true;
-                }
-            }
-
-            if (type.equalsIgnoreCase("MOBILE")) {
-                if (net.isConnected()) {
-                    hasMobileCon = true;
-                }
-            }
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) {
+            return false;
         }
-        return hasWifoCon || hasMobileCon;
-
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Network network = cm.getActiveNetwork();
+            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+            return capabilities != null && 
+                   (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || 
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR));
+        } else {
+            android.net.NetworkInfo[] netInfos = cm.getAllNetworkInfo();
+            for (android.net.NetworkInfo net : netInfos) {
+                String type = net.getTypeName();
+                if (type.equalsIgnoreCase("WIFI") || type.equalsIgnoreCase("MOBILE")) {
+                    if (net.isConnected()) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

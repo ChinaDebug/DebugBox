@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
@@ -57,33 +58,33 @@ public abstract class BaseController extends BaseVideoController implements Gest
 
     public BaseController(@NonNull Context context) {
         super(context);
-        mHandler = new Handler(new Handler.Callback() {
+        mHandler = new Handler(Looper.getMainLooper(), new Handler.Callback() {
             @Override
             public boolean handleMessage(@NonNull Message msg) {
                 int what = msg.what;
                 switch (what) {
-                    case 100: { // 亮度+音量调整
+                    case 100: {
                         mSlideInfo.setVisibility(VISIBLE);
                         mSlideInfo.setText(msg.obj.toString());
                         break;
                     }
-                    case 101: { // 亮度+音量调整 关闭
+                    case 101: {
                         mSlideInfo.setVisibility(GONE);
                         break;
                     }
-                    case 201: { // Show Volume Dialog
+                    case 201: {
                         mDialogVolume.setVisibility(VISIBLE);
                         break;
                     }
-                    case 202: { // Hide Volume Dialog
+                    case 202: {
                         mDialogVolume.setVisibility(GONE);
                         break;
                     }
-                    case 203: { // Show Volume Dialog
+                    case 203: {
                         mDialogBrightness.setVisibility(VISIBLE);
                         break;
                     }
-                    case 204: { // Hide Volume Dialog
+                    case 204: {
                         mDialogBrightness.setVisibility(GONE);
                         break;
                     }
@@ -96,7 +97,6 @@ public abstract class BaseController extends BaseVideoController implements Gest
                 return false;
             }
         });
-        mHandler.post(mRunnable);
     }
 
     public BaseController(@NonNull Context context, @Nullable AttributeSet attrs) {
@@ -127,13 +127,28 @@ public abstract class BaseController extends BaseVideoController implements Gest
     private final Runnable mRunnable = new Runnable() {
         @Override
         public void run() {
-            String format = String.format("%.2f", (float) mControlWrapper.getTcpSpeed() / 1024.0 / 1024.0);
-            mSpeedTextTop.setText(format);
-            mSpeedTextTopr.setText(format);
-            mSpeedTextHide.setText(format);
-            mHandler.postDelayed(this, 1000);
+            if (mControlWrapper != null) {
+                String format = String.format("%.2f", (float) mControlWrapper.getTcpSpeed() / 1024.0 / 1024.0);
+                mSpeedTextTop.setText(format);
+                mSpeedTextTopr.setText(format);
+                mSpeedTextHide.setText(format);
+                mHandler.postDelayed(this, 1000);
+            }
         }
     };
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        mHandler.post(mRunnable);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        mHandler.removeCallbacks(mRunnable);
+        mHandler.removeCallbacksAndMessages(null);
+    }
 
     @Override
     protected void initView() {

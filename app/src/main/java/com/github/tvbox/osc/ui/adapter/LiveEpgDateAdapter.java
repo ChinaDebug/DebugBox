@@ -3,6 +3,8 @@ package com.github.tvbox.osc.ui.adapter;
 import android.graphics.Color;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -29,9 +31,9 @@ public class LiveEpgDateAdapter extends BaseQuickAdapter<LiveEpgDate, BaseViewHo
 //            tvGroupName.setTextColor(mContext.getResources().getColor(R.color.color_theme));
             tvGroupName.setTextColor(((BaseActivity) mContext).getThemeColor());
         } else if (item.getIndex() == selectedIndex && item.getIndex() == focusedIndex) {
-            tvGroupName.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            tvGroupName.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
         } else {
-            tvGroupName.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            tvGroupName.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
         }
     }
 

@@ -41,4 +41,12 @@ public interface VodRecordDao {
     @Query("DELETE FROM vodRecord where id NOT IN (SELECT id FROM vodRecord ORDER BY updateTime desc LIMIT :size)")
     int reserver(int size);
 
+    /**
+     * 获取要删除的旧记录（超出限制的部分）
+     * @param size 保留条数
+     * @return 要删除的记录列表
+     */
+    @Query("select * from vodRecord where id NOT IN (SELECT id FROM vodRecord ORDER BY updateTime desc LIMIT :size)")
+    List<VodRecord> getOldRecords(int size);
+
 }

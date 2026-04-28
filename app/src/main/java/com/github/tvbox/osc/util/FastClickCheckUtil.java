@@ -1,7 +1,10 @@
 package com.github.tvbox.osc.util;
 
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
+
+import java.lang.ref.WeakReference;
 
 /**
  * @author pj567
@@ -9,6 +12,8 @@ import android.view.View;
  * @description:
  */
 public class FastClickCheckUtil {
+    private static final Handler handler = new Handler(Looper.getMainLooper());
+
     /**
      * 相同视图点击必须间隔0.5s才能有效
      *
@@ -26,10 +31,14 @@ public class FastClickCheckUtil {
      */
     public static void check(final View view, int mills) {
         view.setClickable(false);
-        new Handler().postDelayed(new Runnable() {
+        final WeakReference<View> viewRef = new WeakReference<>(view);
+        handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                view.setClickable(true);
+                View v = viewRef.get();
+                if (v != null) {
+                    v.setClickable(true);
+                }
             }
         }, mills);
     }

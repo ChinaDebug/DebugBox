@@ -1,20 +1,27 @@
 package com.github.tvbox.osc.ui.activity;
 
-import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.tvbox.osc.util.DefaultConfig;
+import com.github.tvbox.osc.util.ToastHelper;
+
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
+
+import com.hjq.permissions.OnPermissionCallback;
+import com.hjq.permissions.XXPermissions;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
@@ -80,8 +87,9 @@ public class DriveActivity extends BaseActivity {
     private boolean isInSearch = false;
 
     private boolean delMode = false;
+    private boolean pendingFilePicker = false;
 
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected int getLayoutResID() {
@@ -136,15 +144,59 @@ public class DriveActivity extends BaseActivity {
                     @Override
                     public void click(StorageDriveType.TYPE value, int pos) {
                         if (value == StorageDriveType.TYPE.LOCAL) {
-                            if (Build.VERSION.SDK_INT >= 23) {
-                                if (App.getInstance().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                                    ActivityCompat.requestPermissions(DriveActivity.this,
-                                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                                    return;
+                            // 先检查权限状态
+                            // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+                            // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+                                if (Environment.isExternalStorageManager()) {
+                                    openFilePicker();
+                                    dialog.dismiss();
+                                } else {
+                                    pendingFilePicker = true;
+                                    new AlertDialog.Builder(DriveActivity.this)
+                                            .setTitle("权限提醒")
+                                            .setMessage("需要所有文件访问权限才能访问本地文件。是否前往设置开启权限？")
+                                            .setPositiveButton("去设置", (d, which) -> {
+                                                XXPermissions.startPermissionActivity(DriveActivity.this, DefaultConfig.StoragePermissionGroup());
+                                            })
+                                            .setNegativeButton("取消", (d, which) -> {
+                                                pendingFilePicker = false;
+                                            })
+                                            .show();
+                                }
+                            } else {
+                                // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+                                if (XXPermissions.isGranted(DriveActivity.this, DefaultConfig.StoragePermissionGroup())) {
+                                    openFilePicker();
+                                    dialog.dismiss();
+                                } else {
+                                    pendingFilePicker = true;
+                                    XXPermissions.with(DriveActivity.this)
+                                            .permission(DefaultConfig.StoragePermissionGroup())
+                                            .request(new OnPermissionCallback() {
+                                                @Override
+                                                public void onGranted(List<String> permissions, boolean all) {
+                                                    pendingFilePicker = false;
+                                                    openFilePicker();
+                                                    dialog.dismiss();
+                                                }
+
+                                                @Override
+                                                public void onDenied(List<String> permissions, boolean never) {
+                                                    pendingFilePicker = false;
+                                                    new AlertDialog.Builder(DriveActivity.this)
+                                                            .setTitle("权限提醒")
+                                                            .setMessage("存储权限被拒绝，无法访问本地文件。是否前往设置开启权限？")
+                                                            .setPositiveButton("去设置", (d, which) -> {
+                                                                XXPermissions.startPermissionActivity(DriveActivity.this, permissions);
+                                                                pendingFilePicker = true;
+                                                            })
+                                                            .setNegativeButton("取消", null)
+                                                            .show();
+                                                }
+                                            });
                                 }
                             }
-                            openFilePicker();
-                            dialog.dismiss();
                         } else if (value == StorageDriveType.TYPE.WEBDAV) {
                             openWebdavDialog(null);
                             dialog.dismiss();
@@ -250,15 +302,14 @@ public class DriveActivity extends BaseActivity {
                                     mHandler.post(new Runnable() {
                                         @Override
                                         public void run() {
-                                            Toast toast = Toast.makeText(mContext, msg, Toast.LENGTH_SHORT);
-                                            toast.show();
+                                            ToastHelper.showToast(mContext, msg);
                                         }
                                     });
                                 }
                             });
                         }
                     } else {
-                        Toast.makeText(DriveActivity.this, "Media Unsupported", Toast.LENGTH_SHORT).show();
+                        ToastHelper.showToast("Media Unsupported");
                     }
                 }
             }
@@ -336,6 +387,79 @@ public class DriveActivity extends BaseActivity {
         }
     };
 
+    private interface PermissionCallback {
+        void onGranted();
+    }
+
+    private void checkStoragePermission(PermissionCallback callback) {
+        // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                callback.onGranted();
+            } else {
+                new AlertDialog.Builder(DriveActivity.this)
+                        .setTitle("权限提醒")
+                        .setMessage("需要所有文件访问权限才能访问本地文件。是否前往设置开启权限？")
+                        .setPositiveButton("去设置", (dialog, which) -> {
+                            XXPermissions.startPermissionActivity(DriveActivity.this, DefaultConfig.StoragePermissionGroup());
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+            }
+            return;
+        }
+
+        // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+        if (XXPermissions.isGranted(this, DefaultConfig.StoragePermissionGroup())) {
+            callback.onGranted();
+            return;
+        }
+
+        // 申请权限
+        XXPermissions.with(this)
+                .permission(DefaultConfig.StoragePermissionGroup())
+                .request(new OnPermissionCallback() {
+                    @Override
+                    public void onGranted(List<String> permissions, boolean all) {
+                        callback.onGranted();
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions, boolean never) {
+                        new AlertDialog.Builder(DriveActivity.this)
+                                .setTitle("权限提醒")
+                                .setMessage("存储权限被拒绝，无法访问本地文件。是否前往设置开启权限？")
+                                .setPositiveButton("去设置", (dialog, which) -> {
+                                    XXPermissions.startPermissionActivity(DriveActivity.this, permissions);
+                                })
+                                .setNegativeButton("取消", null)
+                                .show();
+                    }
+                });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 从设置页面返回后，检查是否有待处理的文件选择操作
+        if (pendingFilePicker) {
+            pendingFilePicker = false;
+            // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+            // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    openFilePicker();
+                }
+            } else {
+                // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+                if (XXPermissions.isGranted(this, DefaultConfig.StoragePermissionGroup())) {
+                    openFilePicker();
+                }
+            }
+        }
+    }
+
     private void openFilePicker() {
         if (delMode)
             toggleDelMode();
@@ -352,7 +476,7 @@ public class DriveActivity extends BaseActivity {
                         String absPath = dirFile.getAbsolutePath();
                         for (DriveFolderFile drive : drives) {
                             if (drive.getDriveType() == StorageDriveType.TYPE.LOCAL && absPath.equals(drive.getDriveData().name)) {
-                                Toast.makeText(mContext, "此文件夹之前已被添加到空间列表！", Toast.LENGTH_SHORT).show();
+                                ToastHelper.showToast(mContext, "此文件夹之前已被添加到空间列表！");
                                 return;
                             }
                         }
@@ -469,7 +593,7 @@ public class DriveActivity extends BaseActivity {
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
+                        ToastHelper.showToast(mContext, message);
                     }
                 });
             }
@@ -540,6 +664,7 @@ public class DriveActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mHandler.removeCallbacksAndMessages(null);
         EventBus.getDefault().unregister(this);
     }
 }

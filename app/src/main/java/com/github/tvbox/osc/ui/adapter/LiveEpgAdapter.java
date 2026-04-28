@@ -3,6 +3,8 @@ package com.github.tvbox.osc.ui.adapter;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -13,6 +15,7 @@ import com.github.tvbox.osc.ui.tv.widget.AudioWaveView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 
 public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
     private int selectedEpgIndex = -1;
@@ -22,7 +25,7 @@ public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
     private boolean ShiyiSelection = false;
     private boolean source_include_back = false;
     private String shiyiDate = null;
-    private SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
     public LiveEpgAdapter() {
         super(R.layout.item_epglist, new ArrayList<>());
@@ -48,24 +51,24 @@ public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
             textview.setTextColor(((BaseActivity) mContext).getThemeColor());
             timeview.setTextColor(((BaseActivity) mContext).getThemeColor());
         } else {
-            textview.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
-            timeview.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            textview.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
+            timeview.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
         }
 
         if (now.compareTo(value.startdateTime) >= 0 && now.compareTo(value.enddateTime) <= 0) {
             shiyi.setVisibility(View.VISIBLE);
-            shiyi.setBackgroundColor(mContext.getResources().getColor(R.color.color_32364E));
-            shiyi.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            shiyi.setBackgroundColor(ContextCompat.getColor(mContext, R.color.color_32364E));
+            shiyi.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
             shiyi.setText("直播");
         } else if (now.compareTo(value.enddateTime) > 0 && source_include_back) {
             shiyi.setVisibility(View.VISIBLE);
-            shiyi.setBackgroundColor(mContext.getResources().getColor(R.color.color_32364E_40));
-            shiyi.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            shiyi.setBackgroundColor(ContextCompat.getColor(mContext, R.color.color_32364E_40));
+            shiyi.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
             shiyi.setText("回看");
         } else if (now.compareTo(value.startdateTime) < 0 && source_include_back) {
             shiyi.setVisibility(View.VISIBLE);
-            shiyi.setBackgroundColor(mContext.getResources().getColor(R.color.color_3D3D3D));
-            shiyi.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+            shiyi.setBackgroundColor(ContextCompat.getColor(mContext, R.color.color_3D3D3D));
+            shiyi.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
             shiyi.setText("预约");
         } else {
             shiyi.setVisibility(View.GONE);
@@ -73,8 +76,8 @@ public class LiveEpgAdapter extends BaseQuickAdapter<Epginfo, BaseViewHolder> {
 
         textview.setText(value.title);
         timeview.setText(value.start + " - " + value.end);
-        textview.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
-        timeview.setTextColor(mContext.getResources().getColor(R.color.color_FFFFFF));
+        textview.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
+        timeview.setTextColor(ContextCompat.getColor(mContext, R.color.color_FFFFFF));
         if (ShiyiSelection == false) {
             if (now.compareTo(value.startdateTime) >= 0 && now.compareTo(value.enddateTime) <= 0) {
                 wqddg_AudioWaveView.setVisibility(View.VISIBLE);

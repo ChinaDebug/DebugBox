@@ -90,7 +90,9 @@ public class MyVideoView extends VideoView implements DrawHandler.Callback {
     public void prepared() {
         App.post(() -> {
             if (danmuView == null) return;
-            if (isPlaying() && danmuView.isPrepared()) danmuView.start(getCurrentPosition());
+            if (danmuView.isPrepared()) {
+                danmuView.start(getCurrentPosition());
+            }
         });
     }
 

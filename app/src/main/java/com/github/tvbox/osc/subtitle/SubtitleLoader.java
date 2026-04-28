@@ -2,7 +2,6 @@ package com.github.tvbox.osc.subtitle;
 
 import android.net.Uri;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.github.tvbox.osc.subtitle.exception.FatalParsingException;
 import com.github.tvbox.osc.subtitle.format.FormatASS;
@@ -12,6 +11,7 @@ import com.github.tvbox.osc.subtitle.format.TimedTextFileFormat;
 import com.github.tvbox.osc.subtitle.model.TimedTextObject;
 import com.github.tvbox.osc.subtitle.runtime.AppTaskExecutor;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.UnicodeReader;
 import com.lzy.okgo.OkGo;
 
@@ -68,7 +68,7 @@ public class SubtitleLoader {
                     }
 
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    LOG.e(TAG, e);
                     if (callback != null) {
                         AppTaskExecutor.mainThread().execute(new Runnable() {
                             @Override
@@ -100,7 +100,7 @@ public class SubtitleLoader {
                     }
 
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    LOG.e(TAG, e);
                     if (callback != null) {
                         AppTaskExecutor.mainThread().execute(new Runnable() {
                             @Override
@@ -115,7 +115,7 @@ public class SubtitleLoader {
         });
     }
 
-    public SubtitleLoadSuccessResult loadSubtitle(String path) {
+    public static SubtitleLoadSuccessResult loadSubtitle(String path) {
         if (TextUtils.isEmpty(path)) {
             return null;
         }
@@ -127,14 +127,14 @@ public class SubtitleLoader {
                 return loadFromLocal(path);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(TAG, e);
         }
         return null;
     }
 
     private static SubtitleLoadSuccessResult loadFromRemote(final String remoteSubtitlePath)
             throws IOException, FatalParsingException, Exception {
-        Log.d(TAG, "parseRemote: remoteSubtitlePath = " + remoteSubtitlePath);
+        LOG.d(TAG, "parseRemote: remoteSubtitlePath = " + remoteSubtitlePath);
         String referer = "";
         if (remoteSubtitlePath.contains("alicloud") || remoteSubtitlePath.contains("aliyundrive")) {
             referer = "https://www.aliyundrive.com/";
@@ -188,10 +188,10 @@ public class SubtitleLoader {
 
     private static SubtitleLoadSuccessResult loadFromLocal(final String localSubtitlePath)
             throws IOException, FatalParsingException {
-        Log.d(TAG, "parseLocal: localSubtitlePath = " + localSubtitlePath);
+        LOG.d(TAG, "parseLocal: localSubtitlePath = " + localSubtitlePath);
         File file = new File(localSubtitlePath);
         if (!file.exists()) {
-            Log.d(TAG, "parseLocal: localSubtitlePath = " + localSubtitlePath + " file not exsits");
+            LOG.d(TAG, "parseLocal: localSubtitlePath = " + localSubtitlePath + " file not exsits");
             return null;
         }
         byte[] bytes = FileUtils.readSimple(file);
@@ -199,6 +199,7 @@ public class SubtitleLoader {
         detector.handleData(bytes, 0, bytes.length);
         detector.dataEnd();
         String encoding = detector.getDetectedCharset();
+        if (TextUtils.isEmpty(encoding)) encoding = "UTF-8";
         String content = new String(bytes, encoding);
         InputStream is = new ByteArrayInputStream(content.getBytes());
         String filePath = file.getPath();
@@ -217,7 +218,7 @@ public class SubtitleLoader {
         if (fileName.lastIndexOf(".") > 0) {
             ext = fileName.substring(fileName.lastIndexOf("."));
         }
-        Log.d(TAG, "parse: name = " + fileName + ", ext = " + ext);
+        LOG.d(TAG, "parse: name = " + fileName + ", ext = " + ext);
         Reader reader = new UnicodeReader(is); //处理有BOM头的utf8
         InputStream newInputStream = new ReaderInputStream(reader, Charset.defaultCharset());
         if (".srt".equalsIgnoreCase(ext)) {

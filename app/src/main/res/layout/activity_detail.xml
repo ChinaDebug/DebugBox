@@ -171,7 +171,7 @@
                         android:background="@drawable/button_detail_all"
                         android:focusable="true"
                         android:gravity="center"
-                        android:text="@string/det_play"
+                        android:text="@string/det_expand"
                         android:textColor="@android:color/white"
                         android:textSize="@dimen/vs_20" />
 
@@ -185,19 +185,6 @@
                         android:focusable="true"
                         android:gravity="center"
                         android:text="@string/det_search"
-                        android:textColor="@android:color/white"
-                        android:textSize="@dimen/vs_20" />
-
-                    <TextView
-                        android:id="@+id/tvSort"
-                        android:layout_width="@dimen/vs_100"
-                        android:layout_height="@dimen/vs_40"
-                        android:layout_marginEnd="@dimen/vs_10"
-                        android:layout_marginRight="@dimen/vs_10"
-                        android:background="@drawable/button_detail_all"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:text="@string/det_sort"
                         android:textColor="@android:color/white"
                         android:textSize="@dimen/vs_20" />
 
@@ -290,18 +277,38 @@
             android:clipToPadding="false"
             app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
             app:tv_selectedItemIsCentered="true" />
-            
-        <com.owen.tvrecyclerview.widget.TvRecyclerView
-            android:id="@+id/mSeriesGroupView"
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="@dimen/vs_45"
+            android:layout_height="wrap_content"
             android:layout_marginLeft="@dimen/vs_50"
             android:layout_marginTop="@dimen/vs_10"
             android:layout_marginRight="@dimen/vs_50"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
-            app:tv_selectedItemIsCentered="true" />    
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvSort"
+                android:layout_width="@dimen/vs_80"
+                android:layout_height="@dimen/vs_45"
+                android:layout_marginEnd="@dimen/vs_10"
+                android:layout_marginRight="@dimen/vs_10"
+                android:background="@drawable/shape_source_flag_focus"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/det_sort"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/vs_20" />
+
+            <com.owen.tvrecyclerview.widget.TvRecyclerView
+                android:id="@+id/mSeriesGroupView"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/vs_45"
+                android:layout_weight="1"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+                app:tv_selectedItemIsCentered="true" />
+        </LinearLayout>    
 
         <com.owen.tvrecyclerview.widget.TvRecyclerView
             android:id="@+id/mGridView"

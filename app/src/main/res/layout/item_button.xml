@@ -12,7 +12,6 @@
     android:focusable="true"
     android:gravity="center"
     android:padding="@dimen/vs_10"
-    android:text="@{name}"
     android:textColor="@color/color_FFFFFF"
     android:textSize="@dimen/ts_16"
     tools:text="Source Name" />

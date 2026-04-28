@@ -10,6 +10,7 @@ import com.github.tvbox.osc.util.HistoryHelper;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.StorageDriveType;
 import com.google.gson.ExclusionStrategy;
 import com.google.gson.FieldAttributes;
@@ -73,7 +74,7 @@ public class RoomDataManger {
                 return vodInfo;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }
@@ -86,39 +87,55 @@ public class RoomDataManger {
     }
 
     public static List<VodInfo> getAllVodRecord(int limit) {
-        // 历史记录超过60条时, 删除最旧的数据 只保留50条.
-        int count = AppDataManager.get().getVodRecordDao().getCount();
-        //if ( count > 60 ) {
-        //    AppDataManager.get().getVodRecordDao().reserver(50);
-        //}
-        Integer index = Hawk.get(HawkConfig.HOME_NUM, 0);
-        Integer hisNum = HistoryHelper.getHisNum(index);
-        if ( count > hisNum ) {
-            AppDataManager.get().getVodRecordDao().reserver(hisNum);
-        }
-
-        List<VodRecord> recordList = AppDataManager.get().getVodRecordDao().getAll(limit);
-        List<VodInfo> vodInfoList = new ArrayList<>();
-        if (recordList != null) {
-            for (VodRecord record : recordList) {
-                VodInfo info = null;
-                try {
-                    if (record.dataJson != null && !TextUtils.isEmpty(record.dataJson)) {
-                        info = getVodInfoGson().fromJson(record.dataJson, new TypeToken<VodInfo>() {
-                        }.getType());
-                        info.sourceKey = record.sourceKey;
-                        SourceBean sourceBean = ApiConfig.get().getSource(info.sourceKey);
-                        if (sourceBean == null || info.name == null)
-                            info = null;
+        try {
+            int count = AppDataManager.get().getVodRecordDao().getCount();
+            Integer index = Hawk.get(HawkConfig.HOME_NUM, 0);
+            Integer hisNum = HistoryHelper.getHisNum(index);
+            if ( count > hisNum ) {
+                List<VodRecord> oldRecords = AppDataManager.get().getVodRecordDao().getOldRecords(hisNum);
+                if (oldRecords != null) {
+                    for (VodRecord record : oldRecords) {
+                        try {
+                            if (record.dataJson != null && !TextUtils.isEmpty(record.dataJson)) {
+                                VodInfo info = getVodInfoGson().fromJson(record.dataJson, new TypeToken<VodInfo>() {}.getType());
+                                if (info != null) {
+                                    CacheManager.deleteVodCache(record.sourceKey, info);
+                                }
+                            }
+                        } catch (Exception e) {
+                        }
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
-                if (info != null)
-                    vodInfoList.add(info);
+                AppDataManager.get().getVodRecordDao().reserver(hisNum);
             }
+
+            List<VodRecord> recordList = AppDataManager.get().getVodRecordDao().getAll(limit);
+            List<VodInfo> vodInfoList = new ArrayList<>();
+            if (recordList != null) {
+                for (VodRecord record : recordList) {
+                    VodInfo info = null;
+                    try {
+                        if (record.dataJson != null && !TextUtils.isEmpty(record.dataJson)) {
+                            info = getVodInfoGson().fromJson(record.dataJson, new TypeToken<VodInfo>() {
+                            }.getType());
+                            if (info != null) {
+                                info.sourceKey = record.sourceKey;
+                                SourceBean sourceBean = ApiConfig.get().getSource(info.sourceKey);
+                                if (sourceBean == null || info.name == null || info.id == null) {
+                                    info = null;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                    }
+                    if (info != null)
+                        vodInfoList.add(info);
+                }
+            }
+            return vodInfoList;
+        } catch (Exception e) {
+            return new ArrayList<>();
         }
-        return vodInfoList;
     }
 
     public static void insertVodCollect(String sourceKey, VodInfo vodInfo) {
@@ -180,5 +197,16 @@ public class RoomDataManger {
 
     public static void deleteDrive(int id) {
         AppDataManager.get().getStorageDriveDao().delete(id);
+    }
+
+    public static void deleteSearchHistoryAll() {
+        AppDataManager.get().getSearchDao().deleteAll();
+    }
+
+    public static void deleteStorageDriveAll() {
+        List<StorageDrive> drives = getAllDrives();
+        for (StorageDrive drive : drives) {
+            deleteDrive(drive.getId());
+        }
     }
 }

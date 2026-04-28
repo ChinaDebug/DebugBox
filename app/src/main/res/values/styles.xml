@@ -19,6 +19,12 @@
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 
+    <!-- Splash Theme - 启动画面专用主题，设置窗口背景避免黑屏 -->
+    <style name="SplashTheme" parent="AppTheme.NoActionBar">
+        <item name="android:windowBackground">@drawable/app_bg</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
     <!-- Alternative Themes -->
     <style name="NetfxTheme" parent="AppTheme.NoActionBar">
         <item name="color_theme">#D81F26</item>

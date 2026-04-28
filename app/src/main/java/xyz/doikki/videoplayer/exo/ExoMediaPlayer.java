@@ -46,17 +46,20 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     private PlaybackParameters mSpeedPlaybackParameters;
     private boolean mIsPreparing;
 
-    private LoadControl mLoadControl;
     private DefaultRenderersFactory mRenderersFactory;
     private DefaultTrackSelector mTrackSelector;
 
-    private int errorCode = -100;
+    private int errorCode = -1;
     private String path;
     private Map<String, String> headers;
     private long lastTotalRxBytes = 0;
     private long lastTimeStamp = 0;
 
+    private long speedLastTotalRxBytes = -1;
+    private long speedLastTimeStamp = -1;
+
     private int retriedTimes = 0;
+    private boolean hasTunnelingFallback = false;
 
     public ExoMediaPlayer(Context context) {
         mAppContext = context.getApplicationContext();
@@ -66,17 +69,61 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     @SuppressLint("UnsafeOptInUsageError")
     @Override
     public void initPlayer() {
-        if (mRenderersFactory == null) {
-            mRenderersFactory = HawkUtils.createExoRendererActualValue(mAppContext);
-        }
+        // 每次都重新创建 RenderersFactory 以支持实时切换渲染器设置
+        mRenderersFactory = HawkUtils.createExoRendererActualValue(mAppContext);
         //https://github.com/androidx/media/blob/release/libraries/decoder_ffmpeg/README.md
         mRenderersFactory.setExtensionRendererMode(HawkUtils.getExoRendererModeActualValue());
 
-        if (mTrackSelector == null) {
-            mTrackSelector = new DefaultTrackSelector(mAppContext);
-        }
-        if (mLoadControl == null) {
-            mLoadControl = new DefaultLoadControl();
+        // 每次都重新创建 TrackSelector 以支持实时切换
+        mTrackSelector = new DefaultTrackSelector(mAppContext);
+        // 每次都重新初始化 LoadControl 以支持实时切换缓冲模式
+        // 根据缓冲模式应用不同配置
+        // 0 = 默认内置, 1 = 流畅模式, 2 = 均衡模式, 3 = 原画模式
+        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 2);
+        DefaultLoadControl.Builder builder = new DefaultLoadControl.Builder();
+        LoadControl mLoadControl;
+        switch (bufferMode) {
+            case 3:
+                // 原画模式 - 最大缓冲，最流畅，适合高码率视频和大文件
+                builder.setBufferDurationsMs(
+                        30000,  // minBufferMs - 30秒（保持播放的最小缓冲）
+                        120000, // maxBufferMs - 120秒（最大预加载，最流畅）
+                        5000,   // bufferForPlaybackMs - 5秒开始播放
+                        10000   // bufferForPlaybackAfterRebufferMs - 10秒恢复播放
+                );
+                // 设置目标缓冲字节数（约500MB）
+                builder.setTargetBufferBytes(512 * 1024 * 1024);
+                mLoadControl = builder.build();
+                break;
+            case 2:
+                // 均衡模式 - 中等缓冲，平衡流畅度和内存
+                builder.setBufferDurationsMs(
+                        15000,  // minBufferMs - 15秒
+                        45000,  // maxBufferMs - 45秒（中等预加载）
+                        3000,   // bufferForPlaybackMs - 3秒开始播放
+                        6000    // bufferForPlaybackAfterRebufferMs - 6秒恢复播放
+                );
+                // 设置目标缓冲字节数（约200MB）
+                builder.setTargetBufferBytes(200 * 1024 * 1024);
+                mLoadControl = builder.build();
+                break;
+            case 1:
+                // 流畅模式 - 小缓冲，快速启动，省内存
+                builder.setBufferDurationsMs(
+                        5000,   // minBufferMs - 5秒
+                        15000,  // maxBufferMs - 15秒（小预加载）
+                        1500,   // bufferForPlaybackMs - 1.5秒，快速启动
+                        3000    // bufferForPlaybackAfterRebufferMs - 3秒恢复播放
+                );
+                // 设置目标缓冲字节数（约50MB）
+                builder.setTargetBufferBytes(50 * 1024 * 1024);
+                mLoadControl = builder.build();
+                break;
+            case 0:
+            default:
+                // 默认内置 - 使用ExoPlayer默认配置，不自定义
+                mLoadControl = new DefaultLoadControl();
+                break;
         }
         mTrackSelector.setParameters(mTrackSelector.getParameters().buildUpon().setPreferredTextLanguage(Locale.getDefault().getISO3Language()).setTunnelingEnabled(true));
         /*mMediaPlayer = new ExoPlayer.Builder(
@@ -159,6 +206,9 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
             mMediaPlayer.setVideoSurface(null);
             mIsPreparing = false;
         }
+        hasTunnelingFallback = false;
+        retriedTimes = 0;
+        mTrackSelector.setParameters(mTrackSelector.getParameters().buildUpon().setTunnelingEnabled(true).build());
     }
 
     @Override
@@ -209,6 +259,13 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
         if (mMediaPlayer == null)
             return 0;
         return mMediaPlayer.getDuration();
+    }
+
+    @Override
+    public boolean isLive() {
+        if (mMediaPlayer == null)
+            return false;
+        return mMediaPlayer.isCurrentMediaItemLive();
     }
 
     @Override
@@ -278,10 +335,25 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
 
     @Override
     public long getTcpSpeed() {
-        if (mAppContext == null || unsupported()) {
+        if (mAppContext == null) {
             return 0;
         }
-        return PlayerUtils.getNetSpeed(mAppContext);
+        long uidRxBytes = TrafficStats.getUidRxBytes(mAppContext.getApplicationInfo().uid);
+        long nowTotalRxBytes = (uidRxBytes == TrafficStats.UNSUPPORTED) ? TrafficStats.getTotalRxBytes() : uidRxBytes;
+        long nowTimeStamp = System.currentTimeMillis();
+        if (speedLastTimeStamp <= 0) {
+            speedLastTimeStamp = nowTimeStamp;
+            speedLastTotalRxBytes = nowTotalRxBytes;
+            return 0;
+        }
+        long calculationTime = nowTimeStamp - speedLastTimeStamp;
+        if (calculationTime <= 0) {
+            return 0;
+        }
+        long speed = ((nowTotalRxBytes - speedLastTotalRxBytes) * 1000 / calculationTime);
+        speedLastTimeStamp = nowTimeStamp;
+        speedLastTotalRxBytes = nowTotalRxBytes;
+        return speed;
     }
 
     @Override
@@ -320,13 +392,30 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     public void onPlayerError(@NonNull PlaybackException error) {
         errorCode = error.errorCode;
         Log.e("tag--", "" + error.errorCode);
+        
+        if (!hasTunnelingFallback) {
+            hasTunnelingFallback = true;
+            mTrackSelector.setParameters(mTrackSelector.getParameters().buildUpon().setTunnelingEnabled(false).build());
+            retriedTimes = 0;
+            mMediaPlayer.stop();
+            mMediaPlayer.clearMediaItems();
+            mMediaPlayer.setVideoSurface(null);
+            mIsPreparing = false;
+            setDataSource(path, headers);
+            prepareAsync();
+            return;
+        }
+        
         String proxyServer = Hawk.get(HawkConfig.PROXY_SERVER, "");
         if ("".equals(proxyServer)) {
             if (retriedTimes == 0) {
                 retriedTimes = 1;
+                mMediaPlayer.stop();
+                mMediaPlayer.clearMediaItems();
+                mMediaPlayer.setVideoSurface(null);
+                mIsPreparing = false;
                 setDataSource(path, headers);
                 prepareAsync();
-                start();
             } else {
                 if (mPlayerEventListener != null) {
                     mPlayerEventListener.onError(error.errorCode, PlayerHelper.getRootCauseMessage(error));
@@ -351,9 +440,12 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
         try {
             mMediaSourceHelper.setSocksProxy(ps[0], Integer.parseInt(ps[1]));
             retriedTimes++;
+            mMediaPlayer.stop();
+            mMediaPlayer.clearMediaItems();
+            mMediaPlayer.setVideoSurface(null);
+            mIsPreparing = false;
             setDataSource(path, headers);
             prepareAsync();
-            start();
         } catch (Exception e) {
             if (mPlayerEventListener != null) {
                 mPlayerEventListener.onError(error.errorCode, PlayerHelper.getRootCauseMessage(error));

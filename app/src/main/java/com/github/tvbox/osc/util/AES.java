@@ -1,5 +1,7 @@
 package com.github.tvbox.osc.util;
 
+import com.github.tvbox.osc.util.LOG;
+
 import org.json.JSONObject;
 
 import java.security.spec.AlgorithmParameterSpec;
@@ -36,7 +38,7 @@ public class AES {
             cipher.init(Cipher.DECRYPT_MODE, keySpec);
             return new String(cipher.doFinal(data2));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }
@@ -49,7 +51,7 @@ public class AES {
             cipher.init(Cipher.DECRYPT_MODE, keySpec, paramSpec);
             return new String(cipher.doFinal(toBytes(data)));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return null;
     }

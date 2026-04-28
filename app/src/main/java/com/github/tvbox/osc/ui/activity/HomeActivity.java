@@ -1,7 +1,11 @@
 package com.github.tvbox.osc.ui.activity;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Environment;
 import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.IntEvaluator;
@@ -12,10 +16,12 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
@@ -27,9 +33,13 @@ import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.github.tvbox.osc.util.ToastHelper;
+import com.github.tvbox.osc.util.UpdateCheckManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -47,6 +57,7 @@ import com.github.tvbox.osc.bean.MovieSort;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.server.ControlManager;
+import com.github.tvbox.osc.subtitle.runtime.AppTaskExecutor;
 import com.github.tvbox.osc.ui.adapter.HomePageAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.adapter.SortAdapter;
@@ -66,6 +77,8 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
+import com.hjq.permissions.OnPermissionCallback;
+import com.hjq.permissions.XXPermissions;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
@@ -88,7 +101,7 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
 
 public class HomeActivity extends BaseActivity {
 
-    // takagen99: Added to allow read string
+    private static int lastHomeRec = -1;
     private static Resources res;
 
     private View currentView;
@@ -112,8 +125,11 @@ public class HomeActivity extends BaseActivity {
     private int currentSelected = 0;
     private int sortFocused = 0;
     public View sortFocusView = null;
-    private final Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private long mExitTime = 0;
+    private long lastLogoClickTime = 0;
+    private boolean isClearingCache = false;
+    private static final long LOGO_CLICK_INTERVAL = 3500L;
     private final Runnable mRunnable = new Runnable() {
         @SuppressLint({"DefaultLocale", "SetTextI18n"})
         @Override
@@ -128,6 +144,12 @@ public class HomeActivity extends BaseActivity {
     };
 
     @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        setTheme(R.style.AppTheme_NoActionBar);
+        super.onCreate(savedInstanceState);
+    }
+
+    @Override
     protected int getLayoutResID() {
         return R.layout.activity_home;
     }
@@ -136,12 +158,17 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     protected void init() {
-        // takagen99: Added to allow read string
         res = getResources();
 
-        EventBus.getDefault().register(this);
-        ControlManager.get().startServer();
-        App.startWebserver();
+        try {
+            EventBus.getDefault().register(this);
+        } catch (Exception e) {
+        }
+ 
+        if (ControlManager.mContext != null) {
+            ControlManager.get().startServer();
+        }
+        
         initView();
         initViewModel();
         useCacheConfig = false;
@@ -150,11 +177,14 @@ public class HomeActivity extends BaseActivity {
             Bundle bundle = intent.getExtras();
             useCacheConfig = bundle.getBoolean("useCache", false);
         }
-        initData();
+        mHandler.postDelayed(() -> initData(), 100);
     }
 
     // takagen99: Added to allow read string
     public static Resources getRes() {
+        if (res == null) {
+            return App.getInstance().getResources();
+        }
         return res;
     }
 
@@ -192,7 +222,7 @@ public class HomeActivity extends BaseActivity {
                     view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(250).start();
                     TextView textView = view.findViewById(R.id.tvTitle);
                     textView.getPaint().setFakeBoldText(false);
-                    textView.setTextColor(HomeActivity.this.getResources().getColor(R.color.color_FFFFFF_70));
+                    textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF_70));
                     textView.invalidate();
                     view.findViewById(R.id.tvFilter).setVisibility(View.GONE);
                 }
@@ -206,7 +236,7 @@ public class HomeActivity extends BaseActivity {
                     view.animate().scaleX(1.1f).scaleY(1.1f).setInterpolator(new BounceInterpolator()).setDuration(250).start();
                     TextView textView = view.findViewById(R.id.tvTitle);
                     textView.getPaint().setFakeBoldText(true);
-                    textView.setTextColor(HomeActivity.this.getResources().getColor(R.color.color_FFFFFF));
+                    textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF));
                     textView.invalidate();
 //                    if (!sortAdapter.getItem(position).filters.isEmpty())
 //                        view.findViewById(R.id.tvFilter).setVisibility(View.VISIBLE);
@@ -259,31 +289,19 @@ public class HomeActivity extends BaseActivity {
         tvName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                FastClickCheckUtil.check(v);
-                File dir = getCacheDir();
-                FileUtils.recursiveDelete(dir);
-                dir = getExternalCacheDir();
-                FileUtils.recursiveDelete(dir);
-                Toast.makeText(HomeActivity.this, getString(R.string.hm_cache_del), Toast.LENGTH_SHORT).show();
-                if(dataInitOk && jarInitOk){
-                    String cspCachePath = FileUtils.getFilePath()+"/csp/";
-                    String jar=ApiConfig.get().getHomeSourceBean().getJar();
-                    String jarUrl=!jar.isEmpty()?jar:ApiConfig.get().getSpider();
-                    File cspCacheDir = new File(cspCachePath + MD5.string2MD5(jarUrl)+".jar");
-                    if (!cspCacheDir.exists()){
-                        reloadHome();
-                        return;
-                    }
-                    new Thread(() -> {
-                        try {
-                            FileUtils.deleteFile(cspCacheDir);
-                            ApiConfig.get().clearJarLoader();
-                            reloadHome();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }).start();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastLogoClickTime < LOGO_CLICK_INTERVAL || isClearingCache) {
+                    return;
                 }
+                lastLogoClickTime = currentTime;
+
+                // 检查存储权限
+                if (!hasStoragePermission()) {
+                    showStoragePermissionDialog(() -> clearCacheAndReload());
+                    return;
+                }
+
+                clearCacheAndReload();
             }
         });
         tvName.setOnLongClickListener(new View.OnLongClickListener() {
@@ -317,14 +335,14 @@ public class HomeActivity extends BaseActivity {
                 try {
                     Hawk.put(HawkConfig.HOME_REC_STYLE, !Hawk.get(HawkConfig.HOME_REC_STYLE, false));
                     if (Hawk.get(HawkConfig.HOME_REC_STYLE, false)) {
-                        UserFragment.tvHotListForGrid.setVisibility(View.VISIBLE);
-                        UserFragment.tvHotListForLine.setVisibility(View.GONE);
-                        Toast.makeText(HomeActivity.this, getString(R.string.hm_style_grid), Toast.LENGTH_SHORT).show();
+                        UserFragment.showGridView();
+                        UserFragment.updateUserHomeVisibility();
+                        ToastHelper.showToast(getString(R.string.hm_style_grid));
                         tvStyle.setImageResource(R.drawable.hm_up_down);
                     } else {
-                        UserFragment.tvHotListForGrid.setVisibility(View.GONE);
-                        UserFragment.tvHotListForLine.setVisibility(View.VISIBLE);
-                        Toast.makeText(HomeActivity.this, getString(R.string.hm_style_line), Toast.LENGTH_SHORT).show();
+                        UserFragment.showListView();
+                        UserFragment.setUserHomeVisibility(View.VISIBLE);
+                        ToastHelper.showToast(getString(R.string.hm_style_line));
                         tvStyle.setImageResource(R.drawable.hm_left_right);
                     }
                 } catch (Exception ex) {
@@ -363,24 +381,6 @@ public class HomeActivity extends BaseActivity {
         setLoadSir(this.contentLayout);
         //mHandler.postDelayed(mFindFocus, 250);
     }
-    //站点切换
-    public static void homeRecf() {
-        int homeRec = Hawk.get(HawkConfig.HOME_REC, -1);
-        int limit = 2;
-        if (homeRec == limit) homeRec = -1;
-        homeRec++;
-        Hawk.put(HawkConfig.HOME_REC, homeRec);
-    }
-    
-    public static boolean reHome(Context appContext) {
-        Intent intent = new Intent(appContext, HomeActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        Bundle bundle = new Bundle();
-        bundle.putBoolean("useCache", true);
-        intent.putExtras(bundle);
-        appContext.startActivity(intent);
-        return true;
-    }
 
     private boolean skipNextUpdate = false;	
     private void initViewModel() {
@@ -411,28 +411,51 @@ public class HomeActivity extends BaseActivity {
 
     private boolean dataInitOk = false;
     private boolean jarInitOk = false;
+    private TipDialog mErrorDialog = null;
+    private boolean mFromSettings = false;
 
     // takagen99 : Switch to show / hide source title
     boolean HomeShow = Hawk.get(HawkConfig.HOME_SHOW_SOURCE, false);
 
     // takagen99 : Check if network is available
     boolean isNetworkAvailable() {
-        ConnectivityManager cm
-                = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
-        return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Network network = cm.getActiveNetwork();
+            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+            return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } else {
+            android.net.NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+            return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
+        }
     }
 
     private void initData() {
-        // takagen99: If network available, check connected Wifi or Lan
         if (isNetworkAvailable()) {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-            if (cm.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI) {
-                tvWifi.setImageDrawable(res.getDrawable(R.drawable.hm_wifi));
-            } else if (cm.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_MOBILE) {
-                tvWifi.setImageDrawable(res.getDrawable(R.drawable.hm_mobile));
-            } else if (cm.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_ETHERNET) {
-                tvWifi.setImageDrawable(res.getDrawable(R.drawable.hm_lan));
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                Network network = cm.getActiveNetwork();
+                NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_wifi));
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_mobile));
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_lan));
+                    }
+                }
+            } else {
+                android.net.NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+                if (activeNetworkInfo != null) {
+                    if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_wifi));
+                    } else if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_mobile));
+                    } else if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
+                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_lan));
+                    }
+                }
             }
         }
 
@@ -446,15 +469,25 @@ public class HomeActivity extends BaseActivity {
         mGridView.requestFocus();
 
         if (dataInitOk && jarInitOk) {
-            sourceViewModel.getSort(ApiConfig.get().getHomeSourceBean().getKey());
-            if (hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                LOG.e("有");
-            } else {
-                LOG.e("无");
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            // 检查是否是 py 源且 pyLoader 未初始化完成
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")
+                    && !ApiConfig.get().isPyLoaderReady()) {
+                // pyLoader 未就绪，保持 Loading 状态，等待初始化完成事件
+                showLoading();
+                return;
             }
+            sourceViewModel.getSort(homeSource.getKey());
             if (Hawk.get(HawkConfig.HOME_DEFAULT_SHOW, false)) {
                 jumpActivity(LivePlayActivity.class);
-            }         
+            }
+            if (!useCacheConfig) {
+                if (UpdateCheckManager.get().isStartupCheck() && UpdateCheckManager.get().canCheck(this)) {
+                    UpdateCheckManager.get().startCheck(this, true);
+                }
+                UpdateCheckManager.get().startScheduledCheck(this);
+            }
             return;
         }
         tvNameAnimation();
@@ -469,7 +502,7 @@ public class HomeActivity extends BaseActivity {
                             @Override
                             public void run() {
                                 if (!useCacheConfig) {
-                                    Toast.makeText(HomeActivity.this, getString(R.string.hm_ok), Toast.LENGTH_SHORT).show();
+                                    ToastHelper.showToast(getString(R.string.hm_ok));
                                 }
                                 initData();
                             }
@@ -488,10 +521,10 @@ public class HomeActivity extends BaseActivity {
                         mHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                if ("".equals(msg))
-                                    Toast.makeText(HomeActivity.this, getString(R.string.hm_notok), Toast.LENGTH_SHORT).show();
-                                else
-                                    Toast.makeText(HomeActivity.this, msg, Toast.LENGTH_SHORT).show();
+                                  if ("".equals(msg))
+                                      ToastHelper.showToast(getString(R.string.hm_notok));
+                                  else
+                                      ToastHelper.showToast(msg);
                                 initData();
                             }
                         },50);
@@ -501,8 +534,6 @@ public class HomeActivity extends BaseActivity {
             return;
         }
         ApiConfig.get().loadConfig(useCacheConfig, new ApiConfig.LoadConfigCallback() {
-            TipDialog dialog = null;
-
             @Override
             public void retry() {
                 mHandler.post(new Runnable() {
@@ -543,47 +574,51 @@ public class HomeActivity extends BaseActivity {
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if (dialog == null)
-                            dialog = new TipDialog(HomeActivity.this, msg, getString(R.string.hm_retry), getString(R.string.hm_cancel), new TipDialog.OnListener() {
-                                @Override
-                                public void left() {
-                                    mHandler.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            initData();
-                                            dialog.hide();
+                        if (mErrorDialog != null && mErrorDialog.isShowing()) {
+                            mErrorDialog.dismiss();
+                        }
+                        mErrorDialog = new TipDialog(HomeActivity.this, msg, getString(R.string.hm_setting), getString(R.string.hm_cancel), new TipDialog.OnListener() {
+                            @Override
+                            public void left() {
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (mErrorDialog != null && mErrorDialog.isShowing()) {
+                                            mErrorDialog.dismiss();
                                         }
-                                    });
-                                }
+                                        mFromSettings = true;
+                                        jumpActivity(SettingActivity.class);
+                                    }
+                                });
+                            }
 
-                                @Override
-                                public void right() {
-                                    dataInitOk = true;
-                                    jarInitOk = true;
-                                    mHandler.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            initData();
-                                            dialog.hide();
+                            @Override
+                            public void right() {
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (mErrorDialog != null && mErrorDialog.isShowing()) {
+                                            mErrorDialog.dismiss();
                                         }
-                                    });
-                                }
+                                        refreshEmpty();
+                                    }
+                                });
+                            }
 
-                                @Override
-                                public void cancel() {
-                                    dataInitOk = true;
-                                    jarInitOk = true;
-                                    mHandler.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            initData();
-                                            dialog.hide();
+                            @Override
+                            public void cancel() {
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (mErrorDialog != null && mErrorDialog.isShowing()) {
+                                            mErrorDialog.dismiss();
                                         }
-                                    });
-                                }
-                            });
-                        if (!dialog.isShowing())
-                            dialog.show();
+                                        refreshEmpty();
+                                    }
+                                });
+                            }
+                        });
+                        mErrorDialog.show();
                     }
                 });
             }
@@ -620,15 +655,14 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        //打断加载
+        // 加载API期间禁止返回
         if(isLoading()){
-            refreshEmpty();
             return;
         }
         // 如果处于 VOD 删除模式，则退出该模式并刷新界面
         if (HawkConfig.hotVodDelete) {
             HawkConfig.hotVodDelete = false;
-            UserFragment.homeHotVodAdapter.notifyDataSetChanged();
+            UserFragment.notifyHomeAdapterChanged();
             return;
         }
 
@@ -655,9 +689,9 @@ public class HomeActivity extends BaseActivity {
             } else {
                 doExit();
             }
-        } else if (baseLazyFragment instanceof UserFragment && UserFragment.tvHotListForGrid.canScrollVertically(-1)) {
+        } else if (baseLazyFragment instanceof UserFragment && UserFragment.canScrollUp()) {
             // 如果 UserFragment 列表可以向上滚动，则滚动到顶部
-            UserFragment.tvHotListForGrid.scrollToPosition(0);
+            UserFragment.scrollToTop();
             this.mGridView.setSelection(0);
         } else {
             doExit();
@@ -667,22 +701,37 @@ public class HomeActivity extends BaseActivity {
     private void doExit() {
         // 如果两次返回间隔小于 2000 毫秒，则退出应用
         if (System.currentTimeMillis() - mExitTime < 2000) {
-            AppManager.getInstance().finishAllActivity();
-            EventBus.getDefault().unregister(this);
-            ControlManager.get().stopServer();
-            finish();
-            android.os.Process.killProcess(android.os.Process.myPid());
-            System.exit(0);
+            try {
+                EventBus.getDefault().unregister(this);
+            } catch (Exception e) {
+            }
+            try {
+                ControlManager.get().stopServer();
+            } catch (Exception e) {
+            }
+            try {
+                UpdateCheckManager.get().shutdown();
+            } catch (Exception e) {
+            }
+            // 关键修复：使用appExit直接退出，确保应用真正退出
+            AppManager.getInstance().appExit(0);
         } else {
             // 否则仅提示用户，再按一次退出应用
             mExitTime = System.currentTimeMillis();
-            Toast.makeText(mContext, getString(R.string.hm_exit), Toast.LENGTH_SHORT).show();
+            ToastHelper.showToast(mContext, getString(R.string.hm_exit));
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (mFromSettings) {
+            mFromSettings = false;
+            String apiUrl = Hawk.get(HawkConfig.API_URL, "");
+            if (apiUrl.isEmpty()) {
+                initData();
+            }
+        }
 
         // takagen99 : Switch to show / hide source title
         SourceBean home = ApiConfig.get().getHomeSourceBean();
@@ -707,6 +756,12 @@ public class HomeActivity extends BaseActivity {
             tvMenu.setVisibility(View.GONE);
         }
         mHandler.post(mRunnable);
+        
+        int currentHomeRec = Hawk.get(HawkConfig.HOME_REC, 0);
+        if (lastHomeRec != -1 && lastHomeRec != currentHomeRec) {
+            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_HOME_REC_CHANGE));
+        }
+        lastHomeRec = currentHomeRec;
     }
 
     @Override
@@ -717,6 +772,9 @@ public class HomeActivity extends BaseActivity {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
         if (event.type == RefreshEvent.TYPE_PUSH_URL) {
             if (ApiConfig.get().getSource("push_agent") != null) {
                 Intent newIntent = new Intent(mContext, DetailActivity.class);
@@ -728,6 +786,32 @@ public class HomeActivity extends BaseActivity {
         } else if (event.type == RefreshEvent.TYPE_FILTER_CHANGE) {
             if (currentView != null) {
 //                showFilterIcon((int) event.obj);
+            }
+        } else if (event.type == RefreshEvent.TYPE_STORAGE_PERMISSION_DENIED) {
+            // Python爬虫等功能需要存储权限
+            new AlertDialog.Builder(this)
+                    .setTitle("权限提醒")
+                    .setMessage("部分功能需要存储权限才能正常使用，是否前往设置开启权限？")
+                    .setPositiveButton("去设置", (dialog, which) -> {
+                        XXPermissions.startPermissionActivity(this, DefaultConfig.StoragePermissionGroup());
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+        } else if (event.type == RefreshEvent.TYPE_PY_LOADER_READY) {
+            // pyLoader 初始化完成，如果当前首页是 py 源则重新加载
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")
+                    && dataInitOk && jarInitOk) {
+                // 直接调用 initData 重新加载，会检查 pyLoader 状态并加载数据
+                initData();
+            }
+        } else if (event.type == RefreshEvent.TYPE_PY_LOADER_ERROR) {
+            // pyLoader 初始化失败，显示错误提示
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            if (homeSource != null && homeSource.getApi() != null
+                    && homeSource.getApi().contains(".py")) {
+                ToastHelper.showToast("当前数据源加载失败，可尝试切换其它数据源或重启应用");
             }
         }
     }
@@ -840,9 +924,19 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().unregister(this);
-        AppManager.getInstance().appExit(0);
-        ControlManager.get().stopServer();
+        // 先注销EventBus,防止内存泄露
+        try {
+            EventBus.getDefault().unregister(this);
+        } catch (Throwable th) {
+        }
+        mHandler.removeCallbacksAndMessages(null);
+        try {
+            ControlManager.get().stopServer();
+        } catch (Exception e) {
+        }
+        // 取消Toast，防止内存泄漏
+        ToastHelper.cancelToast();
+        res = null;
     }
 
     // Site Switch on Home Button
@@ -909,16 +1003,18 @@ public class HomeActivity extends BaseActivity {
 
     void reloadHome() {
         Intent intent = new Intent(getApplicationContext(), HomeActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         Bundle bundle = new Bundle();
         bundle.putBoolean("useCache", true);
         intent.putExtras(bundle);
-        HomeActivity.this.startActivity(intent);
+        startActivity(intent);
+        finish();
     }
 
     private void refreshEmpty() {
         skipNextUpdate=true;
         showSuccess();
+        ApiConfig.get().cancelCurrentRequest();
         sortAdapter.setNewData(DefaultConfig.adjustSort(ApiConfig.get().getHomeSourceBean().getKey(), new ArrayList<>(), true));
         initViewPager(null);
         tvName.clearAnimation();
@@ -933,13 +1029,97 @@ public class HomeActivity extends BaseActivity {
         blinkAnimation.setRepeatCount(Animation.INFINITE);
         tvName.startAnimation(blinkAnimation);
     }
-//    public void onClick(View v) {
-//        FastClickCheckUtil.check(v);
-//        if (v.getId() == R.id.tvFind) {
-//            jumpActivity(SearchActivity.class);
-//        } else if (v.getId() == R.id.tvMenu) {
-//            jumpActivity(SettingActivity.class);
-//        }
-//    }
 
+    private boolean hasStoragePermission() {
+        // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showStoragePermissionDialog(Runnable onGranted) {
+        // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            new AlertDialog.Builder(HomeActivity.this)
+                    .setTitle("权限提醒")
+                    .setMessage("需要所有文件访问权限才能清理缓存。是否前往设置开启权限？")
+                    .setPositiveButton("去设置", (dialog, which) -> {
+                        XXPermissions.startPermissionActivity(HomeActivity.this, DefaultConfig.StoragePermissionGroup());
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+
+        // Android 10 及以下申请传统存储权限
+        XXPermissions.with(this)
+                .permission(DefaultConfig.StoragePermissionGroup())
+                .request(new OnPermissionCallback() {
+                    @Override
+                    public void onGranted(List<String> permissions, boolean all) {
+                        onGranted.run();
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions, boolean never) {
+                        new AlertDialog.Builder(HomeActivity.this)
+                                .setTitle("权限提醒")
+                                .setMessage("存储权限被拒绝，无法清理缓存。是否前往设置开启权限？")
+                                .setPositiveButton("去设置", (dialog, which) -> {
+                                    XXPermissions.startPermissionActivity(HomeActivity.this, permissions);
+                                })
+                                .setNegativeButton("取消", null)
+                                .show();
+                    }
+                });
+    }
+
+    private void clearCacheAndReload() {
+        isClearingCache = true;
+
+        File dir = getCacheDir();
+        FileUtils.recursiveDelete(dir);
+        dir = getExternalCacheDir();
+        FileUtils.recursiveDelete(dir);
+        ToastHelper.showToast(getString(R.string.hm_cache_del));
+        if(dataInitOk && jarInitOk){
+            SourceBean homeSource = ApiConfig.get().getHomeSourceBean();
+            if (homeSource == null) {
+                isClearingCache = false;
+                return;
+            }
+            String cspCachePath = FileUtils.getFilePath()+"/csp/";
+            String jar = homeSource.getJar();
+            String jarUrl = (jar != null && !jar.isEmpty()) ? jar : ApiConfig.get().getSpider();
+            if (jarUrl == null || jarUrl.isEmpty()) {
+                isClearingCache = false;
+                return;
+            }
+            File cspCacheDir = new File(cspCachePath + MD5.string2MD5(jarUrl)+".jar");
+            if (!cspCacheDir.exists()){
+                reloadHome();
+                return;
+            }
+            AppTaskExecutor.getInstance().executeOnDeskIO(() -> {
+                try {
+                    FileUtils.deleteFile(cspCacheDir);
+                    ApiConfig.get().clearJarLoader();
+                    mHandler.post(() -> {
+                        reloadHome();
+                    });
+                } catch (Exception e) {
+                    mHandler.post(() -> {
+                        isClearingCache = false;
+                    });
+                    LOG.e(e);
+                }
+            });
+        } else {
+            isClearingCache = false;
+        }
+    }
 }

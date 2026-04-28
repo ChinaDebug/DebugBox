@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.util.LocalIPAddress;
+import com.github.tvbox.osc.util.LOG;
 import com.p2p.P2PClass;
 
 import java.io.UnsupportedEncodingException;
@@ -46,7 +47,7 @@ public class Jianpian {
                 App.getp2p().P2Pdoxdel(App.burl.getBytes("GBK"));
                 App.burl = "";
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         }
     }

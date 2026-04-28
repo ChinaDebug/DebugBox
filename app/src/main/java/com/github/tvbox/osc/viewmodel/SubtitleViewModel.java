@@ -58,9 +58,8 @@ public class SubtitleViewModel extends ViewModel {
             subtitleData.setIsZip(isZip);
             searchResult.postValue(subtitleData);
         } catch (Throwable e) {
-            e.printStackTrace();
-            searchResult.postValue(null);
             LOG.e(e);
+            searchResult.postValue(null);
         }
     }
 
@@ -74,7 +73,12 @@ public class SubtitleViewModel extends ViewModel {
             }
             if (page == 1) pagesTotal = -1;//第一页时 重置页大小
             String searchApiUrl = "https://secure.assrt.net/sub/";
+            String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             OkGo.<String>get(searchApiUrl)
+                    .headers("User-Agent", ua)
+                    .headers("Referer", "https://secure.assrt.net/")
+                    .headers("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                    .headers("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                     .params("searchword", title)
                     .params("sort", "rank")
                     .params("page", page)
@@ -106,7 +110,8 @@ public class SubtitleViewModel extends ViewModel {
                                     }
                                 }
                             } catch (Throwable th) {
-                                th.printStackTrace();
+                                LOG.e(th);
+                                setSearchListData(null, page <= 1, true);
                             }
                         }
 
@@ -122,8 +127,8 @@ public class SubtitleViewModel extends ViewModel {
                         }
                     });
         } catch (Exception e) {
-            e.printStackTrace();
             LOG.e(e);
+            setSearchListData(null, page <= 1, true);
         }
     }
 
@@ -132,7 +137,12 @@ public class SubtitleViewModel extends ViewModel {
     private void getSearchResultSubtitleUrlsFromAssrt(SubtitleBean subtitle) {
         try {
             String url = subtitle.getUrl();
-            OkGo.<String>get(url).execute(new AbsCallback<String>() {
+            String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+            OkGo.<String>get(url)
+                    .headers("User-Agent", ua)
+                    .headers("Referer", "https://secure.assrt.net/")
+                    .headers("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                    .execute(new AbsCallback<String>() {
                 @Override
                 public void onSuccess(com.lzy.okgo.model.Response<String> response) {
                     try {
@@ -175,7 +185,8 @@ public class SubtitleViewModel extends ViewModel {
                             }
                         }
                     } catch (Throwable th) {
-                        th.printStackTrace();
+                        LOG.e(th);
+                        setSearchListData(null, true, false);
                     }
                 }
 
@@ -191,18 +202,20 @@ public class SubtitleViewModel extends ViewModel {
                 }
             });
         } catch (Exception e) {
-            e.printStackTrace();
             LOG.e(e);
+            setSearchListData(null, true, true);
         }
     }
 
     private void getSubtitleUrlFromAssrt(SubtitleBean subtitle, SearchSubtitleDialog.SubtitleLoader subtitleLoader) {
-        String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36";
+        String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
         Request request = new Request.Builder()
                 .url(subtitle.getUrl())
                 .get()
-                .addHeader("Referer", "https://secure.assrt.net")
+                .addHeader("Referer", "https://secure.assrt.net/")
                 .addHeader("User-Agent", ua)
+                .addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                .addHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                 .build();
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .readTimeout(15, TimeUnit.SECONDS)
@@ -215,7 +228,7 @@ public class SubtitleViewModel extends ViewModel {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
 
             @Override

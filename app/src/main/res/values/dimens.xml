@@ -59,18 +59,22 @@
     <dimen name="vs_214">214mm</dimen>
     <dimen name="vs_225">225mm</dimen>
     <dimen name="vs_240">240mm</dimen>
+    <dimen name="vs_250">250mm</dimen>
     <dimen name="vs_260">260mm</dimen>
     <dimen name="vs_280">280mm</dimen>
     <dimen name="vs_300">300mm</dimen>
+    <dimen name="vs_320">320mm</dimen>
     <dimen name="vs_340">340mm</dimen>
     <dimen name="vs_400">400mm</dimen>
     <dimen name="vs_420">420mm</dimen>
     <dimen name="vs_440">440mm</dimen>
+    <dimen name="vs_450">450mm</dimen>
     <dimen name="vs_460">460mm</dimen>
     <dimen name="vs_480">480mm</dimen>
     <dimen name="vs_530">530mm</dimen>
     <dimen name="vs_600">600mm</dimen>
     <dimen name="vs_640">640mm</dimen>
+    <dimen name="vs_700">700mm</dimen>
     <dimen name="vs_720">720mm</dimen>
     <dimen name="vs_960">960mm</dimen>
 </resources>

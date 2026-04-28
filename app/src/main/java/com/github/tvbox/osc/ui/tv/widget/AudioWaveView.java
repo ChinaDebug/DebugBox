@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.view.View;
@@ -22,16 +23,12 @@ public class AudioWaveView extends View {
     private RectF rectF7;
     private int viewWidth;
     private int viewHeight;
-    /** 每个条的宽度 */
     private int rectWidth;
-    /** 条数 */
     private int columnCount = 7;
-    /** 条间距 */
     private final int space = 8;
-    /** 条随机高度 */
     private int randomHeight;
     private Random random;
-    private Handler handler = new Handler() {
+    private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
             invalidate();
@@ -107,6 +104,12 @@ public class AudioWaveView extends View {
         canvas.drawRect(rectF6, paint);
         canvas.drawRect(rectF7, paint);
 
-        handler.sendEmptyMessageDelayed(0, 300); //每间隔200毫秒发送消息刷新
+        handler.sendEmptyMessageDelayed(0, 300);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        handler.removeCallbacksAndMessages(null);
     }
 }

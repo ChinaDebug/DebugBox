@@ -1,12 +1,16 @@
 package com.github.tvbox.osc.util;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Environment;
 import android.text.TextUtils;
+
+import androidx.core.content.ContextCompat;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -15,6 +19,7 @@ import com.github.tvbox.osc.bean.MovieSort;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.activity.HomeActivity;
+import com.github.tvbox.osc.util.LOG;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.hjq.permissions.Permission;
@@ -40,22 +45,24 @@ public class DefaultConfig {
         List<MovieSort.SortData> data = new ArrayList<>();
         if (sourceKey != null) {
             SourceBean sb = ApiConfig.get().getSource(sourceKey);
-            ArrayList<String> categories = sb.getCategories();
-            if (!categories.isEmpty()) {
-                for (String cate : categories) {
-                    for (MovieSort.SortData sortData : list) {
-                        if (sortData.name.equals(cate)) {
-                            if (sortData.filters == null)
-                                sortData.filters = new ArrayList<>();
-                            data.add(sortData);
+            if (sb != null) {
+                ArrayList<String> categories = sb.getCategories();
+                if (categories != null && !categories.isEmpty()) {
+                    for (String cate : categories) {
+                        for (MovieSort.SortData sortData : list) {
+                            if (sortData.name.equals(cate)) {
+                                if (sortData.filters == null)
+                                    sortData.filters = new ArrayList<>();
+                                data.add(sortData);
+                            }
                         }
                     }
-                }
-            } else {
-                for (MovieSort.SortData sortData : list) {
-                    if (sortData.filters == null)
-                        sortData.filters = new ArrayList<>();
-                    data.add(sortData);
+                } else {
+                    for (MovieSort.SortData sortData : list) {
+                        if (sortData.filters == null)
+                            sortData.filters = new ArrayList<>();
+                        data.add(sortData);
+                    }
                 }
             }
         }
@@ -72,16 +79,29 @@ public class DefaultConfig {
             PackageInfo packageInfo = pm.getPackageInfo(mContext.getPackageName(), 0);
             return packageInfo.versionCode;
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return -1;
     }
 
-    public static void resetApp(Context mContext){
-        //使用
+    public static boolean resetApp(Context mContext){
+        if (!hasStoragePermission(mContext)) {
+            return false;
+        }
         clearPublic(mContext);
         clearPrivate(mContext);
         restartApp();
+        return true;
+    }
+
+    private static boolean hasStoragePermission(Context context) {
+        // Android 11+ (API 30+) 检查 MANAGE_EXTERNAL_STORAGE 特殊权限
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要检查此权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
     }
 
     public static void restartApp() {
@@ -133,13 +153,12 @@ public class DefaultConfig {
     }
 
     public static String getPackageName(Context mContext) {
-        //包管理操作管理类
         PackageManager pm = mContext.getPackageManager();
         try {
             PackageInfo packageInfo = pm.getPackageInfo(mContext.getPackageName(), 0);
             return packageInfo.packageName;
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return "";
     }
@@ -150,7 +169,7 @@ public class DefaultConfig {
             PackageInfo packageInfo = pm.getPackageInfo(mContext.getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return "";
     }
@@ -183,31 +202,62 @@ public class DefaultConfig {
         return start > -1 ? fileName.substring(0, start) : fileName;
     }
 
-    // takagen99 : 增加对flv|avi|mkv|rm|wmv|mpg等几种视频格式的支持
     private static final Pattern snifferMatch = Pattern.compile(
-            "http((?!http).){20,}?\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg)\\?.*|" +
-                    "http((?!http).){20,}\\.(m3u8|mp4|flv|avi|mkv|rm|wmv|mpg)|" +
-                    "http((?!http).)*?video/tos*|" +
-                    "http((?!http).){20,}?/m3u8\\?pt=m3u8.*|" +
-                    "http((?!http).)*?default\\.ixigua\\.com/.*|" +
-                    "http((?!http).)*?dycdn-tos\\.pstatp[^\\?]*|" +
-                    "http.*?/player/m3u8play\\.php\\?url=.*|" +
-                    "http.*?/player/.*?[pP]lay\\.php\\?url=.*|" +
-                    "http.*?/playlist/m3u8/\\?vid=.*|" +
-                    "http.*?\\.php\\?type=m3u8&.*|" +
-                    "http.*?/download.aspx\\?.*|" +
-                    "http.*?/api/up_api.php\\?.*|" +
-                    "https.*?\\.66yk\\.cn.*|" +
-                    "http((?!http).)*?netease\\.com/file/.*"
+            "https?((?!https?).){10,}?\\.(m3u8|mp4|flv|avi|mkv|rm|rmvb|wmv|mpg|mpeg|mov|ts|webm|f4v|3gp|asf|vob)(\\?|$|#)|" +
+            "https?((?!https?).)*?video/tos[^\\?]*|" +
+            "https?((?!https?).){10,}?/m3u8\\?pt=m3u8.*|" +
+            "https?((?!https?).)*?default\\.ixigua\\.com/.*|" +
+            "https?((?!https?).)*?dycdn-tos\\.pstatp[^\\?]*|" +
+            "https?((?!https?).)*?bytecdn\\.cn/.*|" +
+            "https?((?!https?).)*?bytednsdoc\\.com/.*|" +
+            "https?.*?/player/m3u8play\\.php\\?url=.*|" +
+            "https?.*?/player/.*?[pP]lay\\.php\\?url=.*|" +
+            "https?.*?/playlist/m3u8/\\?vid=.*|" +
+            "https?.*?\\.php\\?type=m3u8&.*|" +
+            "https?.*?/download\\.aspx\\?.*|" +
+            "https?.*?/api/up_api\\.php\\?.*|" +
+            "https?.*?\\.66yk\\.cn.*|" +
+            "https?((?!https?).)*?netease\\.com/file/.*|" +
+            "https?((?!https?).)*?\\.m3u8\\.cdn.*|" +
+            "https?((?!https?).)*?/video/.*\\.m3u8.*|" +
+            "https?((?!https?).)*?cdn.*?/.*\\.(m3u8|mp4|ts).*|" +
+            "https?((?!https?).)*?/play/.*\\.(m3u8|mp4).*|" +
+            "https?((?!https?).)*?/stream/.*\\.(m3u8|mp4|ts).*|" +
+            "https?((?!https?).)*?/media/.*\\.(m3u8|mp4|ts).*|" +
+            "https?((?!https?).)*?/hls/.*\\.(m3u8|ts).*|" +
+            "https?((?!https?).)*?/dash/.*\\.(mpd|m4s).*"
     );
     public static boolean isVideoFormat(String url) {
         if (url.contains("=http")) {
             return false;
         }
         if (snifferMatch.matcher(url).find()) {
-            return !url.contains(".js") && !url.contains(".css") && !url.contains(".jpg") && !url.contains(".png") && !url.contains(".gif") && !url.contains(".ico") && !url.contains("rl=") && !url.contains(".html");
+            String lowerUrl = url.toLowerCase();
+            return !lowerUrl.contains(".js")
+                && !lowerUrl.contains(".css")
+                && !lowerUrl.contains(".jpg")
+                && !lowerUrl.contains(".jpeg")
+                && !lowerUrl.contains(".png")
+                && !lowerUrl.contains(".gif")
+                && !lowerUrl.contains(".ico")
+                && !lowerUrl.contains(".webp")
+                && !lowerUrl.contains(".svg")
+                && !lowerUrl.contains(".woff")
+                && !lowerUrl.contains(".ttf")
+                && !lowerUrl.contains("rl=")
+                && !isHtmlFile(url);
         }
         return false;
+    }
+
+    private static boolean isHtmlFile(String url) {
+        int queryStart = url.indexOf('?');
+        int hashStart = url.indexOf('#');
+        int pathEnd = url.length();
+        if (queryStart > 0) pathEnd = Math.min(pathEnd, queryStart);
+        if (hashStart > 0) pathEnd = Math.min(pathEnd, hashStart);
+        String path = url.substring(0, pathEnd).toLowerCase();
+        return path.endsWith(".html") || path.endsWith(".htm");
     }
 
 
@@ -258,8 +308,18 @@ public class DefaultConfig {
     }
 
     public static String[] StoragePermissionGroup() {
+        // Android 11+ (API 30+) 使用 MANAGE_EXTERNAL_STORAGE
+        // 注意：只有当应用的 targetSdkVersion >= 30 时才需要申请此权限
+        Context context = App.getInstance();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            return new String[] {
+                    Permission.MANAGE_EXTERNAL_STORAGE
+            };
+        }
+        // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
         return new String[] {
-                Permission.MANAGE_EXTERNAL_STORAGE                
+                Permission.READ_EXTERNAL_STORAGE,
+                Permission.WRITE_EXTERNAL_STORAGE
         };
     }
 

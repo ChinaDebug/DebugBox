@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.github.tvbox.osc">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -46,10 +45,11 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".ui.activity.HomeActivity"
+            android:name=".ui.activity.SplashActivity"
             android:screenOrientation="sensorLandscape"
             android:exported="true"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" >
+            android:theme="@style/SplashTheme"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -57,6 +57,12 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.activity.HomeActivity"
+            android:screenOrientation="sensorLandscape"
+            android:exported="false"
+            android:theme="@style/SplashTheme"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" />
         <activity
             android:name=".ui.activity.PlayActivity"
             android:screenOrientation="sensorLandscape"
@@ -141,13 +147,6 @@
         <meta-data
             android:name="design_height_in_dp"
             android:value="720" />
-
-        <meta-data
-            android:name="xwalk_enable_download_mode"
-            android:value="enable" />
-        <meta-data
-            android:name="xwalk_verify"
-            android:value="disable" />
     </application>
 
 </manifest>

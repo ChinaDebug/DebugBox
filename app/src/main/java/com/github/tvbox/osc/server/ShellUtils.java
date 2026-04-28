@@ -1,5 +1,7 @@
 package com.github.tvbox.osc.server;
 
+import com.github.tvbox.osc.util.LOG;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -146,9 +148,9 @@ public class ShellUtils {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(e);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.e(e);
         } finally {
             try {
                 if (os != null) {
@@ -161,7 +163,7 @@ public class ShellUtils {
                     errorResult.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
             if (process != null) {
                 process.destroy();

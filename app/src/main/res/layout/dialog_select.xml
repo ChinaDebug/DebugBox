@@ -7,7 +7,7 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/cl_root"
-        android:layout_width="@dimen/vs_480"
+        android:layout_width="@dimen/vs_420"
         android:layout_height="match_parent"
         android:layout_gravity="center"
         android:layout_margin="@dimen/vs_50"
@@ -44,7 +44,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             app:layout_constrainedHeight="true"
-            app:layout_constraintHeight_max="@dimen/vs_340"
+            app:layout_constraintHeight_max="@dimen/vs_240"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/title"

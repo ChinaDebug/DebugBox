@@ -8,6 +8,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.tvbox.osc.util.ToastHelper;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
@@ -26,6 +28,7 @@ import com.github.tvbox.osc.ui.adapter.FastListAdapter;
 import com.github.tvbox.osc.ui.adapter.FastSearchAdapter;
 import com.github.tvbox.osc.ui.adapter.SearchWordAdapter;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.google.gson.Gson;
@@ -44,6 +47,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.lang.ref.WeakReference;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -93,7 +97,7 @@ public class FastSearchActivity extends BaseActivity {
                     filterResult(sb);
                 }
             } catch (Exception e) {
-                Toast.makeText(FastSearchActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
+                ToastHelper.showToast(e.toString());
             }
         }
     };
@@ -121,7 +125,9 @@ public class FastSearchActivity extends BaseActivity {
             searchExecutorService = Executors.newFixedThreadPool(5);
             allRunCount.set(pauseRunnable.size());
             for (Runnable runnable : pauseRunnable) {
-                searchExecutorService.execute(runnable);
+                if (runnable instanceof SearchRunnable) {
+                    searchExecutorService.execute(runnable);
+                }
             }
             pauseRunnable.clear();
             pauseRunnable = null;
@@ -210,7 +216,7 @@ public class FastSearchActivity extends BaseActivity {
                             JsLoader.stopAll();
                         }
                     } catch (Throwable th) {
-                        th.printStackTrace();
+                        LOG.e(th);
                     }
                     Bundle bundle = new Bundle();
                     bundle.putString("id", video.id);
@@ -236,7 +242,7 @@ public class FastSearchActivity extends BaseActivity {
                             JsLoader.stopAll();
                         }
                     } catch (Throwable th) {
-                        th.printStackTrace();
+                        LOG.e(th);
                     }
                     Bundle bundle = new Bundle();
                     bundle.putString("id", video.id);
@@ -312,7 +318,7 @@ public class FastSearchActivity extends BaseActivity {
                                 quickSearchWord.add(je.getAsJsonObject().get("word").getAsString());
                             }
                         } catch (Throwable th) {
-                            th.printStackTrace();
+                            LOG.e(th);
                         }
                         quickSearchWord.add(searchTitle);
                         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, quickSearchWord));
@@ -400,7 +406,7 @@ public class FastSearchActivity extends BaseActivity {
                 JsLoader.stopAll();
             }
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         } finally {
             searchAdapter.setNewData(new ArrayList<>());
             searchAdapterFilter.setNewData(new ArrayList<>());
@@ -431,16 +437,33 @@ public class FastSearchActivity extends BaseActivity {
         }
 
         for (String key : siteKey) {
-            searchExecutorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        sourceViewModel.getSearch(key, searchTitle);
-                    } catch (Exception e) {
+            searchExecutorService.execute(new SearchRunnable(this, key, searchTitle));
+        }
+    }
 
-                    }
+    private static class SearchRunnable implements Runnable {
+        private final WeakReference<FastSearchActivity> activityRef;
+        private final String sourceKey;
+        private final String title;
+
+        SearchRunnable(FastSearchActivity activity, String key, String searchTitle) {
+            this.activityRef = new WeakReference<>(activity);
+            this.sourceKey = key;
+            this.title = searchTitle;
+        }
+
+        @Override
+        public void run() {
+            if (Thread.currentThread().isInterrupted()) {
+                return;
+            }
+            FastSearchActivity activity = activityRef.get();
+            if (activity != null && !activity.isFinishing() && activity.sourceViewModel != null) {
+                try {
+                    activity.sourceViewModel.getSearch(sourceKey, title);
+                } catch (Exception e) {
                 }
-            });
+            }
         }
     }
 
@@ -506,6 +529,7 @@ public class FastSearchActivity extends BaseActivity {
 
     private void cancel() {
         OkGo.getInstance().cancelTag("search");
+        OkGo.getInstance().cancelTag("fenci");
     }
 
     @Override
@@ -518,8 +542,11 @@ public class FastSearchActivity extends BaseActivity {
                 searchExecutorService = null;
                 JsLoader.stopAll();
             }
+            if (sourceViewModel != null) {
+                sourceViewModel.shutdownNow();
+            }
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
         EventBus.getDefault().unregister(this);
     }

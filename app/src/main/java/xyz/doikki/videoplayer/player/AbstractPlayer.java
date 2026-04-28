@@ -151,6 +151,13 @@ public abstract class AbstractPlayer {
     public abstract long getTcpSpeed();
 
     /**
+     * 判断当前播放的是否是直播流
+     */
+    public boolean isLive() {
+        return false;
+    }
+
+    /**
      * 绑定VideoView
      */
     public void setPlayerEventListener(PlayerEventListener playerEventListener) {

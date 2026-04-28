@@ -51,4 +51,10 @@ public interface MediaPlayerControl {
     void stopTinyScreen();
 
     boolean isTinyScreen();
+
+    void saveProgressDebounced();
+
+    void saveProgressOnInterval();
+
+    boolean isLive();
 }

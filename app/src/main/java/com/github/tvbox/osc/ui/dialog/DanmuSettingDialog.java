@@ -43,7 +43,7 @@ public class DanmuSettingDialog extends BaseDialog {
     }
 
     private void initOnOff(){
-        Boolean defaultVal = danmakuView.isShown();
+        Boolean defaultVal = HawkUtils.getDanmuOpen();
         ArrayList<Boolean> players = new ArrayList<>();
         players.add(true);
         players.add(false);
@@ -51,11 +51,9 @@ public class DanmuSettingDialog extends BaseDialog {
         setAdapter(R.id.trv_onoff,new ButtonAdapter.SelectDialogInterface<Boolean>() {
             @Override
             public void click(Boolean value, int pos) {
-                if(value){
-                    danmakuView.show();
-                }else{
-                    danmakuView.hide();
-                }
+                HawkUtils.setDanmuOpen(value);
+                // 开启弹幕时需要重新加载，关闭时不需要
+                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SET_DANMU_SETTINGS, value));
             }
             @Override
             public String getDisplay(Boolean val) {
@@ -83,6 +81,7 @@ public class DanmuSettingDialog extends BaseDialog {
             @Override
             public void click(Boolean value, int pos) {
                 HawkUtils.setDanmuColor(value);
+                // 颜色设置改变需要重新加载弹幕才能生效
                 EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SET_DANMU_SETTINGS,true));
             }
             @Override

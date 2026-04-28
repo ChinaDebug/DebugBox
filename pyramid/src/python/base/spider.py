@@ -1,6 +1,5 @@
 import re
 import os
-import json
 import time
 import requests
 from lxml import etree
@@ -8,11 +7,29 @@ from abc import abstractmethod, ABCMeta
 from importlib.machinery import SourceFileLoader
 from base.localProxy import Proxy
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+_PATTERN_HTML_TAGS = re.compile(r'<.*?>')
+_PATTERN_EMOJI = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]')
+
 class Spider(metaclass=ABCMeta):
     _instance = None
+    _session = None
 
     def __init__(self):
         self.extend = ''
+        if Spider._session is None:
+            Spider._session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=10,
+                pool_maxsize=20,
+                max_retries=3
+            )
+            Spider._session.mount('http://', adapter)
+            Spider._session.mount('https://', adapter)
 
     def __new__(cls, *args, **kwargs):
         if cls._instance:
@@ -82,33 +99,28 @@ class Spider(metaclass=ABCMeta):
         return src
 
     def removeHtmlTags(self, src):
-        clean = re.compile('<.*?>')
-        return re.sub(clean, '', src)
+        return _PATTERN_HTML_TAGS.sub('', src)
 
     def cleanText(self, src):
-        clean = re.sub('[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]', '',
-                       src)
-        return clean
+        return _PATTERN_EMOJI.sub('', src)
 
     def fetch(self, url, params=None, cookies=None, headers=None, timeout=5, verify=True, stream=False,
               allow_redirects=True):
-        rsp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=timeout, verify=verify,
-                           stream=stream, allow_redirects=allow_redirects)
+        rsp = self._session.get(url, params=params, cookies=cookies, headers=headers, timeout=timeout, verify=verify,
+                                stream=stream, allow_redirects=allow_redirects)
         rsp.encoding = 'utf-8'
         return rsp
 
     def _clean_header_value(self, value):
         cleaned = value.strip()
         if cleaned.startswith("<!DOCTYPE html>"):
-            cleaned = "DefaultValue"  # 根据需求替换为合适的默认值
+            cleaned = "DefaultValue"
         return cleaned
 
     def post(self, url, params=None, data=None, json=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects=True):
-        # 如果 headers 不为 None，则对其进行预处理
         if headers:
             headers = {k: self._clean_header_value(v) for k, v in headers.items()}
-
-        rsp = requests.post(url, params=params, data=data, json=json, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
+        rsp = self._session.post(url, params=params, data=data, json=json, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
         rsp.encoding = 'utf-8'
         return rsp
 

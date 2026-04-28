@@ -5,11 +5,24 @@
 # Date  : 2022/8/25
 # upDate  : 2022/11/17 支持 -- 剔除元素 多个剔除
 
-import ujson
+try:
+    import ujson as json
+except ImportError:
+    import json
 from pyquery import PyQuery as pq
 from urllib.parse import urljoin
 import re
-from jsonpath import jsonpath
+try:
+    from jsonpath import jsonpath
+except ImportError:
+    from jsonpath_ng import parse as jsonpath_parse
+    def jsonpath(obj, expr):
+        try:
+            result = [match.value for match in jsonpath_parse(expr).find(obj)]
+            return result if result else None
+        except Exception as e:
+            print(f'jsonpath解析错误: {e}, expr: {expr}')
+            return None
 
 PARSE_CACHE = True  # 解析缓存
 NOADD_INDEX = ':eq|:lt|:gt|:first|:last|^body$|^#'  # 不自动加eq下标索引
@@ -222,7 +235,7 @@ class jsoup:
         if isinstance(html, str):
             # print(html)
             try:
-                html = ujson.loads(html)
+                html = json.loads(html)
                 # html = eval(html)
             except:
                 print('字符串转json失败')
@@ -232,8 +245,8 @@ class jsoup:
         ret = ''
         for ps in parse.split('||'):
             ret = jsonpath(html, ps)
-            if isinstance(ret, list):
-                ret = str(ret[0]) if ret[0] else ''
+            if isinstance(ret, list) and len(ret) > 0:
+                ret = str(ret[0]) if ret[0] is not None else ''
             else:
                 ret = str(ret) if ret else ''
             if add_url and ret:
@@ -251,7 +264,7 @@ class jsoup:
             return []
         if isinstance(html, str):
             try:
-                html = ujson.loads(html)
+                html = json.loads(html)
             except:
                 return []
         if not parse.startswith('$.'):
@@ -259,13 +272,10 @@ class jsoup:
         # print(html)
         # print(parse)
         ret = jsonpath(html, parse)
-        # print(ret)
-        # print(type(ret))
-        # print(type(ret[0]))
-        # print(len(ret))
-        if isinstance(ret, list) and isinstance(ret[0], list) and len(ret) == 1:
-            # print('自动解包')
-            ret = ret[0]  # 自动解包
+        if ret is None:
+            return []
+        if isinstance(ret, list) and len(ret) > 0 and isinstance(ret[0], list) and len(ret) == 1:
+            ret = ret[0]
         return ret or []
 
 

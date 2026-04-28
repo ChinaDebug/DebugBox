@@ -20,6 +20,7 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.ui.adapter.AppsAdapter;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LOG;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 
@@ -140,11 +141,10 @@ public class AppsActivity extends BaseActivity {
                     isUnInstallClicked = true;
                     appPosition = position;
                 } else {
-                    // Trigger to start activity
                     try {
                         startActivity(getPackageManager().getLaunchIntentForPackage(appInfo.getPack()));
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.e(e);
                     }
                 }
             }

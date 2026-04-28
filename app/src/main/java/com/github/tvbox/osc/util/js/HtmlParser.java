@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util.js;
 
 import android.text.TextUtils;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -35,7 +36,7 @@ public class HtmlParser {
             url = new URL(new URL(parent), child);
             q = url.toExternalForm();
         } catch (MalformedURLException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         //        if (q.contains("#")) {
         //            q = q.replaceAll("^(.+?)#.*?$", "$1");

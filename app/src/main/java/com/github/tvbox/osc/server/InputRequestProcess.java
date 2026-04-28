@@ -1,5 +1,8 @@
 package com.github.tvbox.osc.server;
 
+import com.github.tvbox.osc.api.ApiConfig;
+import com.github.tvbox.osc.bean.SourceBean;
+
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
@@ -64,7 +67,17 @@ public class InputRequestProcess implements RequestProcess {
                         }
                         case "mirror": {
                             //推送当前电影、电视剧……
-                            mDataReceiver.onMirrorReceived(params.get("id").trim(), params.get("sourceKey").trim());
+                            String id = params.get("id");
+                            String sourceKey = params.get("sourceKey");
+                            if (id == null || sourceKey == null) {
+                                return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.BAD_REQUEST, "missing_params");
+                            }
+                            // 检查接收端是否有对应的源配置
+                            SourceBean sourceBean = ApiConfig.get().getSource(sourceKey.trim());
+                            if (sourceBean == null) {
+                                return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "source_not_found");
+                            }
+                            mDataReceiver.onMirrorReceived(id.trim(), sourceKey.trim());
                             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "mirrored");
                         }
                     }

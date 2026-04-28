@@ -6,6 +6,7 @@ import static okhttp3.ConnectionSpec.MODERN_TLS;
 import static okhttp3.ConnectionSpec.RESTRICTED_TLS;
 import com.github.catvod.net.SSLCompat;
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.https.HttpsUtils;
@@ -36,9 +37,10 @@ import okhttp3.internal.Version;
 import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
 public class OkGoHelper {
-    public static final long DEFAULT_MILLISECONDS = 10000;      //默认的超时时间
-
-    //https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/200
+    public static final long DEFAULT_MILLISECONDS = 15000;      //默认的超时时间
+    public static final long CHECK_MILLISECONDS = 5000;          //检测配置地址的超时时间
+    
+    static OkHttpClient checkApiClient = null;
     public static HashMap<Integer, String > httpPhaseMap  = new HashMap<Integer, String>(){{
         put(200,"OK");
         put(301,"Moved Permanently");
@@ -75,7 +77,7 @@ public class OkGoHelper {
         try {
             setOkHttpSsl(builder);
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
         builder.dns(dnsOverHttps);
 
@@ -137,7 +139,7 @@ public class OkGoHelper {
         try {
             setOkHttpSsl(builder);
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
         builder.connectionSpecs(getConnectionSpec());
         builder.cache(new Cache(new File(App.getInstance().getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
@@ -155,6 +157,10 @@ public class OkGoHelper {
 
     public static OkHttpClient getNoRedirectClient() {
         return noRedirectClient;
+    }
+
+    public static OkHttpClient getCheckApiClient() {
+        return checkApiClient;
     }
 
     public static void init() {
@@ -181,7 +187,7 @@ public class OkGoHelper {
         try {
             setOkHttpSsl(builder);
         } catch (Throwable th) {
-            th.printStackTrace();
+            LOG.e(th);
         }
 
         HttpHeaders.setUserAgent(Version.userAgent());
@@ -192,6 +198,19 @@ public class OkGoHelper {
         builder.followRedirects(false);
         builder.followSslRedirects(false);
         noRedirectClient = builder.build();
+
+        OkHttpClient.Builder checkBuilder = new OkHttpClient.Builder();
+        checkBuilder.addInterceptor(loggingInterceptor)
+                .readTimeout(CHECK_MILLISECONDS, TimeUnit.MILLISECONDS)
+                .writeTimeout(CHECK_MILLISECONDS, TimeUnit.MILLISECONDS)
+                .connectTimeout(CHECK_MILLISECONDS, TimeUnit.MILLISECONDS)
+                .dns(dnsOverHttps);
+        try {
+            setOkHttpSsl(checkBuilder);
+        } catch (Throwable th) {
+            LOG.e(th);
+        }
+        checkApiClient = checkBuilder.build();
 
         initExoOkHttpClient();        
     }

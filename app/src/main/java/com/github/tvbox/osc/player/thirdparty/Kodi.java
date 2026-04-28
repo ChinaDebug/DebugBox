@@ -7,9 +7,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Parcelable;
-import android.util.Log;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -51,9 +51,9 @@ public class Kodi {
                 if (info.enabled)
                     return pkg;
                 else
-                    Log.v(TAG, "Kodi package `" + pkg.packageName + "` is disabled.");
+                    LOG.d(TAG, "Kodi package `" + pkg.packageName + "` is disabled.");
             } catch (PackageManager.NameNotFoundException ex) {
-                Log.v(TAG, "Kodi package `" + pkg.packageName + "` does not exist.");
+                LOG.d(TAG, "Kodi package `" + pkg.packageName + "` does not exist.");
             }
         }
         return null;
@@ -95,7 +95,7 @@ public class Kodi {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to build Kodi URL", e);
+            LOG.e(TAG, "Failed to build Kodi URL", e);
             return false;
         }
 
@@ -115,7 +115,7 @@ public class Kodi {
                 activity.startActivity(intent);
                 return true;
             } catch (Exception ex) {
-                Log.e(TAG, "Can't run Kodi", ex);
+                LOG.e(TAG, "Can't run Kodi", ex);
                 // 什么也不做，继续循环，尝试下一个 Activity
             }
         }

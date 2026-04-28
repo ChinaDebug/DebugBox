@@ -7,9 +7,9 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.util.Log;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,9 +43,9 @@ public class ReexPlayer {
                 if (info.enabled)
                     return pkg;
                 else
-                    Log.v(TAG, "Reex Player package `" + pkg.packageName + "` is disabled.");
+                    LOG.d(TAG, "Reex Player package `" + pkg.packageName + "` is disabled.");
             } catch (PackageManager.NameNotFoundException ex) {
-                Log.v(TAG, "Reex Player package `" + pkg.packageName + "` does not exist.");
+                LOG.d(TAG, "Reex Player package `" + pkg.packageName + "` does not exist.");
             }
         }
         return null;
@@ -71,7 +71,7 @@ public class ReexPlayer {
                 }
                 intent.putExtra("reex.extra.http_header", json.toString());
             } catch (JSONException e) {
-                e.printStackTrace();
+                LOG.e(TAG, e);
             }
         }
         if (subtitle != null && !subtitle.isEmpty()) {
@@ -81,7 +81,7 @@ public class ReexPlayer {
             activity.startActivity(intent);
             return true;
         } catch (ActivityNotFoundException ex) {
-            Log.e(TAG, "Can't run Reex Player(Pro)", ex);
+            LOG.e(TAG, "Can't run Reex Player(Pro)", ex);
             return false;
         }
     }

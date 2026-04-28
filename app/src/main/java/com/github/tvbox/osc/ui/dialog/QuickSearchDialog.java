@@ -31,7 +31,7 @@ public class QuickSearchDialog extends BaseDialog {
 
     public QuickSearchDialog(@NonNull @NotNull Context context) {
         super(context, R.style.CustomDialogStyleDim);
-        setCanceledOnTouchOutside(false);
+        setCanceledOnTouchOutside(true);
         setCancelable(true);
         setContentView(R.layout.dialog_quick_search);
         init(context);
@@ -57,7 +57,7 @@ public class QuickSearchDialog extends BaseDialog {
         setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialog) {
-                EventBus.getDefault().unregister(this);
+                EventBus.getDefault().unregister(QuickSearchDialog.this);
             }
         });
         mGridView = findViewById(R.id.mGridView);

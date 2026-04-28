@@ -1,23 +1,21 @@
-plugins {
-    id 'com.android.library'
-    id 'com.chaquo.python'
-}
+apply plugin: 'com.android.library'
+apply plugin: 'com.chaquo.python'
 
 android {
+    namespace 'com.undcover.freedom.pyramid'
     compileSdk 34
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 28
-
+        targetSdkVersion 34
         python {
-            buildPython("D:/Programs/Python/Python38/python.exe")
+            version "3.8"
+            buildPython "py", "-3.8"
             pip {
                 install "lxml"
-                install "ujson"
                 install "pyquery"
                 install "requests"
-                install "jsonpath"
+                install "jsonpath-ng"
                 install "cachetools"
                 install "pycryptodome"
                 install "beautifulsoup4"
@@ -28,7 +26,7 @@ android {
     flavorDimensions "abi"
 
     productFlavors {
-        armeabi {
+        arm32 {
             dimension = "abi"
             ndk {
                 abiFilters 'armeabi-v7a'
@@ -56,14 +54,9 @@ android {
 
     sourceSets {
         main {
-            // Android代码模块
-            setRoot "src/main"
-            // Python代码模块，也就是你的Python源码所在项目中的文件夹
             python.srcDirs = ["src/python"]
         }
     }
-
-    buildToolsVersion '30.0.3'
 }
 
 dependencies {

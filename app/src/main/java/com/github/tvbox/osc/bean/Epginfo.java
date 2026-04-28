@@ -2,7 +2,9 @@ package com.github.tvbox.osc.bean;
 
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 public class Epginfo {
@@ -19,7 +21,7 @@ public class Epginfo {
     public int index;
     public Date epgDate;
     public String currentEpgDate = null;
-    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
+    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
     public Epginfo(Date Date, String str, Date date, String str1, String str2, int pos) {
         epgDate = Date;
@@ -28,13 +30,20 @@ public class Epginfo {
         originStart = str1;
         originEnd = str2;
         index = pos;
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-        SimpleDateFormat userSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+        SimpleDateFormat userSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.getDefault());
         userSimpleDateFormat.setTimeZone(TimeZone.getDefault());
-        startdateTime = userSimpleDateFormat.parse(simpleDateFormat.format(date) + " " + str1 + ":00 GMT+8:00", new ParsePosition(0));
-        enddateTime = userSimpleDateFormat.parse(simpleDateFormat.format(date) + " " + str2 + ":00 GMT+8:00", new ParsePosition(0));
-        SimpleDateFormat zoneFormat = new SimpleDateFormat("HH:mm");
+        String dateStr = simpleDateFormat.format(date);
+        startdateTime = userSimpleDateFormat.parse(dateStr + " " + str1 + ":00 GMT+8:00", new ParsePosition(0));
+        enddateTime = userSimpleDateFormat.parse(dateStr + " " + str2 + ":00 GMT+8:00", new ParsePosition(0));
+        if (enddateTime != null && startdateTime != null && enddateTime.before(startdateTime)) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(enddateTime);
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+            enddateTime = calendar.getTime();
+        }
+        SimpleDateFormat zoneFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         start = zoneFormat.format(startdateTime);
         end = zoneFormat.format(enddateTime);
         datestart = Integer.parseInt(start.replace(":", ""));

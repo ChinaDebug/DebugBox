@@ -6,6 +6,8 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.github.tvbox.osc.util.ToastHelper;
+
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
@@ -68,12 +70,12 @@ public class WebdavDialog extends BaseDialog {
                 String password = etPassword.getText().toString();
                 if(name == null || name.length() == 0)
                 {
-                    Toast.makeText(WebdavDialog.this.getContext(), "请赋予一个空间名称", Toast.LENGTH_SHORT).show();
+                    ToastHelper.showToast(WebdavDialog.this.getContext(), "请赋予一个空间名称");
                     return;
                 }
                 if(url == null || url.length() == 0)
                 {
-                    Toast.makeText(WebdavDialog.this.getContext(), "请务必填入WebDav地址", Toast.LENGTH_SHORT).show();
+                    ToastHelper.showToast(WebdavDialog.this.getContext(), "请务必填入WebDav地址");
                     return;
                 }
                 if(!url.endsWith("/"))

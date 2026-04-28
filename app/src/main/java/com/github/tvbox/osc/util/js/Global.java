@@ -4,6 +4,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.server.ControlManager;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.js.rsa.RSAEncrypt;
 import com.whl.quickjs.wrapper.ContextSetter;
 import com.whl.quickjs.wrapper.Function;
@@ -146,28 +147,28 @@ public class Global {
                 try {
                     mConfig = (String) op.get("config");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("type")) {
                 try {
                     mType = ((Double) op.get("type")).intValue();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("long")) {
                 try {
                     mLong = ((Double) op.get("long")).intValue();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("block")) {
                 try {
                     mBlock = (Boolean) op.get("block");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         }
@@ -224,28 +225,28 @@ public class Global {
                 try {
                     mConfig = (String) op.get("config");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("type")) {
                 try {
                     mType = ((Double) op.get("type")).intValue();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("long")) {
                 try {
                     mLong = ((Double) op.get("long")).intValue();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
             if (op.has("block")) {
                 try {
                     mBlock = (Boolean) op.get("block");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         }

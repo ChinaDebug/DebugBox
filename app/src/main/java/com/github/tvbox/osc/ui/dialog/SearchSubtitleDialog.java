@@ -10,6 +10,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.tvbox.osc.util.ToastHelper;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
@@ -148,7 +150,7 @@ public class SearchSubtitleDialog extends BaseDialog {
             searchWord = wd;
             subtitleViewModel.searchResult(wd, page = 1);
         } else {
-            Toast.makeText(getContext(), "输入内容不能为空", Toast.LENGTH_SHORT).show();
+            ToastHelper.showToast(getContext(), "输入内容不能为空");
         }
     }
 
@@ -157,14 +159,18 @@ public class SearchSubtitleDialog extends BaseDialog {
         subtitleViewModel.searchResult.observe((LifecycleOwner) mContext, new Observer<SubtitleData>() {
             @Override
             public void onChanged(SubtitleData subtitleData) {
-                List<SubtitleBean> data = subtitleData.getSubtitleList();
                 loadingBar.setVisibility(View.GONE);
                 mGridView.setVisibility(View.VISIBLE);
+                if (subtitleData == null) {
+                    ToastHelper.showToast(getContext(), "搜索出错，请重试");
+                    return;
+                }
+                List<SubtitleBean> data = subtitleData.getSubtitleList();
                 if (data == null) {
                     mGridView.post(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(getContext(), "未查询到匹配字幕", Toast.LENGTH_SHORT).show();
+                            ToastHelper.showToast(getContext(), "未查询到匹配字幕");
                         }
                     });
                     return;

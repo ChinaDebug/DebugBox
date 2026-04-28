@@ -22,6 +22,7 @@ import com.bumptech.glide.request.target.Target;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.LOG;
 import com.google.common.net.HttpHeaders;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -53,7 +54,7 @@ public class ImgUtil {
 
     public static Style initStyle() {
         String bStyle = ApiConfig.get().getHomeSourceBean().getStyle();
-        if(!bStyle.isEmpty()){
+        if(bStyle != null && !bStyle.isEmpty()){
             try {
                 JSONObject jsonObject = new JSONObject(bStyle);
                 float ratio = (float) jsonObject.getDouble("ratio");
@@ -205,7 +206,7 @@ public class ImgUtil {
             try {
                 header = URLDecoder.decode(header, "UTF-8");
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
         }
         if (url.contains("@Cookie=")) cookie = url.split("@Cookie=")[1].split("@")[0];
@@ -248,7 +249,7 @@ public class ImgUtil {
             String host = imgUrl.getHost();
             builder.addHeader(HttpHeaders.HOST, host);
         } catch (MalformedURLException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
 
         return new GlideUrl(url, builder.build());

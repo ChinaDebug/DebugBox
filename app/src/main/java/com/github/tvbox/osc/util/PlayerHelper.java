@@ -8,13 +8,13 @@ import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.player.EXOmPlayer;
 import com.github.tvbox.osc.player.IjkmPlayer;
 import com.github.tvbox.osc.player.render.SurfaceRenderViewFactory;
+import com.github.tvbox.osc.util.LOG;
 import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
-import xyz.doikki.videoplayer.aliplayer.AliyunMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory;
 import xyz.doikki.videoplayer.player.PlayerFactory;
 import xyz.doikki.videoplayer.player.VideoView;
@@ -34,12 +34,10 @@ public class PlayerHelper {
         int scale = Hawk.get(HawkConfig.PLAY_SCALE, 0);
         try {
             playerType = playerCfg.getInt("pl");
-            //就我遇到的问题是 Exo 在 TextureView 黑屏 调整设置中的渲染模式无法生效
-            //renderType = playerCfg.getInt("pr");//该值无法修改，一旦确认该值后续无法进行修改 就是在设置选的 类型无法应用
             ijkCode = playerCfg.getString("ijk");
             scale = playerCfg.getInt("sc");
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         if (forcePlayerType >= 0) playerType = forcePlayerType;
         IJKCode codec = ApiConfig.get().getIJKCodec(ijkCode);
@@ -58,8 +56,6 @@ public class PlayerHelper {
                     return new EXOmPlayer(context);
                 }
             };
-        } else if (playerType == 3) {
-            playerFactory = AliyunMediaPlayerFactory.create();
         } else {
             playerFactory = AndroidMediaPlayerFactory.create();
         }
@@ -101,8 +97,6 @@ public class PlayerHelper {
                     return new EXOmPlayer(context);
                 }
             };
-        } else if (playType == 3) {
-            playerFactory = AliyunMediaPlayerFactory.create();
         } else {
             playerFactory = AndroidMediaPlayerFactory.create();
         }
@@ -130,8 +124,6 @@ public class PlayerHelper {
             return "IJK";
         } else if (playType == 2) {
             return "Exo";
-        } else if (playType == 3) {
-            return "阿里";
         } else if (playType == 10) {
             return "MX";
         } else if (playType == 11) {

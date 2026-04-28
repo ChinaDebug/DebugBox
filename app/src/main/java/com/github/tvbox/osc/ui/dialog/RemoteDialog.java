@@ -21,7 +21,7 @@ public class RemoteDialog extends BaseDialog {
     public RemoteDialog(@NonNull @NotNull Context context) {
         super(context);
         setContentView(R.layout.dialog_remote);
-        setCanceledOnTouchOutside(false);
+        setCanceledOnTouchOutside(true);
         ivQRCode = findViewById(R.id.ivQRCode);
         tvAddress = findViewById(R.id.tvAddress);
         refreshQRCode();

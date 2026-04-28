@@ -37,8 +37,7 @@ public class SSLCompat extends SSLSocketFactory {
             preferredCiphers.retainAll(availableCiphers);
             preferredCiphers.addAll(new HashSet<>(Arrays.asList(socket.getEnabledCipherSuites())));
             SSLCompat.cipherSuites = preferredCiphers.toArray(new String[preferredCiphers.size()]);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
         }
     }
 
@@ -47,8 +46,7 @@ public class SSLCompat extends SSLSocketFactory {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(null, new X509TrustManager[]{TM}, null);
             HttpsURLConnection.setDefaultSSLSocketFactory(factory = context.getSocketFactory());
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ignored) {
         }
     }
 

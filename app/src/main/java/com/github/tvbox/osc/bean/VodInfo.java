@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
+import com.github.tvbox.osc.util.MD5;
 import com.google.gson.Gson;
 
 import java.io.Serializable;
@@ -57,6 +58,9 @@ public class VodInfo implements Serializable {
     public String sourceKey;
     public String playerCfg = "";
     public boolean reverseSort = false;
+    public int playEpisodeIndex = 0;
+    public String playEpisodeName = "";
+    public int totalEpisodes = 0;
 
     public void setVideo(Movie.Video video) {
         last = video.last;
@@ -135,7 +139,48 @@ public class VodInfo implements Serializable {
     }
     
     public int getplayIndex() {
-        return this.playGroup * this.playGroupCount + this.playIndex;
+        return this.playGroup * Math.max(this.playGroupCount, 1) + this.playIndex;
+    }
+
+    public void updatePlayPositionFromEpisodeIndex() {
+        if (seriesMap == null || playFlag == null || !seriesMap.containsKey(playFlag)) {
+            return;
+        }
+        List<VodSeries> seriesList = seriesMap.get(playFlag);
+        if (seriesList == null || seriesList.isEmpty()) {
+            return;
+        }
+        if (playEpisodeIndex >= 0 && playEpisodeIndex < seriesList.size()) {
+            playGroup = playEpisodeIndex / Math.max(playGroupCount, 1);
+            playIndex = playEpisodeIndex % Math.max(playGroupCount, 1);
+        }
+    }
+
+    public int findEpisodeIndexByName(String episodeName) {
+        if (seriesMap == null || playFlag == null || !seriesMap.containsKey(playFlag) || episodeName == null) {
+            return -1;
+        }
+        List<VodSeries> seriesList = seriesMap.get(playFlag);
+        if (seriesList == null) {
+            return -1;
+        }
+        for (int i = 0; i < seriesList.size(); i++) {
+            if (episodeName.equals(seriesList.get(i).name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void saveCurrentEpisodeInfo() {
+        if (seriesMap != null && playFlag != null && seriesMap.containsKey(playFlag)) {
+            List<VodSeries> seriesList = seriesMap.get(playFlag);
+            if (seriesList != null && !seriesList.isEmpty()) {
+                if (playEpisodeIndex >= 0 && playEpisodeIndex < seriesList.size()) {
+                    playEpisodeName = seriesList.get(playEpisodeIndex).name;
+                }
+            }
+        }
     }
     
     public static class VodSeriesFlag implements Serializable {
@@ -156,6 +201,7 @@ public class VodInfo implements Serializable {
 
         public String name;
         public String url;
+        public String episodeId;
         public boolean selected;
 
         public VodSeries() {
@@ -164,6 +210,14 @@ public class VodInfo implements Serializable {
         public VodSeries(String name, String url) {
             this.name = name;
             this.url = url;
+            this.episodeId = MD5.string2MD5(name);
+        }
+
+        public String getEpisodeId() {
+            if (episodeId == null && name != null) {
+                episodeId = MD5.string2MD5(name);
+            }
+            return episodeId;
         }
     }
     

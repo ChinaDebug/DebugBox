@@ -25,7 +25,10 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.tvbox.osc.util.ToastHelper;
+
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.transition.TransitionManager;
 
@@ -48,6 +51,7 @@ import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.ScreenUtils;
 import com.github.tvbox.osc.util.SubtitleHelper;
@@ -60,7 +64,6 @@ import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.xwalk.core.XWalkView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -223,7 +226,7 @@ public class VodController extends BaseController {
                                 float speed = (float) mPlayerConfig.getDouble("sp");
                                 mControlWrapper.setSpeed(speed);
                             } catch (JSONException e) {
-                                e.printStackTrace();
+                                LOG.e(e);
                             }
                         } else
                             mHandler.sendEmptyMessageDelayed(1004, 100);
@@ -309,16 +312,22 @@ public class VodController extends BaseController {
 
     public SimpleSubtitleView mSubtitleView;
     LinearLayout mAudioTrackBtn;
+    LinearLayout mCastBtn;
     TextView mPlayerTimeStartBtn;
     TextView mPlayerTimeSkipBtn;
     TextView mPlayerTimeStepBtn;
     public TextView mPlayerTimeResetBtn;
+    TextView mPlayerTimeDividerBtn;  // 片头片尾分隔线
     public ImageView mLvPortraitBtn;
     public LinearLayout mLandscapePortraitBtn;
 
     // parse container
     LinearLayout mParseRoot;
     TvRecyclerView mGridView;
+
+    // 投屏模式
+    private boolean isCastMode = false;
+    private boolean pendingCastMode = false;
 
     // takagen99 : To get system time
     private final Runnable mTimeRunnable = new Runnable() {
@@ -349,6 +358,10 @@ public class VodController extends BaseController {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mHandler.removeCallbacks(mTimeRunnable);
+        mHandler.removeCallbacks(mUpdateLayout);
+        mHandler.removeCallbacks(lockRunnable);
+        mHandler.removeCallbacks(mHideBottomRunnable);
+        mHandler.removeCallbacksAndMessages(null);
     }
 
     @Override
@@ -360,6 +373,7 @@ public class VodController extends BaseController {
         mTopRoot = findViewById(R.id.top_container);
         mPlayTitle = findViewById(R.id.tv_title_top);
         mPlayerResolution = findViewById(R.id.tv_resolution);
+        mPlayerResolution.setText(""); // 初始化时清空分辨率显示
         mSpeedHidell = findViewById(R.id.tv_speed_top_hide);
         mSpeedll = findViewById(R.id.tv_speed_top);
 
@@ -416,10 +430,12 @@ public class VodController extends BaseController {
         mSubtitleBtn = findViewById(R.id.play_subtitle);
         mSubtitleView = findViewById(R.id.subtitle_view);
         mAudioTrackBtn = findViewById(R.id.play_audio);
+        mCastBtn = findViewById(R.id.play_cast);
         mPlayerTimeStartBtn = findViewById(R.id.play_time_start);
         mPlayerTimeSkipBtn = findViewById(R.id.play_time_end);
         mPlayerTimeStepBtn = findViewById(R.id.play_time_step);
         mPlayerTimeResetBtn = findViewById(R.id.play_time_reset);
+        mPlayerTimeDividerBtn = findViewById(R.id.play_time_divider);
         mLandscapePortraitBtn = findViewById(R.id.landscape_portrait);
         mLvPortraitBtn = findViewById(R.id.lv_portrait);
 
@@ -525,6 +541,7 @@ public class VodController extends BaseController {
                 long duration = mControlWrapper.getDuration();
                 long newPosition = (duration * seekBar.getProgress()) / seekBar.getMax();
                 mControlWrapper.seekTo((int) newPosition);
+                mControlWrapper.saveProgressDebounced();
                 mIsDragging = false;
                 mControlWrapper.startProgress();
                 mControlWrapper.startFadeOut();
@@ -574,7 +591,7 @@ public class VodController extends BaseController {
                     float speed = (float) mPlayerConfig.getDouble("sp");
                     increasePlaySpeed(speed);
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -652,7 +669,7 @@ public class VodController extends BaseController {
                     mControlWrapper.setScreenScaleType(scaleType);
 //                    Toast.makeText(getContext(), PlayerHelper.getScaleName(mPlayerConfig.getInt("sc")), Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -712,7 +729,6 @@ public class VodController extends BaseController {
                     players.add(0);  // System
                     players.add(1);  // IJK
                     players.add(2);  // Exo
-                    players.add(3);  // Ali
                     if (mxPlayerExist) {
                         players.add(10);
                     }
@@ -731,17 +747,39 @@ public class VodController extends BaseController {
                                 dialog.cancel();
                                 int thisPlayType = players.get(pos);
                                 mPlayerConfig.put("pl", thisPlayType);
+                                Hawk.put(HawkConfig.PLAY_TYPE, thisPlayType);
+                                int vodPlayerPreferred;
+                                if (thisPlayType == 0) {
+                                    vodPlayerPreferred = 1;
+                                } else if (thisPlayType == 1) {
+                                    vodPlayerPreferred = 2;
+                                } else if (thisPlayType == 2) {
+                                    vodPlayerPreferred = 3;
+                                } else if (thisPlayType == 3) {
+                                    vodPlayerPreferred = 4;
+                                } else if (thisPlayType == 10) {
+                                    vodPlayerPreferred = 5;
+                                } else if (thisPlayType == 11) {
+                                    vodPlayerPreferred = 6;
+                                } else if (thisPlayType == 12) {
+                                    vodPlayerPreferred = 7;
+                                } else {
+                                    vodPlayerPreferred = 0;
+                                }
+                                Hawk.put(HawkConfig.VOD_PLAYER_PREFERRED, vodPlayerPreferred);
+                                setPlayerSource("用户指定");
                                 updatePlayerCfgView();
                                 listener.updatePlayerCfg();
+                                listener.onPlayerSelected(thisPlayType);
                                 listener.replay(false);
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                LOG.e(e);
                             }
                         }
 
                         @Override
                         public String getDisplay(Integer val) {
-                            return PlayerHelper.getPlayerName(val);
+                            return getPlayerNameWithSource(val);
                         }
                     }, new DiffUtil.ItemCallback<Integer>() {
                         @Override
@@ -756,7 +794,7 @@ public class VodController extends BaseController {
                     }, players, defaultPos);
                     dialog.show();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -783,7 +821,7 @@ public class VodController extends BaseController {
                     listener.replay(false);
                     // hideBottom();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
                 mPlayerIJKBtn.requestFocus();
             }
@@ -802,14 +840,14 @@ public class VodController extends BaseController {
                 if (mSubtitleView.getVisibility() == View.GONE) {
                     mSubtitleView.setVisibility(VISIBLE);
                     hideBottom();
-                    Toast.makeText(getContext(), HomeActivity.getRes().getString(R.string.vod_sub_on), Toast.LENGTH_SHORT).show();
+                    ToastHelper.showToast(getContext(), HomeActivity.getRes().getString(R.string.vod_sub_on));
                 } else {
                     mSubtitleView.setVisibility(View.GONE);
                     // mSubtitleView.destroy();
                     // mSubtitleView.clearSubtitleCache();
                     // mSubtitleView.isInternal = false;
                     hideBottom();
-                    Toast.makeText(getContext(), HomeActivity.getRes().getString(R.string.vod_sub_off), Toast.LENGTH_SHORT).show();
+                    ToastHelper.showToast(getContext(), HomeActivity.getRes().getString(R.string.vod_sub_off));
                 }
                 return true;
             }
@@ -823,6 +861,16 @@ public class VodController extends BaseController {
                 listener.selectAudioTrack();
             }
         });
+
+        // Button : CAST screen --------------------------------------
+        mCastBtn.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FastClickCheckUtil.check(view);
+                listener.clickCast();
+            }
+        });
+
         //        增加播放页面片头片尾时间重置
         mPlayerTimeResetBtn.setOnClickListener(new OnClickListener() {
             @Override
@@ -835,7 +883,7 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -848,9 +896,9 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
-                Toast.makeText(getContext(), "已预设片头片尾", Toast.LENGTH_SHORT).show();
+                ToastHelper.showToast(getContext(), "已预设片头片尾");
                 return true;
             }
         });
@@ -876,7 +924,7 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -889,7 +937,7 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
                 return true;
             }
@@ -916,7 +964,7 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
             }
         });
@@ -929,7 +977,7 @@ public class VodController extends BaseController {
                     updatePlayerCfgView();
                     listener.updatePlayerCfg();
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    LOG.e(e);
                 }
                 return true;
             }
@@ -1008,6 +1056,107 @@ public class VodController extends BaseController {
             listener.showDanmuSetting();
         });
 
+        // 应用待处理的投屏模式
+        if (pendingCastMode) {
+            applyCastMode(isCastMode);
+            pendingCastMode = false;
+        }
+    }
+
+    /**
+     * 设置投屏模式
+     */
+    public void setCastMode(boolean castMode) {
+        this.isCastMode = castMode;
+        // 如果控件还未初始化，先保存状态
+        if (mParseRoot == null || mCastBtn == null || mPreBtn == null || mNextBtn == null) {
+            this.pendingCastMode = true;
+            return;
+        }
+        applyCastMode(castMode);
+    }
+
+    /**
+     * 应用投屏模式到UI
+     */
+    private void applyCastMode(boolean castMode) {
+        if (castMode) {
+            // 隐藏解析列表
+            if (mParseRoot != null) {
+                mParseRoot.setVisibility(GONE);
+            }
+            // 隐藏投屏按钮
+            if (mCastBtn != null) {
+                mCastBtn.setVisibility(GONE);
+            }
+            // 隐藏上下集按钮
+            if (mPreBtn != null) {
+                mPreBtn.setVisibility(GONE);
+            }
+            if (mNextBtn != null) {
+                mNextBtn.setVisibility(GONE);
+            }
+            // 隐藏播放器切换按钮
+            if (mPlayerBtn != null) {
+                mPlayerBtn.setVisibility(GONE);
+            }
+            // 隐藏片头片尾设置按钮
+            if (mPlayerTimeStartBtn != null) {
+                mPlayerTimeStartBtn.setVisibility(GONE);
+            }
+            if (mPlayerTimeSkipBtn != null) {
+                mPlayerTimeSkipBtn.setVisibility(GONE);
+            }
+            if (mPlayerTimeStepBtn != null) {
+                mPlayerTimeStepBtn.setVisibility(GONE);
+            }
+            if (mPlayerTimeResetBtn != null) {
+                mPlayerTimeResetBtn.setVisibility(GONE);
+            }
+            // 隐藏片头片尾分隔线
+            if (mPlayerTimeDividerBtn != null) {
+                mPlayerTimeDividerBtn.setVisibility(GONE);
+            }
+            // 隐藏重播按钮（投屏模式下重播功能无法正常使用）
+            if (mPlayerRetry != null) {
+                mPlayerRetry.setVisibility(GONE);
+            }
+        } else {
+            // 恢复显示
+            if (mParseRoot != null) {
+                mParseRoot.setVisibility(VISIBLE);
+            }
+            if (mCastBtn != null) {
+                mCastBtn.setVisibility(VISIBLE);
+            }
+            if (mPreBtn != null) {
+                mPreBtn.setVisibility(VISIBLE);
+            }
+            if (mNextBtn != null) {
+                mNextBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerBtn != null) {
+                mPlayerBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerTimeStartBtn != null) {
+                mPlayerTimeStartBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerTimeSkipBtn != null) {
+                mPlayerTimeSkipBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerTimeStepBtn != null) {
+                mPlayerTimeStepBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerTimeResetBtn != null) {
+                mPlayerTimeResetBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerTimeDividerBtn != null) {
+                mPlayerTimeDividerBtn.setVisibility(VISIBLE);
+            }
+            if (mPlayerRetry != null) {
+                mPlayerRetry.setVisibility(VISIBLE);
+            }
+        }
     }
 
     public void initLandscapePortraitBtnInfo() {
@@ -1017,6 +1166,24 @@ public class VodController extends BaseController {
             if (width < height) {
                 mLandscapePortraitBtn.setVisibility(View.VISIBLE);
                 mLvPortraitBtn.setImageResource(R.drawable.htov);
+            }
+        }
+    }
+
+    /**
+     * 更新分辨率显示
+     * 视频尺寸可能在STATE_PREPARED之后才准备好，所以需要在多个状态回调中调用此方法
+     */
+    private void updateResolution() {
+        if (mControlWrapper != null) {
+            int[] videoSize = mControlWrapper.getVideoSize();
+            if (videoSize.length >= 2) {
+                int width = videoSize[0];
+                int height = videoSize[1];
+                if (width > 0 && height > 0) {
+                    mPlayerResolution.setText(width + " x " + height);
+                    initLandscapePortraitBtnInfo();
+                }
             }
         }
     }
@@ -1035,7 +1202,7 @@ public class VodController extends BaseController {
     void initSubtitleInfo() {
         int subtitleTextSize = SubtitleHelper.getTextSize(mActivity);
         mSubtitleView.setTextSize(subtitleTextSize);
-        SubtitleHelper.upTextStyle(mSubtitleView);
+        SubtitleHelper.applyStyle(mSubtitleView);
     }
 
     @Override
@@ -1048,6 +1215,7 @@ public class VodController extends BaseController {
     }
 
     private JSONObject mPlayerConfig = null;
+    private String playerSource = "配置";
 
     private boolean mxPlayerExist = false;
     private boolean reexPlayerExist = false;
@@ -1061,10 +1229,40 @@ public class VodController extends BaseController {
         KodiExist = Kodi.getPackageInfo() != null;
     }
 
+    public void setPlayerSource(String source) {
+        this.playerSource = source;
+        updatePlayerCfgView();
+    }
+
+    private String getPlayerNameWithSource(int playerType) {
+        String playerName = PlayerHelper.getPlayerName(playerType);
+        
+        try {
+            int currentPlayerType = mPlayerConfig.getInt("pl");
+            
+            if (playerType == currentPlayerType) {
+                if (playerSource != null && !playerSource.isEmpty()) {
+                    playerName += "（" + playerSource + "）";
+                }
+            }
+        } catch (JSONException e) {
+            LOG.e(e);
+        }
+        
+        return playerName;
+    }
+
     void updatePlayerCfgView() {
+        if (mPlayerConfig == null) {
+            return;
+        }
         try {
             int playerType = mPlayerConfig.getInt("pl");
-            mPlayerTxt.setText(PlayerHelper.getPlayerName(playerType));
+            String playerName = PlayerHelper.getPlayerName(playerType);
+            if (playerSource != null && !playerSource.isEmpty()) {
+                playerName += "（" + playerSource + "）";
+            }
+            mPlayerTxt.setText(playerName);
             mPlayerScaleTxt.setText(PlayerHelper.getScaleName(mPlayerConfig.getInt("sc")));
             mPlayerIJKBtn.setText(mPlayerConfig.getString("ijk"));
             mPlayerIJKBtn.setVisibility(playerType == 1 ? VISIBLE : GONE);
@@ -1075,7 +1273,7 @@ public class VodController extends BaseController {
 //            mSubtitleBtn.setVisibility(playerType == 1 ? VISIBLE : GONE);
 //            mAudioTrackBtn.setVisibility(playerType == 1 ? VISIBLE : GONE);
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -1104,6 +1302,8 @@ public class VodController extends BaseController {
 
         void errReplay();
 
+        void onPlayerSelected(int playerType);
+
         void selectSubtitle();
 
         void selectAudioTrack();
@@ -1111,6 +1311,10 @@ public class VodController extends BaseController {
         void openVideo();
 
         void showDanmuSetting();
+
+        void playing();
+
+        void clickCast();
 
     }
 
@@ -1134,7 +1338,7 @@ public class VodController extends BaseController {
             try {
                 et = mPlayerConfig.getInt("et");
             } catch (JSONException e) {
-                e.printStackTrace();
+                LOG.e(e);
             }
             if (et > 0 && position + (et * 1000) >= duration) {
                 skipEnd = false;
@@ -1261,23 +1465,25 @@ public class VodController extends BaseController {
                 break;
             case VideoView.STATE_PLAYING:
                 isPaused = false;
-                mPauseImg.setImageDrawable(getResources().getDrawable(R.drawable.v_pause));
+                mPauseImg.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.v_pause));
                 startProgress();
+                if (listener != null) {
+                    listener.playing();
+                }
+                // 视频开始播放时更新分辨率（视频尺寸可能在STATE_PREPARED之后才准备好）
+                updateResolution();
                 break;
             case VideoView.STATE_PAUSED:
                 isPaused = true;
-                mPauseImg.setImageDrawable(getResources().getDrawable(R.drawable.v_play));
+                mPauseImg.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.v_play));
                 break;
             case VideoView.STATE_ERROR:
                 listener.errReplay();
                 break;
             case VideoView.STATE_PREPARED:
                 listener.prepared();
-                // takagen99 : Add Video Resolution
-                if (mControlWrapper.getVideoSize().length >= 2) {
-                    mPlayerResolution.setText(mControlWrapper.getVideoSize()[0] + " x " + mControlWrapper.getVideoSize()[1]);
-                    initLandscapePortraitBtnInfo();
-                }
+                updateResolution();
+                break;
             case VideoView.STATE_BUFFERED:
                 break;
             case VideoView.STATE_PREPARING:
@@ -1346,7 +1552,7 @@ public class VodController extends BaseController {
             listener.updatePlayerCfg();
             mControlWrapper.setSpeed(value);
         } catch (JSONException err) {
-            err.printStackTrace();
+            LOG.e(err);
         }
     }
 
@@ -1368,7 +1574,7 @@ public class VodController extends BaseController {
             updatePlayerCfgView();
             listener.updatePlayerCfg();
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -1390,7 +1596,7 @@ public class VodController extends BaseController {
             updatePlayerCfgView();
             listener.updatePlayerCfg();
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -1421,11 +1627,9 @@ public class VodController extends BaseController {
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
                 if (isInPlayback) {
                     togglePlay();
-                    if (!isBottomVisible() && isPaused) {
-                        showBottom();
-                    }
-                    return true;
                 }
+                // 全屏播放模式下，OK键总是消费事件，避免传递给上层Activity
+                return true;
                 // takagen99 : Key Up to focus Start Time Skip
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 if (!isBottomVisible()) {
@@ -1460,14 +1664,14 @@ public class VodController extends BaseController {
                         float speed = (float) mPlayerConfig.getDouble("sp");
                         increasePlaySpeed(speed);
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        LOG.e(e);
                     }
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     try {
                         float speed = (float) mPlayerConfig.getDouble("sp");
                         decreasePlaySpeed(speed);
                     } catch (JSONException e) {
-                        e.printStackTrace();
+                        LOG.e(e);
                     }
                 }
             }
@@ -1523,7 +1727,7 @@ public class VodController extends BaseController {
                 }
                 setPlaySpeed(mSpeed);
             } catch (JSONException f) {
-                f.printStackTrace();
+                LOG.e(f);
             }
         }
     }
@@ -1572,6 +1776,7 @@ public class VodController extends BaseController {
             if (position < 0) position = 0;
             updateSeekUI(currentPosition, position, duration);
             mControlWrapper.seekTo(position);
+            mControlWrapper.saveProgressDebounced();
         }
         return true;
     }
@@ -1637,17 +1842,22 @@ public class VodController extends BaseController {
 
     public void updateDanmuBtn(){
         if(hasDanmu){
-            mDanmuSetting.setVisibility(VISIBLE);
+            if (mDanmuSetting != null) {
+                mDanmuSetting.setVisibility(VISIBLE);
+            }
         }else{
-            mDanmuSetting.setVisibility(GONE);
+            if (mDanmuSetting != null) {
+                mDanmuSetting.setVisibility(GONE);
+            }
         }
     }
 
     public void setHasDanmu(boolean hasDanmu){
         this.hasDanmu = hasDanmu;
+        updateDanmuBtn();
     }
 
-    public void evaluateScript(SourceBean sourceBean,String url, WebView web_view, XWalkView xWalk_view){
+    public void evaluateScript(SourceBean sourceBean,String url, WebView web_view){
         String clickSelector = sourceBean.getClickSelector().trim();
         clickSelector=clickSelector.isEmpty()?VideoParseRuler.getHostScript(url):clickSelector;
         if (!clickSelector.isEmpty()) {
@@ -1671,10 +1881,6 @@ public class VodController extends BaseController {
                 } else {
                     web_view.loadUrl("javascript:" + js);
                 }
-            }
-            if(xWalk_view!=null){
-                //4.0+开始全部支持这种写法
-                xWalk_view.evaluateJavascript(js, null);
             }
         }
     }	    

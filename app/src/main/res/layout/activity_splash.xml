@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp">
+
+    <ImageView
+        android:id="@+id/splashLogo"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:src="@drawable/app_icon"
+        android:scaleType="fitCenter"
+        android:layout_marginBottom="24dp"
+        android:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/textContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center" />
+
+</LinearLayout>

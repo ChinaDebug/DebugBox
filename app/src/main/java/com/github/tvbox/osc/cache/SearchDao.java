@@ -16,10 +16,12 @@ public interface SearchDao {
     @Delete
     void delete(SearchHistory trackData);
 
+    @Query("DELETE FROM T_SEARCH")
+    void deleteAll();
+
     @Query("SELECT * FROM T_SEARCH")
     List<SearchHistory> getAll();
 
     @Query("SELECT * FROM T_SEARCH WHERE searchKeyWords=:keyword")
     List<SearchHistory> getByKeywords(String keyword);
-
 }

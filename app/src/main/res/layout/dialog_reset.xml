@@ -5,7 +5,7 @@
     android:layout_height="match_parent">
 
     <LinearLayout
-        android:layout_width="@dimen/vs_480"
+        android:layout_width="@dimen/vs_460"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:background="@drawable/shape_dialog_bg_main"
@@ -20,13 +20,17 @@
             android:id="@+id/resetation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="10dp"
-            android:text="@string/dia_reset"
-            android:textColor="@color/color_FFFFFF"
-            android:textSize="24sp"
+            android:layout_marginBottom="@dimen/vs_10"
+            android:gravity="center"
+            android:shadowColor="@color/color_FF000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="5"
+            android:text="重置将初始所有设置并清除数据！"
+            android:textColor="#B30000"
+            android:textSize="@dimen/ts_26"
             android:textStyle="bold"
-            tools:text="@string/dia_reset" />
+            tools:text="重置将初始所有设置并清除数据！" />
 
         <TableRow
             android:layout_width="match_parent"

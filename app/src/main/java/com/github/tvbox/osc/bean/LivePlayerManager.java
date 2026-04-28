@@ -5,6 +5,7 @@ import androidx.exifinterface.media.ExifInterface;
 
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.orhanobut.hawk.Hawk;
 
@@ -23,13 +24,13 @@ public class LivePlayerManager {
     public void init(VideoView videoView) {
         try {
             int playerType = Hawk.get(HawkConfig.LIVE_PLAYER_TYPE, -1);
-            if (playerType == -1) playerType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
+            if (playerType == -1) playerType = Hawk.get(HawkConfig.PLAY_TYPE, 1);
             defaultPlayerConfig.put("pl", playerType);
-            defaultPlayerConfig.put("ijk", Hawk.get(HawkConfig.IJK_CODEC, "软解码"));
+            defaultPlayerConfig.put("ijk", Hawk.get(HawkConfig.IJK_CODEC, "硬解码"));
             defaultPlayerConfig.put("pr", Hawk.get(HawkConfig.PLAY_RENDER, 0));
             defaultPlayerConfig.put("sc", Hawk.get(HawkConfig.PLAY_SCALE, 0));
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         getDefaultLiveChannelPlayer(videoView);
     }
@@ -39,7 +40,7 @@ public class LivePlayerManager {
         try {
             currentPlayerConfig = new JSONObject(defaultPlayerConfig.toString());
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
     }
 
@@ -62,7 +63,7 @@ public class LivePlayerManager {
                 PlayerHelper.updateCfg(videoView, playerConfig);
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
 
         currentPlayerConfig = playerConfig;
@@ -88,7 +89,7 @@ public class LivePlayerManager {
                     break;
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return playerTypeIndex;
     }
@@ -97,7 +98,7 @@ public class LivePlayerManager {
         try {
             return currentPlayerConfig.getInt("sc");
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         return 0;
     }
@@ -124,7 +125,7 @@ public class LivePlayerManager {
                     break;
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         PlayerHelper.updateCfg(videoView, playerConfig);
 
@@ -143,7 +144,7 @@ public class LivePlayerManager {
         try {
             playerConfig.put("sc", playerScale);
         } catch (JSONException e) {
-            e.printStackTrace();
+            LOG.e(e);
         }
         if (playerConfig.toString().equals(defaultPlayerConfig.toString()))
             Hawk.delete(channelName);

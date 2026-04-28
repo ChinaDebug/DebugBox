@@ -8,7 +8,8 @@ import android.content.ContextWrapper;
 import android.content.res.Resources;
 import android.graphics.Point;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.TrafficStats;
 import android.os.Build;
 import android.telephony.TelephonyManager;
@@ -36,8 +37,8 @@ import java.util.Locale;
 
 public final class PlayerUtils {
 	
-	private static long lastTotalRxBytes;
-    private static long lastTimeStamp;
+	private static long lastTotalRxBytes = -1;
+    private static long lastTimeStamp = -1;
     private PlayerUtils() {
     }
 
@@ -180,7 +181,6 @@ public final class PlayerUtils {
      * 判断当前网络类型
      */
     public static int getNetworkType(Context context) {
-        //改为context.getApplicationContext()，防止在Android 6.0上发生内存泄漏
         ConnectivityManager connectMgr = (ConnectivityManager) context.getApplicationContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
 
@@ -188,48 +188,38 @@ public final class PlayerUtils {
             return NO_NETWORK;
         }
 
-        NetworkInfo networkInfo = connectMgr.getActiveNetworkInfo();
-        if (networkInfo == null) {
-            // 没有任何网络
-            return NO_NETWORK;
-        }
-        if (!networkInfo.isConnected()) {
-            // 网络断开或关闭
-            return NETWORK_CLOSED;
-        }
-        if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
-            // 以太网网络
-            return NETWORK_ETHERNET;
-        } else if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
-            // wifi网络，当激活时，默认情况下，所有的数据流量将使用此连接
-            return NETWORK_WIFI;
-        } else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-            // 移动数据连接,不能与连接共存,如果wifi打开，则自动关闭
-            switch (networkInfo.getSubtype()) {
-                // 2G
-                case TelephonyManager.NETWORK_TYPE_GPRS:
-                case TelephonyManager.NETWORK_TYPE_EDGE:
-                case TelephonyManager.NETWORK_TYPE_CDMA:
-                case TelephonyManager.NETWORK_TYPE_1xRTT:
-                case TelephonyManager.NETWORK_TYPE_IDEN:
-                    // 3G
-                case TelephonyManager.NETWORK_TYPE_UMTS:
-                case TelephonyManager.NETWORK_TYPE_EVDO_0:
-                case TelephonyManager.NETWORK_TYPE_EVDO_A:
-                case TelephonyManager.NETWORK_TYPE_HSDPA:
-                case TelephonyManager.NETWORK_TYPE_HSUPA:
-                case TelephonyManager.NETWORK_TYPE_HSPA:
-                case TelephonyManager.NETWORK_TYPE_EVDO_B:
-                case TelephonyManager.NETWORK_TYPE_EHRPD:
-                case TelephonyManager.NETWORK_TYPE_HSPAP:
-                    // 4G
-                case TelephonyManager.NETWORK_TYPE_LTE:
-                    // 5G
-                case TelephonyManager.NETWORK_TYPE_NR:
-                    return NETWORK_MOBILE;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network network = connectMgr.getActiveNetwork();
+            NetworkCapabilities capabilities = connectMgr.getNetworkCapabilities(network);
+            if (capabilities == null) {
+                return NO_NETWORK;
+            }
+            if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                return NETWORK_CLOSED;
+            }
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                return NETWORK_ETHERNET;
+            } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                return NETWORK_WIFI;
+            } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                return NETWORK_MOBILE;
+            }
+        } else {
+            android.net.NetworkInfo networkInfo = connectMgr.getActiveNetworkInfo();
+            if (networkInfo == null) {
+                return NO_NETWORK;
+            }
+            if (!networkInfo.isConnected()) {
+                return NETWORK_CLOSED;
+            }
+            if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
+                return NETWORK_ETHERNET;
+            } else if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+                return NETWORK_WIFI;
+            } else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+                return NETWORK_MOBILE;
             }
         }
-        // 未知网络
         return NETWORK_UNKNOWN;
     }
 
@@ -299,25 +289,23 @@ public final class PlayerUtils {
     }
     
     public static long getNetSpeed(Context context) {
-        //这里的context是获取getApplicationContext的
         if (context == null) {
             return 0;
         }
-        //先使用getUidRxBytes方法获取该进程总接收量，如果没获取到就把当前接收数据总量设置为0，否则就获取接收的总流量并转为kb
-        long nowTotalRxBytes = TrafficStats.getUidRxBytes(context.getApplicationInfo().uid) == TrafficStats.UNSUPPORTED ? 0 : (TrafficStats.getTotalRxBytes());//转为KB
-        //记录当前的时间
+        long uidRxBytes = TrafficStats.getUidRxBytes(context.getApplicationInfo().uid);
+        long nowTotalRxBytes = (uidRxBytes == TrafficStats.UNSUPPORTED) ? TrafficStats.getTotalRxBytes() : uidRxBytes;
         long nowTimeStamp = System.currentTimeMillis();
-        //上一次记录的时间-当前记录时间算出两次记录的时间差
-        long calculationTime = (nowTimeStamp - lastTimeStamp);
-        //如果时间差不变，直接返回0
-        if (calculationTime == 0) {
-            return calculationTime;
+        if (lastTimeStamp <= 0) {
+            lastTimeStamp = nowTimeStamp;
+            lastTotalRxBytes = nowTotalRxBytes;
+            return 0;
         }
-        //两次的数据接收量的差除以两次数据接收的时间，就计算网速了。这边的时间差是毫秒，咱们需要转换成秒。
+        long calculationTime = nowTimeStamp - lastTimeStamp;
+        if (calculationTime <= 0) {
+            return 0;
+        }
         long speed = ((nowTotalRxBytes - lastTotalRxBytes) * 1000 / calculationTime);
-        //当前时间存到上次时间这个变量，供下次计算用
         lastTimeStamp = nowTimeStamp;
-        //当前总接收量存到上次接收总量这个变量，供下次计算用
         lastTotalRxBytes = nowTotalRxBytes;
         return speed;
     }

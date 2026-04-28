@@ -1,25 +1,25 @@
 package com.github.tvbox.osc.ui.dialog;
 
-import android.app.Activity;
 import android.content.Context;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.api.ApiConfig;
+import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.ui.adapter.ApiHistoryDialogAdapter;
 import com.github.tvbox.osc.ui.tv.QRCodeGen;
-import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HawkConfig;
-import com.hjq.permissions.OnPermissionCallback;
-import com.hjq.permissions.XXPermissions;
+import com.github.tvbox.osc.util.HawkListHelper;
+import com.github.tvbox.osc.util.ToastHelper;
+import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -27,7 +27,10 @@ import org.greenrobot.eventbus.ThreadMode;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import android.content.SharedPreferences;
 
 import me.jessyan.autosize.utils.AutoSizeUtils;
 
@@ -92,78 +95,117 @@ public class ApiDialog extends BaseDialog {
                     newApi = newApi.replace("./", "clan://localhost/");
                 }
                 if (!newApi.isEmpty()) {
-                    ArrayList<String> history = Hawk.get(HawkConfig.API_HISTORY, new ArrayList<String>());
-                    if (!history.contains(newApi))
-                        history.add(0, newApi);
-                    if (history.size() > 20)
-                        history.remove(20);
-                    Hawk.put(HawkConfig.API_HISTORY, history);
-                    listener.onchange(newApi);
-                    dismiss();
+                    String oldApi = Hawk.get(HawkConfig.API_URL, "");
+                    boolean apiChanged = !oldApi.equals(newApi);
+                    
+                    // 使用Hawk存储API历史记录
+                    HawkListHelper.addToList(HawkConfig.API_HISTORY, newApi, 20);
+                    
+                    if (apiChanged) {
+                        Hawk.put(HawkConfig.API_URL, newApi);
+                        ToastHelper.showToast(getContext(), "正在清理缓存并切换配置");
+                        UpdateCheckManager.get().clearCache();
+                        ApiConfig.get().clearAllCache();
+                        UpdateCheckManager.get().resetCheckState();
+                        ToastHelper.showToast(getContext(), "缓存清理完成");
+                    }
+
+                    if (listener != null) {
+                        listener.onchange(newApi, apiChanged);
+                    }
                 }
                 // Capture Live input into Settings & Live History (max 20)
                 Hawk.put(HawkConfig.LIVE_URL, newLive);
                 if (!newLive.isEmpty()) {
-                    ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
-                    if (!liveHistory.contains(newLive))
-                        liveHistory.add(0, newLive);
-                    if (liveHistory.size() > 20)
-                        liveHistory.remove(20);
-                    Hawk.put(HawkConfig.LIVE_HISTORY, liveHistory);
+                    // 使用Hawk存储Live历史记录
+                    HawkListHelper.addToList(HawkConfig.LIVE_HISTORY, newLive, 20);
                 }
                 // Capture EPG input into Settings
                 Hawk.put(HawkConfig.EPG_URL, newEPG);
                 if (!newEPG.isEmpty()) {
-                    ArrayList<String> EPGHistory = Hawk.get(HawkConfig.EPG_HISTORY, new ArrayList<String>());
-                    if (!EPGHistory.contains(newEPG))
-                        EPGHistory.add(0, newEPG);
-                    if (EPGHistory.size() > 20)
-                        EPGHistory.remove(20);
-                    Hawk.put(HawkConfig.EPG_HISTORY, EPGHistory);
+                    // 使用Hawk存储EPG历史记录
+                    HawkListHelper.addToList(HawkConfig.EPG_HISTORY, newEPG, 20);
                 }
                 // Capture oroxy server input into Settings
                 Hawk.put(HawkConfig.PROXY_SERVER, newProxyServer);
+                dismiss();
             }
         });
         findViewById(R.id.apiHistory).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArrayList<String> history = Hawk.get(HawkConfig.API_HISTORY, new ArrayList<String>());
-                if (history.isEmpty())
+                // 使用Hawk读取API历史记录
+                ArrayList<String> history = HawkListHelper.getList(HawkConfig.API_HISTORY);
+                if (history.isEmpty()) {
+                    ToastHelper.showToast(getContext(), "暂无历史配置地址");
                     return;
+                }
                 String current = Hawk.get(HawkConfig.API_URL, "");
                 int idx = 0;
-                if (history.contains(current))
-                    idx = history.indexOf(current);
-                ApiHistoryDialog dialog = new ApiHistoryDialog(getContext());
+                // 如果当前地址在历史记录中，临时将其移到顶部（仅用于显示）
+                if (history.contains(current)) {
+                    history.remove(current);
+                    history.add(0, current);
+                    idx = 0;
+                }
+                ApiHistoryDialog dialog = new ApiHistoryDialog(getOwnerActivity() != null ? getOwnerActivity() : getContext());
                 dialog.setTip(HomeActivity.getRes().getString(R.string.dia_history_list));
                 dialog.setAdapter(new ApiHistoryDialogAdapter.SelectDialogInterface() {
                     @Override
                     public void click(String value) {
+                        String oldApi = Hawk.get(HawkConfig.API_URL, "");
+                        boolean apiChanged = !oldApi.equals(value);
+
                         inputApi.setText(value);
-                        listener.onchange(value);
+
+                        if (apiChanged) {
+                            Hawk.put(HawkConfig.API_URL, value);
+                            ToastHelper.showToast(getContext(), "正在清理缓存并切换配置");
+                            UpdateCheckManager.get().clearCache();
+                            ApiConfig.get().clearAllCache();
+                            UpdateCheckManager.get().resetCheckState();
+                            ToastHelper.showToast(getContext(), "缓存清理完成");
+                        }
+
+                        if (listener != null) {
+                            listener.onchange(value, apiChanged);
+                        }
                         dialog.dismiss();
                     }
 
                     @Override
                     public void del(String value, ArrayList<String> data) {
-                        Hawk.put(HawkConfig.API_HISTORY, data);
+                        // 使用Hawk删除历史记录
+                        HawkListHelper.putList(HawkConfig.API_HISTORY, data);
                     }
                 }, history, idx);
                 dialog.show();
             }
         });
+        findViewById(R.id.apiClear).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                inputApi.setText("");
+            }
+        });
         findViewById(R.id.liveHistory).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
-                if (liveHistory.isEmpty())
+                // 使用Hawk读取Live历史记录
+                ArrayList<String> liveHistory = HawkListHelper.getList(HawkConfig.LIVE_HISTORY);
+                if (liveHistory.isEmpty()) {
+                    ToastHelper.showToast(getContext(), "暂无直播历史配置");
                     return;
+                }
                 String current = Hawk.get(HawkConfig.LIVE_URL, "");
                 int idx = 0;
-                if (liveHistory.contains(current))
-                    idx = liveHistory.indexOf(current);
-                ApiHistoryDialog dialog = new ApiHistoryDialog(getContext());
+                // 如果当前地址在历史记录中，临时将其移到顶部（仅用于显示）
+                if (liveHistory.contains(current)) {
+                    liveHistory.remove(current);
+                    liveHistory.add(0, current);
+                    idx = 0;
+                }
+                ApiHistoryDialog dialog = new ApiHistoryDialog(getOwnerActivity() != null ? getOwnerActivity() : getContext());
                 dialog.setTip(HomeActivity.getRes().getString(R.string.dia_history_live));
                 dialog.setAdapter(new ApiHistoryDialogAdapter.SelectDialogInterface() {
                     @Override
@@ -175,23 +217,37 @@ public class ApiDialog extends BaseDialog {
 
                     @Override
                     public void del(String value, ArrayList<String> data) {
-                        Hawk.put(HawkConfig.LIVE_HISTORY, data);
+                        // 使用Hawk删除Live历史记录
+                        HawkListHelper.putList(HawkConfig.LIVE_HISTORY, data);
                     }
                 }, liveHistory, idx);
                 dialog.show();
             }
         });
+        findViewById(R.id.liveClear).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                inputLive.setText("");
+            }
+        });
         findViewById(R.id.EPGHistory).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ArrayList<String> EPGHistory = Hawk.get(HawkConfig.EPG_HISTORY, new ArrayList<String>());
-                if (EPGHistory.isEmpty())
+                // 使用Hawk读取EPG历史记录
+                ArrayList<String> epgHistory = HawkListHelper.getList(HawkConfig.EPG_HISTORY);
+                if (epgHistory.isEmpty()) {
+                    ToastHelper.showToast(getContext(), "暂无EPG历史配置");
                     return;
+                }
                 String current = Hawk.get(HawkConfig.EPG_URL, "");
                 int idx = 0;
-                if (EPGHistory.contains(current))
-                    idx = EPGHistory.indexOf(current);
-                ApiHistoryDialog dialog = new ApiHistoryDialog(getContext());
+                // 如果当前地址在历史记录中，临时将其移到顶部（仅用于显示）
+                if (epgHistory.contains(current)) {
+                    epgHistory.remove(current);
+                    epgHistory.add(0, current);
+                    idx = 0;
+                }
+                ApiHistoryDialog dialog = new ApiHistoryDialog(getOwnerActivity() != null ? getOwnerActivity() : getContext());
                 dialog.setTip(HomeActivity.getRes().getString(R.string.dia_history_epg));
                 dialog.setAdapter(new ApiHistoryDialogAdapter.SelectDialogInterface() {
                     @Override
@@ -203,39 +259,23 @@ public class ApiDialog extends BaseDialog {
 
                     @Override
                     public void del(String value, ArrayList<String> data) {
-                        Hawk.put(HawkConfig.EPG_HISTORY, data);
+                        // 使用Hawk删除EPG历史记录
+                        HawkListHelper.putList(HawkConfig.EPG_HISTORY, data);
                     }
-                }, EPGHistory, idx);
+                }, epgHistory, idx);
                 dialog.show();
             }
         });
-        findViewById(R.id.storagePermission).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.epgClear).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (XXPermissions.isGranted(getContext(), DefaultConfig.StoragePermissionGroup())) {
-                    Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
-                } else {
-                    XXPermissions.with(getContext())
-                            .permission(DefaultConfig.StoragePermissionGroup())
-                            .request(new OnPermissionCallback() {
-                                @Override
-                                public void onGranted(List<String> permissions, boolean all) {
-                                    if (all) {
-                                        Toast.makeText(getContext(), "已获得存储权限", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-
-                                @Override
-                                public void onDenied(List<String> permissions, boolean never) {
-                                    if (never) {
-                                        Toast.makeText(getContext(), "获取存储权限失败,请在系统设置中开启", Toast.LENGTH_SHORT).show();
-                                        XXPermissions.startPermissionActivity((Activity) getContext(), permissions);
-                                    } else {
-                                        Toast.makeText(getContext(), "获取存储权限失败", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-                            });
-                }
+                inputEPG.setText("");
+            }
+        });
+        findViewById(R.id.proxyClear).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                inputProxy.setText("");
             }
         });
         refreshQRCode();
@@ -254,6 +294,6 @@ public class ApiDialog extends BaseDialog {
     OnListener listener = null;
 
     public interface OnListener {
-        void onchange(String api);
+        void onchange(String api, boolean changed);
     }
 }
