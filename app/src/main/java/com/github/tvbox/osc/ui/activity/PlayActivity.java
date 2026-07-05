@@ -2031,7 +2031,7 @@ public class PlayActivity extends BaseActivity {
 
         if (playerType == 1) {
             // IJK播放器 - 5种模式：0默认, 1API, 2流畅, 3均衡, 4原画
-            int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+            int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 4);
             switch (bufferMode) {
                 case 4: // 原画模式
                     return 45000; // 45秒
@@ -2046,7 +2046,7 @@ public class PlayActivity extends BaseActivity {
             }
         } else if (playerType == 2) {
             // Exo播放器 - 4种模式：0默认, 1流畅, 2均衡, 3原画
-            int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 2);
+            int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 3);
             switch (bufferMode) {
                 case 3: // 原画模式
                     return 45000; // 45秒

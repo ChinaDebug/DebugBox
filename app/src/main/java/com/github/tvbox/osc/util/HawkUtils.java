@@ -123,7 +123,7 @@ public class HawkUtils {
      * @return {@link String }
      */
     public static String getBufferModeDesc() {
-        int mode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+        int mode = Hawk.get(HawkConfig.BUFFER_MODE, 4);
         return getBufferModeDisplay(mode);
     }
 
@@ -147,7 +147,7 @@ public class HawkUtils {
      * @return {@link String }
      */
     public static String getExoBufferModeDesc() {
-        int mode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 2);
+        int mode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 3);
         return getExoBufferModeDisplay(mode);
     }
 

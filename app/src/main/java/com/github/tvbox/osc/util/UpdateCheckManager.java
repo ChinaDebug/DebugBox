@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -52,10 +53,12 @@ public class UpdateCheckManager {
 
     private static final int MAX_QUEUE_SIZE = 100;
     private static final int CHECK_TIMEOUT_SECONDS = 5;
+    private static final int CHECK_TOTAL_TIMEOUT_SECONDS = 45;
 
     private static volatile UpdateCheckManager instance;
     private final ExecutorService executor;
     private final ThreadPoolExecutor checkExecutor;
+    private final ThreadPoolExecutor detailExecutor;
     private final AtomicBoolean isChecking = new AtomicBoolean(false);
     private final Map<String, Boolean> updateCache = new HashMap<>();
     private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
@@ -76,7 +79,13 @@ public class UpdateCheckManager {
     private UpdateCheckManager() {
         executor = Executors.newSingleThreadExecutor();
         checkExecutor = new ThreadPoolExecutor(
-            3, 5, 60L, TimeUnit.SECONDS,
+            3, 10, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(MAX_QUEUE_SIZE),
+            Executors.defaultThreadFactory(),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        detailExecutor = new ThreadPoolExecutor(
+            3, 15, 60L, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(MAX_QUEUE_SIZE),
             Executors.defaultThreadFactory(),
             new ThreadPoolExecutor.CallerRunsPolicy()
@@ -283,9 +292,9 @@ public class UpdateCheckManager {
         }
 
         if (highConcurrency) {
-            checkExecutor.setCorePoolSize(5);
+            checkExecutor.setCorePoolSize(8);
         } else {
-            checkExecutor.setCorePoolSize(3);
+            checkExecutor.setCorePoolSize(5);
         }
 
         executor.execute(() -> {
@@ -358,6 +367,7 @@ public class UpdateCheckManager {
             } finally {
                 cacheLock.writeLock().unlock();
             }
+            Hawk.put(UPDATE_CHECK_LAST_TIME, System.currentTimeMillis());
             notifyComplete(false, new HashMap<>());
             return;
         }
@@ -378,34 +388,54 @@ public class UpdateCheckManager {
             } finally {
                 cacheLock.writeLock().unlock();
             }
+            Hawk.put(UPDATE_CHECK_LAST_TIME, System.currentTimeMillis());
             notifyComplete(false, new HashMap<>());
             return;
         }
 
-        int total = toCheckList.size();
-        int current = 0;
-        int foundUpdateCount = 0;
+        // 先记录检测时间，避免定时调度在检测期间再次触发
+        Hawk.put(UPDATE_CHECK_LAST_TIME, System.currentTimeMillis());
 
-        Map<String, Boolean> newCache = new HashMap<>();
+        int total = toCheckList.size();
+        AtomicInteger completed = new AtomicInteger(0);
+        AtomicInteger foundUpdateCount = new AtomicInteger(0);
+        Map<String, Boolean> newCache = new ConcurrentHashMap<>();
+        List<Future<?>> futures = new ArrayList<>(total);
 
         for (VodInfo vodInfo : toCheckList) {
-            current++;
-            notifyProgress(current, total);
-
-            try {
-                String key = vodInfo.sourceKey + "_" + vodInfo.id;
-                boolean updated = checkVideoUpdate(vodInfo);
-                newCache.put(key, updated);
-                if (updated) {
-                    foundUpdateCount++;
+            Future<?> future = checkExecutor.submit(() -> {
+                try {
+                    String key = vodInfo.sourceKey + "_" + vodInfo.id;
+                    boolean updated = checkVideoUpdate(vodInfo);
+                    newCache.put(key, updated);
+                    if (updated) {
+                        foundUpdateCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    LOG.e(e);
+                } finally {
+                    notifyProgress(completed.incrementAndGet(), total);
                 }
-                Thread.sleep(500);
+            });
+            futures.add(future);
+        }
+
+        // 使用整体超时，避免前面任务排队等待时就被单任务超时取消
+        long deadline = System.currentTimeMillis() + CHECK_TOTAL_TIMEOUT_SECONDS * 1000L;
+        for (Future<?> future : futures) {
+            long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                future.cancel(true);
+                continue;
+            }
+            try {
+                future.get(remaining, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                notifyError("检测被中断");
-                return;
+                future.cancel(true);
             } catch (Exception e) {
                 LOG.e(e);
+                future.cancel(true);
             }
         }
 
@@ -417,9 +447,8 @@ public class UpdateCheckManager {
             cacheLock.writeLock().unlock();
         }
 
-        updateCount.set(foundUpdateCount);
-        hasUpdate = foundUpdateCount > 0;
-        Hawk.put(UPDATE_CHECK_LAST_TIME, System.currentTimeMillis());
+        updateCount.set(foundUpdateCount.get());
+        hasUpdate = foundUpdateCount.get() > 0;
         notifyComplete(hasUpdate, new HashMap<>(newCache));
     }
 
@@ -434,8 +463,17 @@ public class UpdateCheckManager {
                 return false;
             }
 
+            AbsJson absJson = gson.fromJson(json, new TypeToken<AbsJson>() {}.getType());
+            if (absJson == null || absJson.list == null || absJson.list.isEmpty()) {
+                return false;
+            }
+            AbsJson.AbsJsonVod jsonVod = absJson.list.get(0);
+            if (jsonVod == null || TextUtils.isEmpty(jsonVod.vod_play_url)) {
+                return false;
+            }
+
             // 优先按集名数字判断，过滤特别篇/预告等干扰
-            int currentEpisodeNumber = parseCurrentEpisodeNumber(json, savedVodInfo.playFlag, savedVodInfo.playEpisodeName);
+            int currentEpisodeNumber = parseCurrentEpisodeNumber(jsonVod, savedVodInfo.playFlag, savedVodInfo.playEpisodeName);
             if (currentEpisodeNumber > 0) {
                 int playedEpisodeNumber = extractEpisodeNumberRaw(savedVodInfo.playEpisodeName);
                 if (playedEpisodeNumber > 0) {
@@ -444,7 +482,7 @@ public class UpdateCheckManager {
             }
 
             // 回退到按数量判断
-            int currentTotalEpisodes = parseTotalEpisodes(json, savedVodInfo.playFlag);
+            int currentTotalEpisodes = parseTotalEpisodes(jsonVod, savedVodInfo.playFlag);
             if (currentTotalEpisodes <= 0) {
                 return false;
             }
@@ -502,14 +540,14 @@ public class UpdateCheckManager {
             List<String> ids = new ArrayList<>();
             ids.add(vodId);
 
-            future = checkExecutor.submit(() -> {
+            // 放到独立线程池执行并设置超时，避免单个慢源拖住 checkExecutor
+            future = detailExecutor.submit(() -> {
                 try {
                     return spider.detailContent(ids);
                 } catch (Exception e) {
                     return null;
                 }
             });
-
             return future.get(CHECK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.e(e);
@@ -521,14 +559,8 @@ public class UpdateCheckManager {
         }
     }
 
-    private int parseCurrentEpisodeNumber(String json, String playFlag, String playedEpisodeName) {
+    private int parseCurrentEpisodeNumber(AbsJson.AbsJsonVod jsonVod, String playFlag, String playedEpisodeName) {
         try {
-            AbsJson absJson = gson.fromJson(json, new TypeToken<AbsJson>() {}.getType());
-            if (absJson == null || absJson.list == null || absJson.list.isEmpty()) {
-                return 0;
-            }
-
-            AbsJson.AbsJsonVod jsonVod = absJson.list.get(0);
             if (jsonVod == null || TextUtils.isEmpty(jsonVod.vod_play_url)) {
                 return 0;
             }
@@ -616,19 +648,9 @@ public class UpdateCheckManager {
         return 0;
     }
 
-    private int parseTotalEpisodes(String json, String playFlag) {
+    private int parseTotalEpisodes(AbsJson.AbsJsonVod jsonVod, String playFlag) {
         try {
-            AbsJson absJson = gson.fromJson(json, new TypeToken<AbsJson>() {}.getType());
-            if (absJson == null || absJson.list == null || absJson.list.isEmpty()) {
-                return 0;
-            }
-
-            AbsJson.AbsJsonVod jsonVod = absJson.list.get(0);
-            if (jsonVod == null) {
-                return 0;
-            }
-
-            if (TextUtils.isEmpty(jsonVod.vod_play_url)) {
+            if (jsonVod == null || TextUtils.isEmpty(jsonVod.vod_play_url)) {
                 return 0;
             }
 
@@ -689,11 +711,11 @@ public class UpdateCheckManager {
         }
 
         int playIndex = Math.max(vodInfo.playIndex, vodInfo.playEpisodeIndex);
-        
         if (playIndex <= 0 && vodInfo.playNote != null && !vodInfo.playNote.isEmpty()) {
             playIndex = extractEpisodeNumber(vodInfo.playNote);
         }
 
+        // 只跳过从未播放过的记录
         return playIndex < 0;
     }
 
@@ -772,6 +794,7 @@ public class UpdateCheckManager {
         stopScheduledCheck();
         executor.shutdown();
         checkExecutor.shutdown();
+        detailExecutor.shutdown();
         listeners.clear();
         appContextRef = null;
     }

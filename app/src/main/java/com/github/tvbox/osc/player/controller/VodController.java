@@ -6,8 +6,12 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Message;
 import android.view.KeyEvent;
@@ -47,6 +51,7 @@ import com.github.tvbox.osc.subtitle.widget.SimpleSubtitleView;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
+import com.github.tvbox.osc.ui.tv.widget.BatteryView;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
@@ -275,6 +280,7 @@ public class VodController extends BaseController {
     LinearLayout mTopRoot2;
     TextView seekTime; //右上角进度时间显示
     LinearLayout mScreendisplay; //增加屏显开关
+    BatteryView mBatteryView; // 电量图标（含内部数显）
 
     // bottom container
     LinearLayout mBottomRoot;
@@ -362,6 +368,35 @@ public class VodController extends BaseController {
         mHandler.removeCallbacks(lockRunnable);
         mHandler.removeCallbacks(mHideBottomRunnable);
         mHandler.removeCallbacksAndMessages(null);
+        if (mBatteryReceiver != null) {
+            getContext().unregisterReceiver(mBatteryReceiver);
+            mBatteryReceiver = null;
+        }
+    }
+
+    private BroadcastReceiver mBatteryReceiver;
+
+    private void registerBatteryReceiver() {
+        mBatteryReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
+                    return;
+                }
+                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100);
+                int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN);
+                int percentage = scale > 0 ? (int) (level * 100f / scale) : 0;
+                boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING
+                        || status == BatteryManager.BATTERY_STATUS_FULL;
+                if (mBatteryView != null) {
+                    mBatteryView.setLevel(percentage);
+                    mBatteryView.setCharging(charging);
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        getContext().registerReceiver(mBatteryReceiver, filter);
     }
 
     @Override
@@ -458,6 +493,7 @@ public class VodController extends BaseController {
         mTopRoot2 = findViewById(R.id.tv_top_r_container);
         seekTime = findViewById(R.id.tv_seek_time); //右上角进度时间显示
         mScreendisplay = findViewById(R.id.screen_display); //增加屏显开关
+        mBatteryView = findViewById(R.id.battery_view);
 
         mLockView.setOnClickListener(new OnClickListener() {
             @Override
@@ -496,6 +532,8 @@ public class VodController extends BaseController {
                 mHandler.post(mTimeRunnable);
             }
         });
+
+        registerBatteryReceiver();
 
         mGridView.setLayoutManager(new V7LinearLayoutManager(getContext(), 0, false));
         ParseAdapter parseAdapter = new ParseAdapter();

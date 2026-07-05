@@ -484,7 +484,7 @@ public class HomeActivity extends BaseActivity {
             }
             if (!useCacheConfig) {
                 if (UpdateCheckManager.get().isStartupCheck() && UpdateCheckManager.get().canCheck(this)) {
-                    UpdateCheckManager.get().startCheck(this, true);
+                    UpdateCheckManager.get().startCheck(this, true, true);
                 }
                 UpdateCheckManager.get().startScheduledCheck(this);
             }

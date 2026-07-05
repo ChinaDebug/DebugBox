@@ -40,7 +40,7 @@ public class IjkmPlayer extends IjkPlayer {
     public void setOptions() {
         // 根据缓冲模式应用不同配置
         // 0 = 默认内置, 1 = API配置, 2 = 流畅模式, 3 = 均衡模式, 4 = 原画模式
-        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 4);
         
         LinkedHashMap<String, String> options = null;
         

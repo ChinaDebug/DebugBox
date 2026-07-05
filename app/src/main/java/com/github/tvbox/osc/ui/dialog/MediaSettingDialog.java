@@ -90,7 +90,7 @@ public class MediaSettingDialog extends BaseDialog {
                     break;
                 case BufferMode:
                     FastClickCheckUtil.check(view);
-                    int defaultBufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+                    int defaultBufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 4);
                     ArrayList<Integer> bufferModes = new ArrayList<>();
                     bufferModes.add(0);
                     bufferModes.add(1);
@@ -129,7 +129,7 @@ public class MediaSettingDialog extends BaseDialog {
                     break;
                 case ExoBufferMode:
                     FastClickCheckUtil.check(view);
-                    int defaultExoBufferMode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 2);
+                    int defaultExoBufferMode = Hawk.get(HawkConfig.BUFFER_MODE_EXO, 3);
                     ArrayList<Integer> exoBufferModes = new ArrayList<>();
                     exoBufferModes.add(0);
                     exoBufferModes.add(1);

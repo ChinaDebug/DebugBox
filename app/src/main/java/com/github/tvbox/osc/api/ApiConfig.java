@@ -670,7 +670,7 @@ public class ApiConfig {
         }
         // IJK解码配置 - 根据缓冲模式决定是否重新加载
         // 0=默认内置, 1=配置地址调整, 2=流畅模式, 3=均衡模式, 4=原画模式
-        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 3);
+        int bufferMode = Hawk.get(HawkConfig.BUFFER_MODE, 4);
         // 只有使用配置地址调整模式(1)或未初始化时才重新加载
         if (ijkCodes == null || bufferMode == 1) {
             ijkCodes = new ArrayList<>();
