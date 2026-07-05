@@ -1,7 +1,6 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -127,8 +126,8 @@ public class DanmuSettingDialog extends BaseDialog {
 
     private void initSize(){
         TextView sizeText = findViewById(R.id.size);
-        ImageView sizeAdd = findViewById(R.id.sizeAdd);
-        ImageView sizeSub = findViewById(R.id.sizeSub);
+        TextView sizeAdd = findViewById(R.id.sizeAdd);
+        TextView sizeSub = findViewById(R.id.sizeSub);
         List<Float> sizes = Arrays.asList(0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f, 1.9f, 2.0f);
         int index = sizes.indexOf(HawkUtils.getDanmuSizeScale())+1;
         AtomicReference<Integer> size = new AtomicReference<>(index);
@@ -151,8 +150,8 @@ public class DanmuSettingDialog extends BaseDialog {
 
     private void initLine(){
         TextView lineText = findViewById(R.id.line);
-        ImageView lineAdd = findViewById(R.id.lineAdd);
-        ImageView lineSub = findViewById(R.id.lineSub);
+        TextView lineAdd = findViewById(R.id.lineAdd);
+        TextView lineSub = findViewById(R.id.lineSub);
         AtomicReference<Integer> line = new AtomicReference<>(HawkUtils.getDanmuMaxLine());
         lineText.setText(line+"行");
         lineAdd.setOnClickListener((v)->{
@@ -173,8 +172,8 @@ public class DanmuSettingDialog extends BaseDialog {
 
     private void initAlpha(){
         TextView alphaText = findViewById(R.id.alpha);
-        ImageView alphaAdd = findViewById(R.id.alphaAdd);
-        ImageView alphaSub = findViewById(R.id.alphaSub);
+        TextView alphaAdd = findViewById(R.id.alphaAdd);
+        TextView alphaSub = findViewById(R.id.alphaSub);
         DecimalFormat df = new DecimalFormat("#.0");
         AtomicReference<Integer> alpha = new AtomicReference<>((int)(Float.parseFloat(df.format(HawkUtils.getDanmuAlpha()))*100));
         alphaText.setText(alpha+"%");

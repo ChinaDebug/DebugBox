@@ -8,7 +8,7 @@
     android:background="@drawable/shape_dialog_bg_main">
 
     <LinearLayout
-        android:layout_width="@dimen/vs_530"
+        android:layout_width="@dimen/vs_420"
         android:layout_height="wrap_content"
         android:padding="@dimen/vs_30"
         android:layout_gravity="center"
@@ -45,10 +45,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginStart="@dimen/vs_10"
                 android:layout_marginEnd="@dimen/vs_5"
                 android:orientation="horizontal"
-                app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_5"
                 app:tv_layoutManager="V7LinearLayoutManager"
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/vs_10" />
@@ -75,10 +75,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginStart="@dimen/vs_10"
                 android:layout_marginEnd="@dimen/vs_5"
                 android:orientation="horizontal"
-                app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_5"
                 app:tv_layoutManager="V7LinearLayoutManager"
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/vs_10" />
@@ -105,10 +105,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginStart="@dimen/vs_10"
                 android:layout_marginEnd="@dimen/vs_5"
                 android:orientation="horizontal"
-                app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_5"
                 app:tv_layoutManager="V7LinearLayoutManager"
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/vs_10" />
@@ -134,41 +134,54 @@
                 android:layout_width="@dimen/vs_0"
                 android:layout_height="match_parent"
                 android:layout_marginStart="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_5"
                 android:layout_weight="1"
                 android:focusable="false"
+                android:gravity="start|center_vertical"
                 android:orientation="horizontal">
 
-                <ImageView
+                <TextView
                     android:id="@+id/sizeSub"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewleft" />
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/size"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:layout_marginStart="@dimen/vs_10"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginEnd="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
                     android:layout_weight="1"
-                    android:layout_marginEnd="@dimen/vs_20"
-                    android:layout_marginRight="@dimen/vs_20"
                     android:gravity="center_vertical|center"
+                    android:minWidth="@dimen/vs_60"
                     android:text=""
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
 
-                <ImageView
+                <TextView
                     android:id="@+id/sizeAdd"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:layout_marginRight="@dimen/vs_15"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewright" />
+                    android:gravity="center"
+                    android:text="+"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
             </LinearLayout>
 
@@ -193,41 +206,54 @@
                 android:layout_width="@dimen/vs_0"
                 android:layout_height="match_parent"
                 android:layout_marginStart="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_5"
                 android:layout_weight="1"
                 android:focusable="false"
+                android:gravity="start|center_vertical"
                 android:orientation="horizontal">
 
-                <ImageView
+                <TextView
                     android:id="@+id/lineSub"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewleft" />
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/line"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:layout_marginStart="@dimen/vs_10"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginEnd="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
                     android:layout_weight="1"
-                    android:layout_marginEnd="@dimen/vs_20"
-                    android:layout_marginRight="@dimen/vs_20"
                     android:gravity="center_vertical|center"
+                    android:minWidth="@dimen/vs_60"
                     android:text=""
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
 
-                <ImageView
+                <TextView
                     android:id="@+id/lineAdd"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:layout_marginRight="@dimen/vs_15"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewright" />
+                    android:gravity="center"
+                    android:text="+"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
             </LinearLayout>
 
@@ -252,41 +278,54 @@
                 android:layout_width="@dimen/vs_0"
                 android:layout_height="match_parent"
                 android:layout_marginStart="@dimen/vs_10"
+                android:layout_marginEnd="@dimen/vs_5"
                 android:layout_weight="1"
                 android:focusable="false"
+                android:gravity="start|center_vertical"
                 android:orientation="horizontal">
 
-                <ImageView
+                <TextView
                     android:id="@+id/alphaSub"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewleft" />
+                    android:gravity="center"
+                    android:text="-"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/alpha"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:layout_marginStart="@dimen/vs_10"
+                    android:layout_marginLeft="@dimen/vs_10"
+                    android:layout_marginEnd="@dimen/vs_10"
+                    android:layout_marginRight="@dimen/vs_10"
                     android:layout_weight="1"
-                    android:layout_marginEnd="@dimen/vs_20"
-                    android:layout_marginRight="@dimen/vs_20"
                     android:gravity="center_vertical|center"
+                    android:minWidth="@dimen/vs_60"
                     android:text=""
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
 
-                <ImageView
+                <TextView
                     android:id="@+id/alphaAdd"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
-                    android:background="@drawable/subtitle_circle"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:layout_marginRight="@dimen/vs_15"
+                    android:background="@drawable/button_dialog_main"
                     android:focusable="true"
-                    android:padding="@dimen/vs_15"
-                    app:srcCompat="@drawable/scrollviewright" />
+                    android:gravity="center"
+                    android:text="+"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_24"
+                    android:textStyle="bold" />
 
             </LinearLayout>
 

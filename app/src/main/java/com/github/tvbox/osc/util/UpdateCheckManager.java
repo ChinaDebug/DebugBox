@@ -428,27 +428,41 @@ public class UpdateCheckManager {
             return false;
         }
 
-        int playIndex = Math.max(savedVodInfo.playIndex, savedVodInfo.playEpisodeIndex);
-        
-        if (playIndex <= 0 && savedVodInfo.playNote != null && !savedVodInfo.playNote.isEmpty()) {
-            playIndex = extractEpisodeNumber(savedVodInfo.playNote);
-        }
-
         try {
-            int currentTotalEpisodes = fetchCurrentTotalEpisodes(savedVodInfo.sourceKey, savedVodInfo.id);
+            String json = fetchDetailJson(savedVodInfo.sourceKey, savedVodInfo.id);
+            if (TextUtils.isEmpty(json)) {
+                return false;
+            }
+
+            // 优先按集名数字判断，过滤特别篇/预告等干扰
+            int currentEpisodeNumber = parseCurrentEpisodeNumber(json, savedVodInfo.playFlag, savedVodInfo.playEpisodeName);
+            if (currentEpisodeNumber > 0) {
+                int playedEpisodeNumber = extractEpisodeNumberRaw(savedVodInfo.playEpisodeName);
+                if (playedEpisodeNumber > 0) {
+                    return currentEpisodeNumber > playedEpisodeNumber;
+                }
+            }
+
+            // 回退到按数量判断
+            int currentTotalEpisodes = parseTotalEpisodes(json, savedVodInfo.playFlag);
             if (currentTotalEpisodes <= 0) {
                 return false;
+            }
+
+            int playIndex = Math.max(savedVodInfo.playIndex, savedVodInfo.playEpisodeIndex);
+            if (playIndex <= 0 && savedVodInfo.playNote != null && !savedVodInfo.playNote.isEmpty()) {
+                playIndex = extractEpisodeNumber(savedVodInfo.playNote);
             }
 
             if (playIndex >= 0) {
                 return currentTotalEpisodes > playIndex + 1;
             }
-            
+
             int savedTotalEpisodes = savedVodInfo.totalEpisodes;
             if (savedTotalEpisodes > 0) {
                 return currentTotalEpisodes > savedTotalEpisodes;
             }
-            
+
             return false;
         } catch (Exception e) {
             LOG.e(e);
@@ -472,17 +486,17 @@ public class UpdateCheckManager {
         return -1;
     }
 
-    private int fetchCurrentTotalEpisodes(String sourceKey, String vodId) {
+    private String fetchDetailJson(String sourceKey, String vodId) {
         Future<String> future = null;
         try {
             SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
             if (sourceBean == null) {
-                return 0;
+                return null;
             }
 
             Spider spider = ApiConfig.get().getCSP(sourceBean);
             if (spider == null) {
-                return 0;
+                return null;
             }
 
             List<String> ids = new ArrayList<>();
@@ -496,15 +510,10 @@ public class UpdateCheckManager {
                 }
             });
 
-            String json = future.get(CHECK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (TextUtils.isEmpty(json)) {
-                return 0;
-            }
-
-            return parseTotalEpisodes(json);
+            return future.get(CHECK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.e(e);
-            return 0;
+            return null;
         } finally {
             if (future != null && !future.isDone()) {
                 future.cancel(true);
@@ -512,7 +521,102 @@ public class UpdateCheckManager {
         }
     }
 
-    private int parseTotalEpisodes(String json) {
+    private int parseCurrentEpisodeNumber(String json, String playFlag, String playedEpisodeName) {
+        try {
+            AbsJson absJson = gson.fromJson(json, new TypeToken<AbsJson>() {}.getType());
+            if (absJson == null || absJson.list == null || absJson.list.isEmpty()) {
+                return 0;
+            }
+
+            AbsJson.AbsJsonVod jsonVod = absJson.list.get(0);
+            if (jsonVod == null || TextUtils.isEmpty(jsonVod.vod_play_url)) {
+                return 0;
+            }
+
+            if (TextUtils.isEmpty(playFlag) || TextUtils.isEmpty(jsonVod.vod_play_from)) {
+                return 0;
+            }
+
+            String[] playUrls = jsonVod.vod_play_url.split("\\$\\$\\$");
+            String[] playFlags = jsonVod.vod_play_from.split("\\$\\$\\$");
+            String targetPlayUrl = null;
+            for (int i = 0; i < playFlags.length && i < playUrls.length; i++) {
+                if (playFlag.equals(playFlags[i])) {
+                    targetPlayUrl = playUrls[i];
+                    break;
+                }
+            }
+            if (TextUtils.isEmpty(targetPlayUrl)) {
+                return 0;
+            }
+
+            String pattern = inferEpisodePattern(playedEpisodeName);
+            String[] episodes = targetPlayUrl.contains("#") ? targetPlayUrl.split("#") : new String[]{targetPlayUrl};
+
+            int maxNumber = 0;
+            for (String episode : episodes) {
+                if (TextUtils.isEmpty(episode)) {
+                    continue;
+                }
+                String episodeName = extractEpisodeName(episode);
+                if (TextUtils.isEmpty(episodeName)) {
+                    continue;
+                }
+                if (pattern != null && !episodeName.matches(pattern)) {
+                    continue;
+                }
+                int number = extractEpisodeNumberRaw(episodeName);
+                if (number > maxNumber) {
+                    maxNumber = number;
+                }
+            }
+            return maxNumber;
+        } catch (Exception e) {
+            LOG.e(e);
+            return 0;
+        }
+    }
+
+    private String inferEpisodePattern(String episodeName) {
+        if (TextUtils.isEmpty(episodeName)) {
+            return null;
+        }
+        if (episodeName.matches(".*第\\d+[集话].*")) {
+            return ".*第\\d+[集话].*";
+        }
+        if (episodeName.matches("(?i)EP\\d+.*")) {
+            return ".*(?i)EP\\d+.*";
+        }
+        return null;
+    }
+
+    private String extractEpisodeName(String episodeUrl) {
+        if (TextUtils.isEmpty(episodeUrl)) {
+            return null;
+        }
+        int index = episodeUrl.indexOf('$');
+        if (index >= 0) {
+            return episodeUrl.substring(0, index);
+        }
+        return episodeUrl;
+    }
+
+    private int extractEpisodeNumberRaw(String name) {
+        if (name == null || name.isEmpty()) {
+            return 0;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+").matcher(name);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group());
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private int parseTotalEpisodes(String json, String playFlag) {
         try {
             AbsJson absJson = gson.fromJson(json, new TypeToken<AbsJson>() {}.getType());
             if (absJson == null || absJson.list == null || absJson.list.isEmpty()) {
@@ -529,32 +633,40 @@ public class UpdateCheckManager {
             }
 
             String[] playUrls = jsonVod.vod_play_url.split("\\$\\$\\$");
-            int max = 0;
-            for (String playUrl : playUrls) {
-                if (TextUtils.isEmpty(playUrl)) {
-                    continue;
-                }
-                String[] episodes;
-                if (playUrl.contains("#")) {
-                    episodes = playUrl.split("#");
-                } else {
-                    episodes = new String[]{playUrl};
-                }
-                int count = 0;
-                for (String episode : episodes) {
-                    if (!TextUtils.isEmpty(episode)) {
-                        count++;
-                    }
-                }
-                if (count > max) {
-                    max = count;
+            if (TextUtils.isEmpty(playFlag) || TextUtils.isEmpty(jsonVod.vod_play_from)) {
+                return 0;
+            }
+
+            String[] playFlags = jsonVod.vod_play_from.split("\\$\\$\\$");
+            for (int i = 0; i < playFlags.length && i < playUrls.length; i++) {
+                if (playFlag.equals(playFlags[i])) {
+                    return countEpisodes(playUrls[i]);
                 }
             }
-            return max;
+            return 0;
         } catch (Exception e) {
             LOG.e(e);
             return 0;
         }
+    }
+
+    private int countEpisodes(String playUrl) {
+        if (TextUtils.isEmpty(playUrl)) {
+            return 0;
+        }
+        String[] episodes;
+        if (playUrl.contains("#")) {
+            episodes = playUrl.split("#");
+        } else {
+            episodes = new String[]{playUrl};
+        }
+        int count = 0;
+        for (String episode : episodes) {
+            if (!TextUtils.isEmpty(episode)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private int getTotalEpisodes(VodInfo vodInfo) {

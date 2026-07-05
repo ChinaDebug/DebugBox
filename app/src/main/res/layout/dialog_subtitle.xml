@@ -12,20 +12,24 @@
         android:background="@drawable/shape_dialog_bg_main"
         android:orientation="vertical">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="vertical">
+            android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/title"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:gravity="center"
-                android:lineSpacingExtra="@dimen/ts_40"
-                android:padding="@dimen/vs_20"
+                android:lineSpacingExtra="@dimen/ts_20"
+                android:padding="@dimen/vs_10"
                 android:shadowColor="@color/color_FF000000"
                 android:shadowDx="0"
                 android:shadowDy="0"
@@ -61,7 +65,7 @@
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:text="Internal"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
@@ -78,7 +82,7 @@
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:text="Local"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
@@ -95,7 +99,7 @@
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:text="Remote"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
@@ -112,7 +116,7 @@
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:text="Close"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
@@ -122,11 +126,11 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_size"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
-                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginTop="@dimen/vs_5"
                 android:layout_marginEnd="@dimen/vs_15"
                 android:layout_marginRight="@dimen/vs_15"
                 android:gravity="center"
@@ -137,7 +141,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -149,12 +153,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleSizeMinus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewleft" />
 
                 <TextView
@@ -171,12 +175,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleSizePlus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewright" />
             </LinearLayout>
 
@@ -184,7 +188,7 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_text_color"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
@@ -198,7 +202,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -210,12 +214,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleTextColorMinus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewleft" />
 
                 <TextView
@@ -232,12 +236,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleTextColorPlus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewright" />
             </LinearLayout>
 
@@ -245,7 +249,7 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_stroke_color"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
@@ -259,7 +263,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -271,12 +275,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleStrokeColorMinus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewleft" />
 
                 <TextView
@@ -293,12 +297,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleStrokeColorPlus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewright" />
             </LinearLayout>
 
@@ -306,7 +310,7 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_bold"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
@@ -320,7 +324,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -332,12 +336,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleBoldMinus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewleft" />
 
                 <TextView
@@ -354,12 +358,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleBoldPlus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewright" />
             </LinearLayout>
 
@@ -367,11 +371,11 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_preview"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
-                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginTop="@dimen/vs_5"
                 android:layout_marginEnd="@dimen/vs_15"
                 android:layout_marginRight="@dimen/vs_15"
                 android:gravity="center"
@@ -382,7 +386,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -408,7 +412,7 @@
             <LinearLayout
                 android:id="@+id/ll_subtitle_delay"
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/vs_55"
+                android:layout_height="@dimen/vs_45"
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
@@ -422,7 +426,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:padding="@dimen/vs_10"
+                    android:padding="@dimen/vs_5"
                     android:shadowColor="@color/color_FF000000"
                     android:shadowDx="0"
                     android:shadowDy="0"
@@ -434,12 +438,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleTimeMinus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewleft" />
 
                 <TextView
@@ -456,12 +460,12 @@
 
                 <ImageView
                     android:id="@+id/subtitleTimePlus"
-                    android:layout_width="@dimen/vs_50"
-                    android:layout_height="@dimen/vs_50"
+                    android:layout_width="@dimen/vs_40"
+                    android:layout_height="@dimen/vs_40"
                     android:layout_gravity="center"
                     android:background="@drawable/subtitle_circle"
                     android:focusable="true"
-                    android:padding="@dimen/vs_8"
+                    android:padding="@dimen/vs_5"
                     app:srcCompat="@drawable/scrollviewright" />
             </LinearLayout>
 
@@ -473,10 +477,10 @@
                 android:layout_gravity="center"
                 android:layout_marginStart="@dimen/vs_15"
                 android:layout_marginLeft="@dimen/vs_15"
-                android:layout_marginTop="@dimen/vs_10"
+                android:layout_marginTop="@dimen/vs_5"
                 android:layout_marginEnd="@dimen/vs_15"
                 android:layout_marginRight="@dimen/vs_15"
-                android:layout_marginBottom="@dimen/vs_20"
+                android:layout_marginBottom="@dimen/vs_10"
                 android:gravity="center"
                 android:orientation="horizontal">
 
@@ -488,12 +492,13 @@
                     android:background="@drawable/button_dialog_main"
                     android:focusable="true"
                     android:gravity="center"
-                    android:padding="@dimen/vs_12"
+                    android:padding="@dimen/vs_8"
                     android:text="恢复默认设置"
                     android:textColor="@color/color_FFFFFF"
                     android:textSize="@dimen/ts_20" />
             </LinearLayout>
+            </LinearLayout>
 
-        </LinearLayout>
+        </ScrollView>
     </LinearLayout>
 </FrameLayout>
