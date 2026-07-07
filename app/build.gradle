@@ -54,7 +54,7 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.github.tvbox.osc.tk'
+        applicationId 'com.github.tvbox.osc.debug'
         targetSdkVersion 28
         versionCode 1
         versionName "1.0.".concat(buildTime())

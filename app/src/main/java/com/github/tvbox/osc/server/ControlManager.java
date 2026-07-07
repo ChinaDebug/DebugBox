@@ -27,6 +27,7 @@ public class ControlManager {
     private static ControlManager instance;
     private RemoteServer mServer = null;
     public static Context mContext;
+    private int mServerRefCount = 0;
 
     private ControlManager() {
 
@@ -48,14 +49,15 @@ public class ControlManager {
     }
 
     public String getAddress(boolean local) {
-        if (mServer == null) {
+        if (mServer == null || !mServer.isStarting()) {
             return "";
         }
         return local ? mServer.getLoadAddress() : mServer.getServerAddress();
     }
 
-    public void startServer() {
-        if (mServer != null) {
+    public synchronized void startServer() {
+        mServerRefCount++;
+        if (mServerRefCount > 1 && mServer != null && mServer.isStarting()) {
             return;
         }
         do {
@@ -126,7 +128,12 @@ public class ControlManager {
         } while (RemoteServer.serverPort < 9999);
     }
 
-    public void stopServer() {
+    public synchronized void stopServer() {
+        mServerRefCount--;
+        if (mServerRefCount > 0) {
+            return;
+        }
+        mServerRefCount = 0;
         if (mServer != null && mServer.isStarting()) {
             mServer.stop();
         }

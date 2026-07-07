@@ -542,35 +542,29 @@ public class SearchActivity extends BaseActivity {
             wordAdapter.setNewData(hots);
             return;
         }
-        // 使用腾讯视频榜单页面接口获取热搜数据
-        OkGo.<String>get("https://v.qq.com/x/hotlist/search/")
-                .params("channel", "0")
-                .headers("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .headers("Referer", "https://v.qq.com/biu/ranks/")
+        // 使用腾讯视频热搜接口获取热词数据
+        OkGo.<String>get("https://pbaccess.video.qq.com/trpc.universal_backend_service.hot_word_info.HttpHotWordRecall/GetHotWords")
+                .params("appID", "3172")
+                .params("appKey", "lGhFIPeD3HsO9xEp")
+                .params("platform", "2")
+                .params("channelID", "0")
+                .params("v", "2972330")
                 .execute(new AbsCallback<String>() {
                     @Override
                     public void onSuccess(Response<String> response) {
                         try {
-                            String html = response.body();
+                            String result = response.body();
+                            Gson gson = new Gson();
+                            JsonElement json = gson.fromJson(result, JsonElement.class);
+                            JsonArray hotWordArr = json.getAsJsonObject()
+                                    .get("data").getAsJsonObject()
+                                    .get("hotWordList").getAsJsonArray();
                             List<String> hotList = new ArrayList<>();
-                            // 使用正则表达式从HTML中提取热词 - 匹配 data-query 属性
-                            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("data-query=\"([^\"]+)\"");
-                            java.util.regex.Matcher matcher = pattern.matcher(html);
-                            while (matcher.find() && hotList.size() < 20) {
-                                String hotWord = matcher.group(1).trim();
-                                if (!hotWord.isEmpty() && !hotList.contains(hotWord)) {
-                                    hotList.add(hotWord);
-                                }
-                            }
-                            // 如果 data-query 提取失败，尝试从 class=name 的 a 标签中提取文本
-                            if (hotList.isEmpty()) {
-                                pattern = java.util.regex.Pattern.compile("<a[^>]*class=\"name\"[^>]*>([^<]+)</a>");
-                                matcher = pattern.matcher(html);
-                                while (matcher.find() && hotList.size() < 20) {
-                                    String hotWord = matcher.group(1).trim();
-                                    if (!hotWord.isEmpty() && !hotList.contains(hotWord)) {
-                                        hotList.add(hotWord);
-                                    }
+                            for (JsonElement hotWordElement : hotWordArr) {
+                                JsonObject hotWordObj = hotWordElement.getAsJsonObject();
+                                String searchWord = hotWordObj.get("searchWord").getAsString().trim();
+                                if (!searchWord.isEmpty() && !hotList.contains(searchWord)) {
+                                    hotList.add(searchWord);
                                 }
                             }
                             // 格式化热词显示

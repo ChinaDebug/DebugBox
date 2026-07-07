@@ -19,6 +19,9 @@ import java.util.Map;
  */
 public class QRCodeGen {
     public static Bitmap generateBitmap(String content, int width, int height, int padding) {
+        if (content == null || content.length() == 0 || width <= 0 || height <= 0) {
+            return null;
+        }
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         Map<EncodeHintType, String> hints = new HashMap<>();
         hints.put(EncodeHintType.CHARACTER_SET, "utf-8");
@@ -36,7 +39,7 @@ public class QRCodeGen {
                 }
             }
             return Bitmap.createBitmap(pixels, 0, width, width, height, Bitmap.Config.RGB_565);
-        } catch (WriterException e) {
+        } catch (Exception e) {
             LOG.e(e);
         }
         return null;

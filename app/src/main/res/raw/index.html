@@ -55,13 +55,28 @@
 									<div class="weui-cell weui-cell_active weui-cell_vcode weui-cell_wrap">
 										<div class="weui-cell__bd weui-flex">
 											<button onclick="push(); return false;"
-													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn">推送</button>
+													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn push-btn">推送</button>
 										</div>
 										<div class="weui-cell__bd weui-flex">
 											<button onclick="$('#push_url').val('');"
 													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn">清空</button>
 										</div>
 									</div>
+								</div>
+							</div>
+							<div class="push-tips">
+								<div class="push-tips__title">支持格式</div>
+								<div class="push-tips__item">
+									<span class="push-tips__label">直链播放</span>
+									<span class="push-tips__value">http/https .m3u8 .mp4 .flv .ts .mkv 等</span>
+								</div>
+								<div class="push-tips__item">
+									<span class="push-tips__label">磁力/解析</span>
+									<span class="push-tips__value">magnet、ed2k、push://（需数据源含 push_agent）</span>
+								</div>
+								<div class="push-tips__item">
+									<span class="push-tips__label">Base64</span>
+									<span class="push-tips__value">push://b64:base64编码后的地址</span>
 								</div>
 							</div>
 						</div>
@@ -284,6 +299,14 @@
 				<a role="button" href="javascript:void(0)" onclick="doDelFile(1)"
 					class="weui-dialog__btn weui-dialog__btn_primary">确定</a>
 			</div>
+		</div>
+	</div>
+
+	<div role="alert" id="successToast" style="display: none;">
+		<div class="weui-mask_transparent"></div>
+		<div class="weui-toast">
+			<i class="weui-icon-success-no-circle weui-icon_toast"></i>
+			<p class="weui-toast__content" id="successToastContent"></p>
 		</div>
 	</div>
 

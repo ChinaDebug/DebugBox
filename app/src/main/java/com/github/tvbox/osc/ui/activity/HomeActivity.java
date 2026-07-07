@@ -776,12 +776,34 @@ public class HomeActivity extends BaseActivity {
             return;
         }
         if (event.type == RefreshEvent.TYPE_PUSH_URL) {
-            if (ApiConfig.get().getSource("push_agent") != null) {
+            String pushUrl = (String) event.obj;
+            if (pushUrl == null || pushUrl.isEmpty()) {
+                return;
+            }
+            // 对可直接播放的地址直接调用播放器
+            String lowerUrl = pushUrl.toLowerCase();
+            boolean isDirectPlayUrl = lowerUrl.startsWith("http://") || lowerUrl.startsWith("https://") || lowerUrl.startsWith("rtmp://") || lowerUrl.startsWith("rtsp://") || lowerUrl.startsWith("rtp://");
+            if (isDirectPlayUrl) {
+                isDirectPlayUrl = lowerUrl.endsWith(".m3u8") || lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".flv")
+                        || lowerUrl.endsWith(".mkv") || lowerUrl.endsWith(".ts") || lowerUrl.endsWith(".avi")
+                        || lowerUrl.endsWith(".wmv") || lowerUrl.endsWith(".webm") || lowerUrl.endsWith(".mov")
+                        || lowerUrl.endsWith(".rmvb") || lowerUrl.endsWith(".3gp") || lowerUrl.contains(".m3u8?")
+                        || lowerUrl.contains(".mp4?") || lowerUrl.contains(".flv?") || lowerUrl.contains(".ts?");
+            }
+            if (isDirectPlayUrl) {
+                Intent newIntent = new Intent(mContext, PlayActivity.class);
+                newIntent.putExtra("url", pushUrl);
+                newIntent.putExtra("title", "推送视频");
+                newIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                HomeActivity.this.startActivity(newIntent);
+            } else if (ApiConfig.get().getSource("push_agent") != null) {
                 Intent newIntent = new Intent(mContext, DetailActivity.class);
-                newIntent.putExtra("id", (String) event.obj);
+                newIntent.putExtra("id", pushUrl);
                 newIntent.putExtra("sourceKey", "push_agent");
                 newIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 HomeActivity.this.startActivity(newIntent);
+            } else {
+                ToastHelper.showToast(mContext, "暂不支持该推送格式，请配置支持 push_agent 的数据源");
             }
         } else if (event.type == RefreshEvent.TYPE_FILTER_CHANGE) {
             if (currentView != null) {

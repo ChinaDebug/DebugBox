@@ -19,17 +19,41 @@ function proxys() {
 }
 
 function push() {
-    doAction('push', { url: $('#push_url').val() });
+    var url = $('#push_url').val().trim();
+    if (!url) {
+        warnToast('请输入需要推送的地址');
+        return false;
+    }
+    doAction('push', { url: url }, function () {
+        successToast('已推送');
+    }, function () {
+        warnToast('推送失败，请检查网络');
+    });
 }
 
-function doAction(action, kv) {
+function doAction(action, kv, onSuccess, onError) {
     kv['do'] = action;
     // alert(JSON.stringify(kv));
     $.post('/action', kv, function (data) {
         console.log(data);
         // alert(data);
+        if (typeof onSuccess === 'function') {
+            onSuccess(data);
+        }
+    }).fail(function () {
+        if (typeof onError === 'function') {
+            onError();
+        }
     });
     return false;
+}
+
+function successToast(msg) {
+    $('#successToastContent').html(msg);
+    $('#successToast').show();
+    setTimeout(() => {
+        $('#successToast').hide();
+    }, 1500);
 }
 
 function tpl_top(path) {

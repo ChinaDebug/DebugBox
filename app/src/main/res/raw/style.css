@@ -4979,3 +4979,59 @@ body[data-weui-theme="dark"] .weui-picker__mask {
   text-align: center;
   font-size: 14px;
 }
+
+/* 推送页提示 */
+.push-tips {
+  margin: 16px 16px 0;
+  padding: 14px 16px;
+  background: rgba(0, 0, 0, 0.03);
+  background: var(--weui-BG-1);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.55);
+  color: var(--weui-FG-1);
+}
+.push-tips__title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgba(0, 0, 0, 0.75);
+  color: var(--weui-FG-0);
+}
+.push-tips__item {
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.push-tips__item:last-child {
+  margin-bottom: 0;
+}
+.push-tips__label {
+  display: inline-block;
+  min-width: 4.5em;
+  color: #07c160;
+}
+.push-btn {
+  background: #07c160 !important;
+  color: #fff !important;
+}
+
+/* 移动端推送页优化 */
+@media screen and (max-width: 480px) {
+  .weui-form__title {
+    font-size: 22px;
+  }
+  .weui-cell_vcode .weui-btn {
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 14px;
+  }
+  .push-tips {
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+  .push-tips__label {
+    display: block;
+    margin-bottom: 2px;
+  }
+}
