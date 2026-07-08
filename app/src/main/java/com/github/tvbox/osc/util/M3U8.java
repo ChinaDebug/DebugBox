@@ -209,7 +209,6 @@ public class M3U8 {
                 }
             }
         }
-//        ToastHelper.showToast(App.getInstance(), "已移除视频广告");
         return String.join(linesplit, lines);
     }
 

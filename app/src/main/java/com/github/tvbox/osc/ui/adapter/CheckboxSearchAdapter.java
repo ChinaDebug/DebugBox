@@ -53,21 +53,14 @@ public class CheckboxSearchAdapter extends ListAdapter<SourceBean, CheckboxSearc
         return new ViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.item_dialog_checkbox_search, parent, false));
     }
 
-    private void setCheckedSource(HashMap<String, String> checkedSources) {
-        mCheckedSources = checkedSources;
-    }
-
     private ArrayList<SourceBean> data = new ArrayList<>();
     public HashMap<String, String> mCheckedSources = new HashMap<>();
 
-    public void setData(List<SourceBean> newData, HashMap<String, String> checkedSources, boolean saveToStorage) {
+    public void setData(List<SourceBean> newData, HashMap<String, String> checkedSources) {
         data.clear();
         data.addAll(newData);
-        setCheckedSource(checkedSources);
+        mCheckedSources = checkedSources != null ? checkedSources : new HashMap<>();
         notifyDataSetChanged();
-        if (saveToStorage) {
-            SearchHelper.putCheckedSources(checkedSources);
-        }
     }
 
     @Override
@@ -98,7 +91,7 @@ public class CheckboxSearchAdapter extends ListAdapter<SourceBean, CheckboxSearc
                     } else {
                         mCheckedSources.put(sourceBean.getKey(), "1");
                     }
-                    SearchHelper.putCheckedSource(sourceBean.getKey(), !currentlyChecked);
+                    SearchHelper.putCheckedSources(mCheckedSources);
                     notifyItemChanged(pos);
                     if (onCheckedChangedListener != null) {
                         onCheckedChangedListener.onCheckedChanged();

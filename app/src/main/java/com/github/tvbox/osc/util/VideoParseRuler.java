@@ -184,4 +184,30 @@ public class VideoParseRuler {
         }
         return "";
     }
+
+    public static boolean isAd(String webUrl, String url) {
+        try {
+            if (HOSTS_REGEX.isEmpty() || webUrl == null || url == null) {
+                return false;
+            }
+            Uri uri = Uri.parse(webUrl);
+            String host = uri.getHost();
+            if (host == null) {
+                return false;
+            }
+            ArrayList<String> regexList = HOSTS_REGEX.get(host);
+            if (regexList == null || regexList.isEmpty()) {
+                return false;
+            }
+            for (String regex : regexList) {
+                if (getPattern(regex).matcher(url).find()) {
+                    LOG.i("AD REGEX:" + regex + " URL:" + url);
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            LOG.e(e);
+        }
+        return false;
+    }
 }

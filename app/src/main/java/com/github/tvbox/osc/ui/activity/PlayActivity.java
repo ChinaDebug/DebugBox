@@ -1159,7 +1159,9 @@ public class PlayActivity extends BaseActivity {
                                 startPlayUrl(url, headers);
                             else {
                                 startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                                //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
+                                if (M3U8.currentAdCount > 0) {
+                                    ToastHelper.showToast("已移除 " + M3U8.currentAdCount + " 条视频广告");
+                                }
                             }
                             return;
                         }
@@ -1178,7 +1180,9 @@ public class PlayActivity extends BaseActivity {
                                             startPlayUrl(finalforwardurl, headers);
                                         else {
                                             startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                                            //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
+                                            if (M3U8.currentAdCount > 0) {
+                                                ToastHelper.showToast("已移除 " + M3U8.currentAdCount + " 条视频广告");
+                                            }
                                         }
                                     }
 
@@ -3031,7 +3035,7 @@ public class PlayActivity extends BaseActivity {
 
             boolean ad;
             if (!loadedUrls.containsKey(url)) {
-                ad = AdBlocker.isAd(url);
+                ad = AdBlocker.isAd(url) || VideoParseRuler.isAd(webUrl, url);
                 loadedUrls.put(url, ad);
             } else {
                 ad = loadedUrls.get(url);
@@ -3073,6 +3077,9 @@ public class PlayActivity extends BaseActivity {
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             String url = request.getUrl().toString();
+            if (AdBlocker.isAd(url) || VideoParseRuler.isAd(webUrl, url)) {
+                return AdBlocker.createEmptyResource();
+            }
             LOG.i("shouldInterceptRequest url:" + url);
             HashMap<String, String> webHeaders = new HashMap<>();
             Map<String, String> hds = request.getRequestHeaders();

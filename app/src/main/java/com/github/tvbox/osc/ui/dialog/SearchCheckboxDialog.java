@@ -55,7 +55,7 @@ public class SearchCheckboxDialog extends BaseDialog {
         setCanceledOnTouchOutside(true);
         setCancelable(true);
         mSourceList = sourceList;
-        mCheckSourcees = checkedSources;
+        mCheckSourcees = checkedSources != null ? checkedSources : new HashMap<>();
         setContentView(R.layout.dialog_checkbox_search);
         initView(context);
     }
@@ -98,7 +98,7 @@ public class SearchCheckboxDialog extends BaseDialog {
         clp.width = AutoSizeUtils.mm2px(getContext(), 280 + 200 * (spanCount - 1));
 
         mGridView.setAdapter(checkboxSearchAdapter);
-        checkboxSearchAdapter.setData(mSourceList, mCheckSourcees, false);
+        checkboxSearchAdapter.setData(mSourceList, mCheckSourcees);
         // 在适配器创建并设置数据后再更新启用状态
         updateGridViewEnabledState();
         int pos = 0;
@@ -148,7 +148,7 @@ public class SearchCheckboxDialog extends BaseDialog {
                         mCheckSourcees.put(sourceBean.getKey(), "1");
                     }
                 }
-                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees, false);
+                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees);
                 updateButtonStates();
                 SearchHelper.putCheckedSources(mCheckSourcees);
             }
@@ -165,7 +165,7 @@ public class SearchCheckboxDialog extends BaseDialog {
                 }
                 mCheckSourcees.clear();
                 mCheckSourcees.put(homeSource.getKey(), "1");
-                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees, false);
+                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees);
                 updateButtonStates();
                 SearchHelper.putCheckedSources(mCheckSourcees);
                 ToastHelper.showToast(getContext(), String.format(getContext().getString(R.string.search_selected_home), homeSource.getName()));
@@ -180,7 +180,7 @@ public class SearchCheckboxDialog extends BaseDialog {
                     return;
                 }
                 mCheckSourcees.clear();
-                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees, false);
+                checkboxSearchAdapter.setData(mSourceList, mCheckSourcees);
                 updateButtonStates();
                 SearchHelper.putCheckedSources(mCheckSourcees);
             }

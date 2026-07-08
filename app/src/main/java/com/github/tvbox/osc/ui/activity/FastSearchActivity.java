@@ -436,6 +436,12 @@ public class FastSearchActivity extends BaseActivity {
             allRunCount.incrementAndGet();
         }
 
+        if (siteKey.size() <= 0) {
+            ToastHelper.showToast(mContext, getString(R.string.search_site));
+            showSuccess();
+            return;
+        }
+
         for (String key : siteKey) {
             searchExecutorService.execute(new SearchRunnable(this, key, searchTitle));
         }

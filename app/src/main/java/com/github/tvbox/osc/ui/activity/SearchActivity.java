@@ -218,14 +218,7 @@ public class SearchActivity extends BaseActivity {
                 String[] split = keyword.split("\uFEFF");
                 keyword = split[split.length - 1];
                 etSearch.setText(keyword);
-                if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
-                    Bundle bundle = new Bundle();
-                    bundle.putString("title", keyword);
-                    refreshSearchHistory(keyword);
-                    jumpActivity(FastSearchActivity.class, bundle);
-                } else {
-                    search(keyword);
-                }
+                search(keyword);
             }
         });
 		//添加放大效果
@@ -281,14 +274,7 @@ public class SearchActivity extends BaseActivity {
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
                 if (!TextUtils.isEmpty(keyword)) {
-                    if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
-                        Bundle bundle = new Bundle();
-                        bundle.putString("title", keyword);
-                        refreshSearchHistory(keyword);
-                        jumpActivity(FastSearchActivity.class, bundle);
-                    } else {
-                        search(keyword);
-                    }
+                    search(keyword);
                 } else {
                     ToastHelper.showToast(mContext, getString(R.string.search_input));
                 }
@@ -447,15 +433,8 @@ public class SearchActivity extends BaseActivity {
         tv_history.setViews(historyList, new FlowLayout.OnItemClickListener() {
             public void onItemClick(String content) {
                 etSearch.setText(content);
-                if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
-                    Bundle bundle = new Bundle();
-                    bundle.putString("title", content);
-                    refreshSearchHistory(content);
-                    jumpActivity(FastSearchActivity.class, bundle);
-                } else {
-                    search(content);
-                    //etSearch.setSelection(etSearch.getText().length());
-                }
+                search(content);
+                //etSearch.setSelection(etSearch.getText().length());
             }
         });
         
@@ -527,15 +506,7 @@ public class SearchActivity extends BaseActivity {
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("title")) {
             String title = intent.getStringExtra("title");
-            showLoading();
-            if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
-                Bundle bundle = new Bundle();
-                bundle.putString("title", title);
-                refreshSearchHistory(title);
-                jumpActivity(FastSearchActivity.class, bundle);
-            } else {
-                search(title);
-            }
+            search(title);
         }
         // 加载热词
         if (hots.size() != 0) {
@@ -611,15 +582,7 @@ public class SearchActivity extends BaseActivity {
     public void server(ServerEvent event) {
         if (event.type == ServerEvent.SERVER_SEARCH) {
             String title = (String) event.obj;
-            showLoading();
-            if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
-                Bundle bundle = new Bundle();
-                bundle.putString("title", title);
-                refreshSearchHistory(title);
-                jumpActivity(FastSearchActivity.class, bundle);
-            } else {
-                search(title);
-            }
+            search(title);
         }
     }
 
@@ -639,6 +602,17 @@ public class SearchActivity extends BaseActivity {
     }
 
     private void search(String title) {
+        if (mCheckSources == null || mCheckSources.isEmpty()) {
+            ToastHelper.showToast(mContext, getString(R.string.search_site));
+            return;
+        }
+        if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
+            Bundle bundle = new Bundle();
+            bundle.putString("title", title);
+            refreshSearchHistory(title);
+            jumpActivity(FastSearchActivity.class, bundle);
+            return;
+        }
         cancel();
         showLoading();
         this.searchTitle = title;
@@ -679,6 +653,7 @@ public class SearchActivity extends BaseActivity {
         }
         if (siteKey.size() <= 0) {
             ToastHelper.showToast(mContext, getString(R.string.search_site));
+            showSuccess();
             return;
         }
 
