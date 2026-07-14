@@ -121,7 +121,7 @@ class DeviceDiscovery(private val context: Context) : CoroutineScope {
             }
 
             if (response?.isSuccessful == true) {
-                val body = response.body()?.string()
+                val body = response.body?.string()
                 if (!body.isNullOrEmpty()) {
                     val deviceInfo = DeviceInfo.fromJson(body)
                     deviceInfo?.let { info ->

@@ -3,6 +3,7 @@ package com.github.tvbox.osc.ui.fragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1073,6 +1074,7 @@ public class ModelSettingFragment extends BaseLazyFragment {
         }
     }
 
+    @SuppressWarnings("deprecation")
     void reloadActivity() {
         if (getActivity() == null || getActivity().isFinishing()) {
             return;
@@ -1088,7 +1090,11 @@ public class ModelSettingFragment extends BaseLazyFragment {
         bundle.putBoolean("useCache", true);
         intent.putExtras(bundle);
         getActivity().getApplicationContext().startActivity(intent);
-        getActivity().overridePendingTransition(0, 0);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            getActivity().overrideActivityTransition(BaseActivity.OVERRIDE_TRANSITION_OPEN, 0, 0);
+        } else {
+            getActivity().overridePendingTransition(0, 0);
+        }
     }
 
 }

@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace 'com.whl.quickjs.android'
-    compileSdk 34
+    namespace = 'com.whl.quickjs.android'
+    compileSdk = 36
 
     defaultConfig {
-        minSdk 21
-        targetSdk 28
+        minSdk = 24
+        targetSdk = 34
     }
 
-    flavorDimensions "abi"
+    flavorDimensions = ["abi"]
 
     productFlavors {
         arm32 {
@@ -36,11 +36,16 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+        coreLibraryDesugaringEnabled = true
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
     }
 }
 
 dependencies {
-
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

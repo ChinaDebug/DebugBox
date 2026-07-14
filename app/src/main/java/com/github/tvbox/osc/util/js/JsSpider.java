@@ -395,8 +395,9 @@ public class JsSpider extends Spider {
                 LOG.i("getHeader: 无法解析 String 为 JSON"+ e);
             }
         } else if (headerRaw instanceof Map) {
-            //noinspection unchecked
-            for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) headerRaw).entrySet()) {
+            @SuppressWarnings("unchecked")
+            Map<Object, Object> rawMap = (Map<Object, Object>) headerRaw;
+            for (Map.Entry<Object, Object> entry : rawMap.entrySet()) {
                 headers.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
             }
         }

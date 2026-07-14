@@ -47,6 +47,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,6 +73,24 @@ public class RemoteServer extends NanoHTTPD {
     public static String m3u8Content;
     public static String vodName;
     public static String artist;
+
+    /**
+     * 将 NanoHTTPD getParameters() 返回的多值参数映射转换为单值映射，
+     * 保持与旧 getParms() 行为一致的同时使用非废弃 API。
+     */
+    private static Map<String, String> toSingleValueMap(Map<String, List<String>> parameters) {
+        Map<String, String> result = new HashMap<>();
+        if (parameters == null) {
+            return result;
+        }
+        for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
+            List<String> values = entry.getValue();
+            if (values != null && !values.isEmpty()) {
+                result.put(entry.getKey(), values.get(0));
+            }
+        }
+        return result;
+    }
 
     public RemoteServer(int port, Context context) {
         super(port);
@@ -150,7 +169,7 @@ public class RemoteServer extends NanoHTTPD {
             if (session.getMethod() == Method.GET) {
                 for (RequestProcess process: getRequestList) {
                     if (process.isRequest(session, fileName)) {
-                        return process.doResponse(session, fileName, session.getParms(), null);
+                        return process.doResponse(session, fileName, toSingleValueMap(session.getParameters()), null);
                     }
                 }
                 if (fileName.equals("/media")) {
@@ -164,7 +183,7 @@ public class RemoteServer extends NanoHTTPD {
                     return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, jsonObject.toString());
                 }
                 if (fileName.equals("/proxy")) {
-                    Map < String, String > params = session.getParms();
+                    Map < String, String > params = toSingleValueMap(session.getParameters());
                     params.putAll(session.getHeaders());
                     params.put("request-headers", new Gson().toJson(session.getHeaders()));
                     if (params.containsKey("do")) {
@@ -197,7 +216,7 @@ public class RemoteServer extends NanoHTTPD {
                         return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, th.getMessage());
                     }
                 } else if (fileName.equals("/dns-query")) {
-                    String name = session.getParms().get("name");
+                    String name = toSingleValueMap(session.getParameters()).get("name");
                     byte[] rs = null;
                     try {
                         rs = OkGoHelper.dnsOverHttps.lookupHttpsForwardSync(name);
@@ -210,7 +229,7 @@ public class RemoteServer extends NanoHTTPD {
                 } else if (fileName.equals("/api/remote/version") || fileName.equals("/index.html")) {
                     return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, "hello");
                 } else if (fileName.equals("/api/updateUrl")) {
-                    String url = session.getParms().get("url");
+                    String url = toSingleValueMap(session.getParameters()).get("url");
                     if (url != null && !url.isEmpty()) {
                         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PUSH_URL, url));
                     }
@@ -249,13 +268,14 @@ public class RemoteServer extends NanoHTTPD {
                 } catch (NanoHTTPD.ResponseException rex) {
                     return createPlainTextResponse(rex.getStatus(), rex.getMessage());
                 }
+                Map<String, String> postParams = toSingleValueMap(session.getParameters());
                 for (RequestProcess process: postRequestList) {
                     if (process.isRequest(session, fileName)) {
-                        return process.doResponse(session, fileName, session.getParms(), files);
+                        return process.doResponse(session, fileName, postParams, files);
                     }
                 }
                 try {
-                    Map < String, String > params = session.getParms();
+                    Map < String, String > params = postParams;
                     if (fileName.equals("/upload") || fileName.equals("/newFolder") || fileName.equals("/delFolder") || fileName.equals("/delFile")) {
                         if (!hasStoragePermission()) {
                             return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT, "Storage permission not granted");
@@ -358,31 +378,24 @@ public class RemoteServer extends NanoHTTPD {
         return newFixedLengthResponse(status, "application/json", text);
     }
 
-    @SuppressLint("DefaultLocale")
     public static String getLocalIPAddress(Context context) {
-        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
-        if (ipAddress == 0) {
-            try {
-                Enumeration < NetworkInterface > enumerationNi = NetworkInterface.getNetworkInterfaces();
-                while (enumerationNi.hasMoreElements()) {
-                    NetworkInterface networkInterface = enumerationNi.nextElement();
-                    String interfaceName = networkInterface.getDisplayName();
-                    if (ETH_PATTERN.matcher(interfaceName).matches() || interfaceName.equals("wlan0")) {
-                        Enumeration < InetAddress > enumIpAddr = networkInterface.getInetAddresses();
-                        while (enumIpAddr.hasMoreElements()) {
-                            InetAddress inetAddress = enumIpAddr.nextElement();
-                            if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
-                                return inetAddress.getHostAddress();
-                            }
+        try {
+            Enumeration < NetworkInterface > enumerationNi = NetworkInterface.getNetworkInterfaces();
+            while (enumerationNi.hasMoreElements()) {
+                NetworkInterface networkInterface = enumerationNi.nextElement();
+                String interfaceName = networkInterface.getDisplayName();
+                if (ETH_PATTERN.matcher(interfaceName).matches() || interfaceName.equals("wlan0")) {
+                    Enumeration < InetAddress > enumIpAddr = networkInterface.getInetAddresses();
+                    while (enumIpAddr.hasMoreElements()) {
+                        InetAddress inetAddress = enumIpAddr.nextElement();
+                        if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
+                            return inetAddress.getHostAddress();
                         }
                     }
                 }
-            } catch (SocketException e) {
-                LOG.e(e);
             }
-        } else {
-            return String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
+        } catch (SocketException e) {
+            LOG.e(e);
         }
         return "0.0.0.0";
     }
@@ -442,7 +455,7 @@ public class RemoteServer extends NanoHTTPD {
             destDir.mkdirs();
         }
         ZipFile zip = new ZipFile(zipFilePath);
-        Enumeration < ZipEntry > iter = (Enumeration < ZipEntry > ) zip.entries();
+        Enumeration <? extends ZipEntry> iter = zip.entries();
         while (iter.hasMoreElements()) {
             ZipEntry entry = iter.nextElement();
             InputStream is = zip.getInputStream(entry);

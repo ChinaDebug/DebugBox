@@ -9,6 +9,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
+
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.BaseActivity;
@@ -64,6 +66,17 @@ public class HistoryActivity extends BaseActivity {
     protected void init() {
         initView();
         initData();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (delMode) {
+                    toggleDelMode();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
     }
 
     @Override
@@ -310,12 +323,4 @@ public class HistoryActivity extends BaseActivity {
         historyAdapter = null;
     }
 
-    @Override
-    public void onBackPressed() {
-        if (delMode) {
-            toggleDelMode();
-            return;
-        }
-        super.onBackPressed();
-    }
 }

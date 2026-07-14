@@ -37,15 +37,16 @@ public class QuickSearchDialog extends BaseDialog {
         init(context);
     }
 
+    @SuppressWarnings("unchecked")
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
         if (event.type == RefreshEvent.TYPE_QUICK_SEARCH) {
-            if (event.obj != null) {
+            if (event.obj instanceof List) {
                 List<Movie.Video> data = (List<Movie.Video>) event.obj;
                 searchAdapter.addData(data);
             }
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_WORD) {
-            if (event.obj != null) {
+            if (event.obj instanceof List) {
                 List<String> data = (List<String>) event.obj;
                 searchWordAdapter.setNewData(data);
             }

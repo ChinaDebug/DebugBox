@@ -31,6 +31,11 @@ public class LivePasswordDialog extends BaseDialog {
             setOwnerActivity((Activity) context);
         }
         setContentView(R.layout.dialog_live_password);
+        setOnCancelListener(dialog -> {
+            if (listener != null) {
+                listener.onCancel();
+            }
+        });
         inputPassword = findViewById(R.id.input);
         findViewById(R.id.inputSubmit).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -42,13 +47,6 @@ public class LivePasswordDialog extends BaseDialog {
                 }
             }
         });
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        listener.onCancel();
-        dismiss();
     }
 
     public void setOnListener(OnListener listener) {

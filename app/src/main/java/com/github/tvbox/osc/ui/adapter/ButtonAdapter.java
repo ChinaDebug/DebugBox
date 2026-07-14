@@ -54,9 +54,9 @@ public class ButtonAdapter<T> extends ListAdapter<T, ButtonAdapter.SelectViewHol
 
     private boolean firstFlag = true;
 
-    private SelectDialogInterface dialogInterface = null;
+    private SelectDialogInterface<T> dialogInterface = null;
 
-    public ButtonAdapter(SelectDialogInterface dialogInterface, DiffUtil.ItemCallback diffCallback) {
+    public ButtonAdapter(SelectDialogInterface<T> dialogInterface, DiffUtil.ItemCallback<T> diffCallback) {
         super(diffCallback);
         this.dialogInterface = dialogInterface;
     }

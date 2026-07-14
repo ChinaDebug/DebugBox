@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.Resources;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -20,6 +21,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
+import android.view.WindowMetrics;
 
 import androidx.annotation.NonNull;
 
@@ -87,8 +89,15 @@ public final class PlayerUtils {
     /**
      * 是否存在NavigationBar
      */
+    @SuppressWarnings("deprecation")
     public static boolean hasNavigationBar(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager windowManager = getWindowManager(context);
+            Rect currentBounds = windowManager.getCurrentWindowMetrics().getBounds();
+            Rect maxBounds = windowManager.getMaximumWindowMetrics().getBounds();
+            return currentBounds.width() != maxBounds.width()
+                    || currentBounds.height() != maxBounds.height();
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             Display display = getWindowManager(context).getDefaultDisplay();
             Point size = new Point();
             Point realSize = new Point();
@@ -188,37 +197,20 @@ public final class PlayerUtils {
             return NO_NETWORK;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Network network = connectMgr.getActiveNetwork();
-            NetworkCapabilities capabilities = connectMgr.getNetworkCapabilities(network);
-            if (capabilities == null) {
-                return NO_NETWORK;
-            }
-            if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                return NETWORK_CLOSED;
-            }
-            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                return NETWORK_ETHERNET;
-            } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                return NETWORK_WIFI;
-            } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                return NETWORK_MOBILE;
-            }
-        } else {
-            android.net.NetworkInfo networkInfo = connectMgr.getActiveNetworkInfo();
-            if (networkInfo == null) {
-                return NO_NETWORK;
-            }
-            if (!networkInfo.isConnected()) {
-                return NETWORK_CLOSED;
-            }
-            if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
-                return NETWORK_ETHERNET;
-            } else if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
-                return NETWORK_WIFI;
-            } else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-                return NETWORK_MOBILE;
-            }
+        Network network = connectMgr.getActiveNetwork();
+        NetworkCapabilities capabilities = connectMgr.getNetworkCapabilities(network);
+        if (capabilities == null) {
+            return NO_NETWORK;
+        }
+        if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            return NETWORK_CLOSED;
+        }
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+            return NETWORK_ETHERNET;
+        } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+            return NETWORK_WIFI;
+        } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+            return NETWORK_MOBILE;
         }
         return NETWORK_UNKNOWN;
     }

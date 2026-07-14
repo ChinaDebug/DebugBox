@@ -16,6 +16,7 @@ import android.widget.Toast;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.ToastHelper;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
@@ -100,6 +101,22 @@ public class DriveActivity extends BaseActivity {
     protected void init() {
         initView();
         initData();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (viewModel != null) {
+                    cancel();
+                    returnPreviousFolder();
+                    return;
+                }
+                if (!delMode) {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                } else {
+                    toggleDelMode();
+                }
+            }
+        });
     }
 
     private void initView() {
@@ -121,7 +138,7 @@ public class DriveActivity extends BaseActivity {
         findViewById(R.id.btnHome).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                DriveActivity.super.onBackPressed();
+                getOnBackPressedDispatcher().onBackPressed();
             }
         });
         this.btnSort.setOnClickListener(new View.OnClickListener() {
@@ -463,7 +480,7 @@ public class DriveActivity extends BaseActivity {
     private void openFilePicker() {
         if (delMode)
             toggleDelMode();
-        ChooserDialog dialog = new ChooserDialog(mContext, R.style.FileChooserStyle);
+        ChooserDialog dialog = new ChooserDialog(mContext, com.obsez.android.lib.filechooser.R.style.FileChooserStyle);
         dialog
                 .withStringResources("选择一个文件夹", "确定", "取消")
                 .titleFollowsDir(true)
@@ -637,20 +654,6 @@ public class DriveActivity extends BaseActivity {
             return;
         }
         loadDriveData();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (viewModel != null) {
-            cancel();
-//            mGridView.onClick(mGridView.getChildAt(0));
-            returnPreviousFolder();
-            return;
-        }
-        if (!delMode)
-            super.onBackPressed();
-        else
-            toggleDelMode();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

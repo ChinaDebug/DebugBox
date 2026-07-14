@@ -70,8 +70,7 @@ public class CheckboxSearchAdapter extends ListAdapter<SourceBean, CheckboxSearc
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        int pos = holder.getAdapterPosition();
-        SourceBean sourceBean = data.get(pos);
+        SourceBean sourceBean = data.get(position);
         holder.tvSourceName.setText(sourceBean.getName());
         boolean isChecked = mCheckedSources != null && mCheckedSources.containsKey(sourceBean.getKey());
         holder.ivSourceCheck.setImageResource(isChecked ? R.drawable.shape_search_checkall : R.drawable.shape_search_clearall);
@@ -92,7 +91,7 @@ public class CheckboxSearchAdapter extends ListAdapter<SourceBean, CheckboxSearc
                         mCheckedSources.put(sourceBean.getKey(), "1");
                     }
                     SearchHelper.putCheckedSources(mCheckedSources);
-                    notifyItemChanged(pos);
+                    notifyItemChanged(holder.getBindingAdapterPosition());
                     if (onCheckedChangedListener != null) {
                         onCheckedChangedListener.onCheckedChanged();
                     }

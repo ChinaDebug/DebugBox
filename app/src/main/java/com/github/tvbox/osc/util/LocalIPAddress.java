@@ -5,8 +5,6 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 
 import com.github.tvbox.osc.util.LOG;
 
@@ -24,54 +22,40 @@ import java.util.regex.Pattern;
  * 时间：At 19:17
  */
 public class LocalIPAddress {
-    @SuppressLint("DefaultLocale")
     public static String getLocalIPAddress(Context context) {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
-        if (ipAddress == 0) {
-            try {
-                Enumeration<NetworkInterface> enumerationNi = NetworkInterface.getNetworkInterfaces();
-                while (enumerationNi.hasMoreElements()) {
-                    NetworkInterface networkInterface = enumerationNi.nextElement();
-                    String interfaceName = networkInterface.getDisplayName();
-                    if (interfaceName.equals("eth0") || interfaceName.equals("wlan0")) {
-                        Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses();
-                        while (enumIpAddr.hasMoreElements()) {
-                            InetAddress inetAddress = enumIpAddr.nextElement();
-                            if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
-                                return inetAddress.getHostAddress();
-                            }
+        String ip = getLocalIPAddress();
+        if (!"127.0.0.1".equals(ip)) {
+            return ip;
+        }
+        return getLocalIPAddressByInterface();
+    }
+
+    public static String getIP(Context context) {
+        String ip = getLocalIPAddress();
+        if (!"127.0.0.1".equals(ip)) {
+            return ip;
+        }
+        return getLocalIPAddressByInterface();
+    }
+
+    private static String getLocalIPAddressByInterface() {
+        try {
+            Enumeration<NetworkInterface> enumerationNi = NetworkInterface.getNetworkInterfaces();
+            while (enumerationNi.hasMoreElements()) {
+                NetworkInterface networkInterface = enumerationNi.nextElement();
+                String interfaceName = networkInterface.getDisplayName();
+                if ("eth0".equals(interfaceName) || "wlan0".equals(interfaceName)) {
+                    Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses();
+                    while (enumIpAddr.hasMoreElements()) {
+                        InetAddress inetAddress = enumIpAddr.nextElement();
+                        if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
+                            return inetAddress.getHostAddress();
                         }
                     }
                 }
-            } catch (SocketException e) {
-                LOG.e(e);
             }
-        } else {
-            return String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
-        }
-        return "127.0.0.1";
-    }
-    public static String getIP(Context context) {
-        try {
-            WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            //判断wifi是否开启
-            WifiInfo wifiInfo = null;
-            if (wifiManager != null) {
-                wifiInfo = wifiManager.getConnectionInfo();
-            }
-            int ipAddress = 0;
-            if (wifiInfo != null) {
-                ipAddress = wifiInfo.getIpAddress();
-            }
-            return intToIp(ipAddress);
-        } catch (Exception e) {
+        } catch (SocketException e) {
             LOG.e(e);
-            try {
-                return getLocalIPAddress();
-            } catch (Exception e1) {
-                LOG.e(e1);
-            }
         }
         return "127.0.0.1";
     }
@@ -131,6 +115,7 @@ public class LocalIPAddress {
         return isIPv4Address(str) || isIPv6Address(str);
     }
 
+    @SuppressWarnings("deprecation")
     public static boolean isNetworkAvailable(final Context context) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) {

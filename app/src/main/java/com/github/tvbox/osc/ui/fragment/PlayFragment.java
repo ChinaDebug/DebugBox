@@ -47,6 +47,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.Player;
 import androidx.media3.common.text.Cue;
+import androidx.media3.common.text.CueGroup;
 import androidx.recyclerview.widget.DiffUtil;
 
 import com.github.catvod.crawler.Spider;
@@ -121,6 +122,7 @@ import com.google.gson.JsonParser;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -1218,7 +1220,8 @@ public class PlayFragment extends BaseLazyFragment {
             }
             ((EXOmPlayer) (mVideoView.getMediaPlayer())).setOnTimedTextListener(new Player.Listener() {
                 @Override
-                public void onCues(@NonNull List<Cue> cues) {
+                public void onCues(@NonNull CueGroup cueGroup) {
+                    List<Cue> cues = cueGroup.cues;
                     if (cues.size() > 0) {
                         CharSequence ss = cues.get(0).text;
                         if (ss != null && mController.mSubtitleView.isInternal) {
@@ -1226,7 +1229,7 @@ public class PlayFragment extends BaseLazyFragment {
                             subtitle.content = ss.toString();
                             mController.mSubtitleView.onSubtitleChanged(subtitle);
                         }
-                    }else{
+                    } else {
                         Subtitle subtitle = new Subtitle();
                         subtitle.content = "";
                         mController.mSubtitleView.onSubtitleChanged(subtitle);
@@ -1332,7 +1335,11 @@ public class PlayFragment extends BaseLazyFragment {
                                         break;
                                 }
                                 String filename = name + (name.toLowerCase().endsWith(ext) ? "" : ext);
-                                url += "#" + URLEncoder.encode(filename);
+                                try {
+                                    url += "#" + URLEncoder.encode(filename, "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    url += "#" + filename;
+                                }
                             }
                             playSubtitle = url;
                         } catch (Throwable th) {}
@@ -1449,9 +1456,14 @@ public class PlayFragment extends BaseLazyFragment {
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void setData(Bundle bundle) {
         if (bundle == null) return;
-        mVodInfo = (VodInfo) bundle.getSerializable("VodInfo");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mVodInfo = bundle.getSerializable("VodInfo", VodInfo.class);
+        } else {
+            mVodInfo = (VodInfo) bundle.getSerializable("VodInfo");
+        }
         sourceKey = bundle.getString("sourceKey");
         if (mVodInfo == null) return;
         sourceBean = ApiConfig.get().getSource(sourceKey);
@@ -2745,6 +2757,7 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    @SuppressWarnings("deprecation")
     private void configWebViewSys(WebView webView) {
         if (webView == null) {
             return;
@@ -2831,11 +2844,6 @@ public class PlayFragment extends BaseLazyFragment {
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            return false;
-        }
-
-        @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
         }
@@ -2898,13 +2906,6 @@ public class PlayFragment extends BaseLazyFragment {
             return ad || loadFoundCount.get() > 0 ?
                     AdBlocker.createEmptyResource() :
                     null;
-        }
-
-        @Nullable
-        @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-//            WebResourceResponse response = checkIsVideo(url, new HashMap<>());
-            return null;
         }
 
         @Nullable

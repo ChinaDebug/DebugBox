@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 
@@ -167,7 +168,11 @@ public class SubtitleLoader {
                 filename = filenameInfo.substring(filenameInfo.lastIndexOf("''")+2);
             }
             filename = filename.trim();
-            filename = URLDecoder.decode(filename);
+            try {
+                filename = URLDecoder.decode(filename, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                LOG.e(e);
+            }
         }
         String filePath = filename;
         if (filename == null || filename.length() < 1) {
@@ -176,7 +181,11 @@ public class SubtitleLoader {
         }
         if (!filePath.contains(".") && remoteSubtitlePath.contains("#")) {
             filePath = remoteSubtitlePath.split("#")[1];
-            filePath = URLDecoder.decode(filePath);
+            try {
+                filePath = URLDecoder.decode(filePath, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                LOG.e(e);
+            }
         }
         SubtitleLoadSuccessResult subtitleLoadSuccessResult = new SubtitleLoadSuccessResult();
         subtitleLoadSuccessResult.timedTextObject = loadAndParse(is, filePath);
@@ -220,7 +229,11 @@ public class SubtitleLoader {
         }
         LOG.d(TAG, "parse: name = " + fileName + ", ext = " + ext);
         Reader reader = new UnicodeReader(is); //处理有BOM头的utf8
-        InputStream newInputStream = new ReaderInputStream(reader, Charset.defaultCharset());
+        InputStream newInputStream = ReaderInputStream.builder()
+                .setReader(reader)
+                .setCharset(Charset.defaultCharset())
+                .setBufferSize(8192)
+                .get();
         if (".srt".equalsIgnoreCase(ext)) {
             return new FormatSRT().parseFile(fileName, newInputStream);
         } else if (".ass".equalsIgnoreCase(ext)) {

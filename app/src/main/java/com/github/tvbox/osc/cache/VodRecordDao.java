@@ -6,6 +6,8 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 
 /**
@@ -19,7 +21,8 @@ public interface VodRecordDao {
     long insert(VodRecord record);
 
     @Query("select * from vodRecord order by updateTime desc limit :size")
-    List<VodRecord> getAll(int size);
+    @NonNull
+    List<@NonNull VodRecord> getAll(int size);
 
     @Query("select * from vodRecord where `sourceKey`=:sourceKey and `vodId`=:vodId")
     VodRecord getVodRecord(String sourceKey, String vodId);
@@ -47,6 +50,7 @@ public interface VodRecordDao {
      * @return 要删除的记录列表
      */
     @Query("select * from vodRecord where id NOT IN (SELECT id FROM vodRecord ORDER BY updateTime desc LIMIT :size)")
-    List<VodRecord> getOldRecords(int size);
+    @NonNull
+    List<@NonNull VodRecord> getOldRecords(int size);
 
 }

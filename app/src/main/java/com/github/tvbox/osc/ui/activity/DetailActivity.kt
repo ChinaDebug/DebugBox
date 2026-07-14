@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.ViewModelProvider
@@ -71,7 +72,7 @@ class DetailActivity : BaseActivity() {
             if (str == null) return 0
             val matcher = NUM_PATTERN.matcher(str)
             if (!matcher.find()) return 0
-            val group = matcher.group(0)
+            val group = matcher.group(0) ?: ""
             return if (TextUtils.isEmpty(group)) 0 else group.toInt()
         }
     }
@@ -169,21 +170,41 @@ class DetailActivity : BaseActivity() {
         initView()
         initViewModel()
         initData()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (fullWindows) {
+                    if (playFragment?.onBackPressed() == true) {
+                        return
+                    }
+                    toggleFullPreview()
+                } else {
+                    insertVod(firstSourceKey, vodInfo)
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
     
+    @Suppress("DEPRECATION")
     private fun initReceiver() {
-        // 注册广播接收器
+        // 注册广播接收器；ACTION_CLOSE_SYSTEM_DIALOGS 已废弃，但目前仍是监听 Home 键的常用手段，
+        // Android 14+ 需要显式指定 RECEIVER_NOT_EXPORTED。
         if (mHomeKeyReceiver == null) {
             mHomeKeyReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     val action = intent.action
                     if (action != null && action == Intent.ACTION_CLOSE_SYSTEM_DIALOGS) {
-                        openBackgroundPlay = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 1 && 
+                        openBackgroundPlay = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 1 &&
                                 playFragment?.player != null && playFragment?.player?.isPlaying == true
                     }
                 }
             }
-            registerReceiver(mHomeKeyReceiver, IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                registerReceiver(mHomeKeyReceiver, IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS), Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(mHomeKeyReceiver, IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+            }
         }
     }
 
@@ -739,7 +760,12 @@ class DetailActivity : BaseActivity() {
         }
         maxWidth += 32
 
-        val screenWidth = windowManager.defaultDisplay.width / 3
+        val screenWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            windowManager.currentWindowMetrics.bounds.width()
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.width
+        } / 3
         val offset = (screenWidth / maxWidth).coerceIn(2, 6)
         mGridViewLayoutMgr.spanCount = offset
 
@@ -916,7 +942,12 @@ class DetailActivity : BaseActivity() {
             return
         }
         view.visibility = View.VISIBLE
-        view.text = Html.fromHtml(getHtml(tag, content))
+        view.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Html.fromHtml(getHtml(tag, content), Html.FROM_HTML_MODE_LEGACY)
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(getHtml(tag, content))
+        }
     }
 
     private fun getHtml(label: String, content: String?): String {
@@ -1026,6 +1057,7 @@ class DetailActivity : BaseActivity() {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun pushVod(event: RefreshEvent) {
         if (event.type != RefreshEvent.TYPE_PUSH_VOD) return
@@ -1364,22 +1396,6 @@ class DetailActivity : BaseActivity() {
             return true
         }
         return super.dispatchKeyEvent(event)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (fullWindows) {
-            // 全屏模式下先检查控制栏是否可见，如果可见则先隐藏控制栏
-            if (playFragment?.onBackPressed() == true) {
-                return
-            }
-            // 控制栏不可见时退出全屏，回到详情页
-            toggleFullPreview()
-        } else {
-            // 退出前保存播放记录（只有播放成功才保存）
-            insertVod(firstSourceKey, vodInfo)
-            super.onBackPressed()
-        }
     }
 
     fun toggleSubtitleTextSize() {

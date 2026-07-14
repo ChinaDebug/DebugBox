@@ -4,9 +4,11 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -17,8 +19,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import android.app.AlertDialog;
-import android.os.Environment;
+import androidx.activity.OnBackPressedCallback;
+import androidx.core.content.ContextCompat;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.BaseActivity;
@@ -44,24 +46,30 @@ public class SplashActivity extends BaseActivity {
     @Override
     protected void init() {
         handler = new Handler(Looper.getMainLooper());
-        
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // 启动动画期间禁止返回
+            }
+        });
+
         changeWallpaper(true);
-        
+
         ImageView logoView = findViewById(R.id.splashLogo);
         LinearLayout textContainer = findViewById(R.id.textContainer);
-        
+
         logoView.setAlpha(1f);
         logoView.setScaleX(1f);
         logoView.setScaleY(1f);
         logoView.setTranslationY(-500f);
-        
+
         ObjectAnimator logoDrop = ObjectAnimator.ofFloat(logoView, "translationY", -500f, 0f);
         logoDrop.setDuration(800);
         logoDrop.setInterpolator(new BounceInterpolator());
         logoDrop.start();
-        
+
         startTextShatterAnimation(textContainer);
-        
+
         // 检查并申请存储权限
         requestStoragePermission();
     }
@@ -144,7 +152,7 @@ public class SplashActivity extends BaseActivity {
         for (int i = 0; i < charCount; i++) {
             TextView charView = new TextView(this);
             charView.setText(String.valueOf(appName.charAt(i)));
-            charView.setTextColor(getResources().getColor(android.R.color.white));
+            charView.setTextColor(ContextCompat.getColor(this, android.R.color.white));
             charView.setTextSize(42);
             charView.setTypeface(null, android.graphics.Typeface.BOLD);
             charView.setAlpha(0f);
@@ -189,6 +197,7 @@ public class SplashActivity extends BaseActivity {
         });
     }
 
+    @SuppressWarnings("deprecation")
     private void navigateToHome() {
         Intent intent = new Intent(this, HomeActivity.class);
         if (getIntent() != null && getIntent().hasExtra("useCache")) {
@@ -197,12 +206,11 @@ public class SplashActivity extends BaseActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         finish();
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-    }
-
-    @Override
-    public void onBackPressed() {
-        // 启动动画期间禁止返回
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out);
+        } else {
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        }
     }
 
     @Override

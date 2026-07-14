@@ -17,6 +17,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +176,11 @@ public class SubtitleViewModel extends ViewModel {
                                 String url = "https://assrt.net" + href;
                                 SubtitleBean one = new SubtitleBean();
                                 String title = href.substring(href.lastIndexOf("/") + 1);
-                                one.setName(URLDecoder.decode(title));
+                                try {
+                                    one.setName(URLDecoder.decode(title, "UTF-8"));
+                                } catch (UnsupportedEncodingException e) {
+                                    one.setName(title);
+                                }
                                 one.setUrl(url);
                                 one.setIsZip(false);
                                 data.add(one);

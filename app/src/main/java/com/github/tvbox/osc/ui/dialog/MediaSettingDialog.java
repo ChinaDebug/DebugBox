@@ -352,7 +352,7 @@ public class MediaSettingDialog extends BaseDialog {
             TextView name = helper.getView(R.id.tvName);
             name.setText(item.content);
             // 设置选中状态的背景
-            if (helper.getAdapterPosition() == selectedPosition) {
+            if (helper.getBindingAdapterPosition() == selectedPosition) {
                 name.setBackgroundResource(R.drawable.button_dialog_main_selected);
             } else {
                 name.setBackgroundResource(R.drawable.button_dialog_main);

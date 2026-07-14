@@ -5,6 +5,8 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 
 /**
@@ -18,7 +20,8 @@ public interface StorageDriveDao {
     long insert(StorageDrive drive);
 
     @Query("select * from storageDrive order by id")
-    List<StorageDrive> getAll();
+    @NonNull
+    List<@NonNull StorageDrive> getAll();
 
     @Query("delete from storageDrive where `id`=:id")
     void delete(int id);

@@ -619,6 +619,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private native void _pause() throws IllegalStateException;
 
+    @Deprecated
     @SuppressLint("Wakelock")
     @Override
     public void setWakeMode(Context context, int mode) {
@@ -971,11 +972,13 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         return mediaInfo;
     }
 
+    @Deprecated
     @Override
     public void setLogEnabled(boolean enable) {
         // do nothing
     }
 
+    @Deprecated
     @Override
     public boolean isPlayable() {
         return true;
@@ -1014,6 +1017,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         // do nothing
     }
 
+    @Deprecated
     @Override
     public void setKeepInBackground(boolean keepInBackground) {
         // do nothing

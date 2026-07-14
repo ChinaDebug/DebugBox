@@ -66,10 +66,11 @@ class OKRequest {
         mOkHttpRequest = mRequestBuilder.build();
     }
 
+    @SuppressWarnings("deprecation")
     private RequestBody getRequestBody() {
         if (!TextUtils.isEmpty(mJsonStr)) {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            return RequestBody.create(JSON, mJsonStr);
+            MediaType JSON = MediaType.get("application/json; charset=utf-8");
+            return RequestBody.create(mJsonStr, JSON);
         }
         FormBody.Builder formBody = new FormBody.Builder();
         if (mParamsMap != null) {

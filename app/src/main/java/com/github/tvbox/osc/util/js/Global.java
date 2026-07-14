@@ -17,6 +17,7 @@ import com.whl.quickjs.wrapper.QuickJSContext;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 import java.util.Timer;
@@ -46,7 +47,16 @@ public class Global {
     @Keep
     @Function
     public String js2Proxy(Boolean dynamic, Integer siteType, String siteKey, String url, JSObject headers) {
-        return getProxy(true) + "&from=catvod" + "&siteType=" + siteType + "&siteKey=" + siteKey + "&header=" + URLEncoder.encode(headers.toJsonString()) + "&url=" + URLEncoder.encode(url);
+        String header;
+        String encodedUrl;
+        try {
+            header = URLEncoder.encode(headers.toJsonString(), "UTF-8");
+            encodedUrl = URLEncoder.encode(url, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            header = headers.toJsonString();
+            encodedUrl = url;
+        }
+        return getProxy(true) + "&from=catvod" + "&siteType=" + siteType + "&siteKey=" + siteKey + "&header=" + header + "&url=" + encodedUrl;
     }
 
     @Keep

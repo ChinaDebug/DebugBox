@@ -49,6 +49,8 @@ import java.util.Map;
 
 public class BackupDialog extends BaseDialog {
 
+    private BackupAdapter adapter;
+
     public BackupDialog(@NonNull @NotNull Context context) {
         super(context);
         if (context instanceof Activity) {
@@ -56,20 +58,20 @@ public class BackupDialog extends BaseDialog {
         }
         setContentView(R.layout.dialog_backup);
         TvRecyclerView tvRecyclerView = findViewById(R.id.list);
-        BackupAdapter adapter = new BackupAdapter();
+        adapter = new BackupAdapter();
         tvRecyclerView.setAdapter(adapter);
         adapter.setNewData(allBackup());
         adapter.setOnItemChildClickListener(new BaseQuickAdapter.OnItemChildClickListener() {
             @Override
-            public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
+            public void onItemChildClick(BaseQuickAdapter baseAdapter, View view, int position) {
                 if (view.getId() == R.id.tvName) {
                     checkStoragePermission(() -> {
-                        restore((String) adapter.getItem(position));
+                        restore(BackupDialog.this.adapter.getItem(position));
                     });
                 } else if (view.getId() == R.id.tvDel) {
                     checkStoragePermission(() -> {
-                        delete((String) adapter.getItem(position));
-                        adapter.setNewData(allBackup());
+                        delete(BackupDialog.this.adapter.getItem(position));
+                        BackupDialog.this.adapter.setNewData(allBackup());
                     });
                 }
             }

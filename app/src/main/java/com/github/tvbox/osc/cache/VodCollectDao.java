@@ -6,6 +6,8 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 
 /**
@@ -19,7 +21,8 @@ public interface VodCollectDao {
     long insert(VodCollect record);
 
     @Query("select * from vodCollect  order by updateTime desc")
-    List<VodCollect> getAll();
+    @NonNull
+    List<@NonNull VodCollect> getAll();
 
     @Query("select * from vodCollect where `id`=:id")
     VodCollect getVodCollect(int id);

@@ -7,6 +7,8 @@ import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.app.PictureInPictureParams;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,10 +28,11 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.RelativeSizeSpan;
 
-import com.github.tvbox.osc.util.ToastHelper;
-
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.github.tvbox.osc.util.ToastHelper;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -205,6 +208,8 @@ public class LivePlayActivity extends BaseActivity {
     // center BACK button
     LinearLayout mBack;
 
+    private OnBackPressedCallback backCallback;
+
     private boolean isSHIYI = false;
     private static String shiyi_time;//时移时间
 
@@ -250,6 +255,27 @@ public class LivePlayActivity extends BaseActivity {
 
     @Override
     protected void init() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (tvLeftChannelListLayout.getVisibility() == View.VISIBLE) {
+                    mHandler.removeCallbacks(mHideChannelListRun);
+                    mHandler.post(mHideChannelListRun);
+                } else if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
+                    mHandler.removeCallbacks(mHideSettingLayoutRun);
+                    mHandler.post(mHideSettingLayoutRun);
+                } else if (tvBottomLayout.getVisibility() == View.VISIBLE) {
+                    mHandler.removeCallbacks(mHideChannelInfoRun);
+                    mHandler.post(mHideChannelInfoRun);
+                } else {
+                    mHandler.removeCallbacks(mConnectTimeoutChangeSourceRun);
+                    mHandler.removeCallbacks(mUpdateNetSpeedRun);
+                    mHandler.removeCallbacks(mUpdateTimeRun);
+                    mHandler.removeCallbacks(tv_sys_timeRunnable);
+                    exit();
+                }
+            }
+        });
 
         // takagen99 : Hide only when video playing
         hideSystemUI(false);
@@ -380,6 +406,7 @@ public class LivePlayActivity extends BaseActivity {
     boolean PiPON = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2;
 
     // takagen99 : Enter PIP if supported
+    @SuppressWarnings("deprecation")
     @Override
     public void onUserLeaveHint() {
         if (supportsPiPMode() && PiPON) {
@@ -387,27 +414,11 @@ public class LivePlayActivity extends BaseActivity {
             mHandler.post(mHideChannelListRun);
             mHandler.post(mHideChannelInfoRun);
             mHandler.post(mHideSettingLayoutRun);
-            enterPictureInPictureMode();
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (tvLeftChannelListLayout.getVisibility() == View.VISIBLE) {
-            mHandler.removeCallbacks(mHideChannelListRun);
-            mHandler.post(mHideChannelListRun);
-        } else if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-            mHandler.removeCallbacks(mHideSettingLayoutRun);
-            mHandler.post(mHideSettingLayoutRun);
-        } else if (tvBottomLayout.getVisibility() == View.VISIBLE) {
-            mHandler.removeCallbacks(mHideChannelInfoRun);
-            mHandler.post(mHideChannelInfoRun);
-        } else {
-            mHandler.removeCallbacks(mConnectTimeoutChangeSourceRun);
-            mHandler.removeCallbacks(mUpdateNetSpeedRun);
-            mHandler.removeCallbacks(mUpdateTimeRun);
-            mHandler.removeCallbacks(tv_sys_timeRunnable);
-            exit();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
+            } else {
+                enterPictureInPictureMode();
+            }
         }
     }
 
@@ -415,7 +426,8 @@ public class LivePlayActivity extends BaseActivity {
 
     private void exit() {
         if (System.currentTimeMillis() - mExitTime < 2000) {
-            super.onBackPressed();
+            backCallback.setEnabled(false);
+            getOnBackPressedDispatcher().onBackPressed();
         } else {
             mExitTime = System.currentTimeMillis();
             ToastHelper.showToast(mContext, getString(R.string.hm_exit_live));

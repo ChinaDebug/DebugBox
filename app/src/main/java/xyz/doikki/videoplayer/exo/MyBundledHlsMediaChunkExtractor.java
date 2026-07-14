@@ -2,9 +2,9 @@ package xyz.doikki.videoplayer.exo;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.media3.common.Format;
-import androidx.media3.common.util.Assertions;
 import androidx.media3.common.util.TimestampAdjuster;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.extractor.text.SubtitleParser;
 import androidx.media3.exoplayer.hls.HlsMediaChunkExtractor;
 import androidx.media3.exoplayer.hls.WebvttExtractor;
 import androidx.media3.extractor.Extractor;
@@ -18,6 +18,7 @@ import androidx.media3.extractor.ts.Ac4Extractor;
 import androidx.media3.extractor.ts.AdtsExtractor;
 
 import com.google.androidx.media3.exoplayer.extractor.ts.MyTsExtractor;
+import com.google.common.base.Preconditions;
 
 import java.io.IOException;
 
@@ -73,10 +74,10 @@ public class MyBundledHlsMediaChunkExtractor implements HlsMediaChunkExtractor {
 
     @Override
     public HlsMediaChunkExtractor recreate() {
-        Assertions.checkState(!isReusable());
+        Preconditions.checkState(!isReusable());
         Extractor newExtractorInstance;
         if (extractor instanceof WebvttExtractor) {
-            newExtractorInstance = new WebvttExtractor(masterPlaylistFormat.language, timestampAdjuster);
+            newExtractorInstance = new WebvttExtractor(masterPlaylistFormat.language, timestampAdjuster, SubtitleParser.Factory.UNSUPPORTED, /* overwriteDurationDuringParsing= */ true);
         } else if (extractor instanceof AdtsExtractor) {
             newExtractorInstance = new AdtsExtractor();
         } else if (extractor instanceof Ac3Extractor) {

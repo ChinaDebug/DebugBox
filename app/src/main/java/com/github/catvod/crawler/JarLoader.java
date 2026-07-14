@@ -173,7 +173,7 @@ public class JarLoader {
         }
         try {
             Class<?> spiderClass = classLoader.loadClass("com.github.catvod.spider." + clsKey);
-            Spider sp = (Spider) spiderClass.newInstance();
+            Spider sp = (Spider) spiderClass.getDeclaredConstructor().newInstance();
             sp.init(App.getInstance(), ext);
             if (!jar.isEmpty()) {
                 sp.homeContent(false);

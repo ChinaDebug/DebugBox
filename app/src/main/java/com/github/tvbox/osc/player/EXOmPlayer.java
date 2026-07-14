@@ -9,7 +9,10 @@ import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.Player;
 import androidx.media3.common.TrackGroup;
+import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.Tracks;
+
+import java.util.Collections;
 import androidx.media3.exoplayer.source.TrackGroupArray;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.exoplayer.trackselection.MappingTrackSelector;
@@ -99,10 +102,10 @@ public class EXOmPlayer extends ExoMediaPlayer {
                 }
             } else {
                 TrackGroupArray trackGroupArray = trackInfo.getTrackGroups(videoTrackBean.renderId);
-                @SuppressLint("UnsafeOptInUsageError") DefaultTrackSelector.SelectionOverride override = new DefaultTrackSelector.SelectionOverride(videoTrackBean.trackGroupId, videoTrackBean.trackId);
+                TrackSelectionOverride override = new TrackSelectionOverride(trackGroupArray.get(videoTrackBean.trackGroupId), Collections.singletonList(videoTrackBean.trackId));
                 DefaultTrackSelector.Parameters.Builder parametersBuilder = getTrackSelector().buildUponParameters();
                 parametersBuilder.setRendererDisabled(videoTrackBean.renderId, false);
-                parametersBuilder.setSelectionOverride(videoTrackBean.renderId, trackGroupArray, override);
+                parametersBuilder.setOverrideForType(override);
                 getTrackSelector().setParameters(parametersBuilder);
             }
         }

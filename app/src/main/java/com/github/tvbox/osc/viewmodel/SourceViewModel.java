@@ -418,7 +418,11 @@ public class SourceViewModel extends ViewModel {
                     LOG.e(e);
                 }
             } else {
-                pushUrl = URLDecoder.decode(pushUrl);
+                try {
+                    pushUrl = URLDecoder.decode(pushUrl, "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    LOG.e(e);
+                }
             }
             sourceKey = "push_agent";
             urlid = pushUrl;
@@ -1000,7 +1004,11 @@ public class SourceViewModel extends ViewModel {
                                         LOG.e(e);
                                     }
                                 } else {
-                                    pushUrl = URLDecoder.decode(pushUrl);
+                                    try {
+                                        pushUrl = URLDecoder.decode(pushUrl, "UTF-8");
+                                    } catch (UnsupportedEncodingException e) {
+                                        LOG.e(e);
+                                    }
                                 }
 
                                 final AbsXml[] resData = {null};

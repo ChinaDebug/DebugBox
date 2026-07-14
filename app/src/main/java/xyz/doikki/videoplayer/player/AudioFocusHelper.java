@@ -1,7 +1,9 @@
 package xyz.doikki.videoplayer.player;
 
 import android.content.Context;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -23,6 +25,8 @@ final class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener 
     private boolean mStartRequested = false;
     private boolean mPausedForLoss = false;
     private int mCurrentFocus = 0;
+
+    private AudioFocusRequest mAudioFocusRequest;
 
     AudioFocusHelper(@NonNull BaseVideoView videoView) {
         mWeakVideoView = new WeakReference<>(videoView);
@@ -81,6 +85,7 @@ final class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener 
     /**
      * Requests to obtain the audio focus
      */
+    @SuppressWarnings("deprecation")
     void requestFocus() {
         if (mCurrentFocus == AudioManager.AUDIOFOCUS_GAIN) {
             return;
@@ -90,10 +95,23 @@ final class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener 
             return;
         }
 
-        int status = mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if (AudioManager.AUDIOFOCUS_REQUEST_GRANTED == status) {
-            mCurrentFocus = AudioManager.AUDIOFOCUS_GAIN;
-            return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (mAudioFocusRequest == null) {
+                mAudioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setOnAudioFocusChangeListener(this)
+                        .build();
+            }
+            int status = mAudioManager.requestAudioFocus(mAudioFocusRequest);
+            if (AudioManager.AUDIOFOCUS_REQUEST_GRANTED == status) {
+                mCurrentFocus = AudioManager.AUDIOFOCUS_GAIN;
+                return;
+            }
+        } else {
+            int status = mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            if (AudioManager.AUDIOFOCUS_REQUEST_GRANTED == status) {
+                mCurrentFocus = AudioManager.AUDIOFOCUS_GAIN;
+                return;
+            }
         }
 
         mStartRequested = true;
@@ -102,6 +120,7 @@ final class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener 
     /**
      * Requests the system to drop the audio focus
      */
+    @SuppressWarnings("deprecation")
     void abandonFocus() {
 
         if (mAudioManager == null) {
@@ -109,6 +128,10 @@ final class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener 
         }
 
         mStartRequested = false;
-        mAudioManager.abandonAudioFocus(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && mAudioFocusRequest != null) {
+            mAudioManager.abandonAudioFocusRequest(mAudioFocusRequest);
+        } else {
+            mAudioManager.abandonAudioFocus(this);
+        }
     }
 }

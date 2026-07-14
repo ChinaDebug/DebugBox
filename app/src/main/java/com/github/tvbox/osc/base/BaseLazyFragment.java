@@ -53,7 +53,7 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
     protected boolean mIsFirstVisible = true;
     protected Context mContext;
     protected Activity mActivity;
-    private LoadService mLoadService;
+    private LoadService<?> mLoadService;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -73,6 +73,7 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
         return rootView;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -87,6 +88,11 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
      * 1）在切换tab的时候，会先于所有fragment的其他生命周期，先调用这个函数，可以看log 2)
      * 对于之前已经调用过setUserVisibleHint方法的fragment后，让fragment从可见到不可见之间状态的变化
      */
+    /**
+     * ViewPager 懒加载机制仍依赖此方法；迁移到 ViewPager2 需较大改动，
+     * 暂时保留并在方法级别抑制 deprecation 警告。
+     */
+    @SuppressWarnings("deprecation")
     @Override
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
@@ -155,6 +161,7 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
      * 此时只会加载外层Fragment的数据，而不会加载内嵌viewPager中的fragment的数据，因此，我们
      * 需要在此增加一个当外层Fragment可见的时候，分发可见事件给自己内嵌的所有Fragment显示
      */
+    @SuppressWarnings("deprecation")
     private void dispatchChildVisibleState(boolean visible) {
         FragmentManager fragmentManager = getChildFragmentManager();
         List<Fragment> fragments = fragmentManager.getFragments();
@@ -196,6 +203,7 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
     /**
      * 在滑动或者跳转的过程中，第一次创建fragment的时候均会调用onResume方法
      */
+    @SuppressWarnings("deprecation")
     @Override
     public void onResume() {
         AutoSize.autoConvertDensity(getActivity(), getSizeInDp(), isBaseOnWidth());
@@ -215,6 +223,7 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
      * getUserVisibleHint() 能够限定是当前可见的 Fragment 当前 Fragment 包含子 Fragment 的时候
      * dispatchUserVisibleHint 内部本身就会通知子 Fragment 不可见 子 fragment 走到这里的时候自身又会调用一遍
      */
+    @SuppressWarnings("deprecation")
     @Override
     public void onPause() {
         super.onPause();
@@ -245,9 +254,10 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
      */
     protected abstract void init();
 
+    @SuppressWarnings("unchecked")
     protected void setLoadSir(View view) {
         //    if (mLoadService == null) {
-        mLoadService = LoadSir.getDefault().register(view, new Callback.OnReloadListener() {
+        mLoadService = (LoadService<?>) LoadSir.getDefault().register(view, new Callback.OnReloadListener() {
             @Override
             public void onReload(View v) {
             }

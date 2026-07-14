@@ -72,11 +72,15 @@ public class DefaultConfig {
         return data;
     }
 
+    @SuppressWarnings("deprecation")
     public static int getAppVersionCode(Context mContext) {
         //包管理操作管理类
         PackageManager pm = mContext.getPackageManager();
         try {
             PackageInfo packageInfo = pm.getPackageInfo(mContext.getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return (int) packageInfo.getLongVersionCode();
+            }
             return packageInfo.versionCode;
         } catch (PackageManager.NameNotFoundException e) {
             LOG.e(e);

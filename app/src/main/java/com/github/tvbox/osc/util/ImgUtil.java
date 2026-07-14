@@ -121,6 +121,7 @@ public class ImgUtil {
         load(url, view, roundingRadius,0,0);
     }
 
+    @SuppressWarnings("unchecked")
     public static void load(String url, ImageView view, int roundingRadius, int newWidth, int newHeight) {
         view.setScaleType(ImageView.ScaleType.CENTER);
         if (TextUtils.isEmpty(url)) {
@@ -152,6 +153,7 @@ public class ImgUtil {
      * @param imageView 设置image
      * @param frameTimeMicros 获取某一时间帧.
      */
+    @SuppressWarnings("unchecked")
     public static void loadVideoScreenshot(String uri, ImageView imageView, long frameTimeMicros) {
         RequestOptions requestOptions = RequestOptions.frameOf(frameTimeMicros * 1000)
             .set(FRAME_OPTION, MediaMetadataRetriever.OPTION_CLOSEST)

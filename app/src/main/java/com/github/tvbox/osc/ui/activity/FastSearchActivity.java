@@ -354,6 +354,7 @@ public class FastSearchActivity extends BaseActivity {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
         if (mSearchTitle != null) {

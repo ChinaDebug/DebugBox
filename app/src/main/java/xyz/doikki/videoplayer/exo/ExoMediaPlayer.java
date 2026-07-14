@@ -458,8 +458,9 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
         if (mPlayerEventListener != null) {
             mPlayerEventListener.onVideoSizeChanged(videoSize.width, videoSize.height);
-            if (videoSize.unappliedRotationDegrees > 0) {
-                mPlayerEventListener.onInfo(MEDIA_INFO_VIDEO_ROTATION_CHANGED, videoSize.unappliedRotationDegrees);
+            @SuppressWarnings("deprecation") int rotationDegrees = videoSize.unappliedRotationDegrees;
+            if (rotationDegrees > 0) {
+                mPlayerEventListener.onInfo(MEDIA_INFO_VIDEO_ROTATION_CHANGED, rotationDegrees);
             }
         }
     }

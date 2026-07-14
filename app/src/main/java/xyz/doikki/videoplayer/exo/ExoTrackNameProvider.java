@@ -2,6 +2,7 @@ package xyz.doikki.videoplayer.exo;
 
 import android.annotation.SuppressLint;
 import android.content.res.Resources;
+import android.os.Build;
 import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
@@ -9,13 +10,12 @@ import androidx.annotation.OptIn;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
-import androidx.media3.common.util.Assertions;
 import androidx.media3.common.util.UnstableApi;
-import androidx.media3.common.util.Util;
 
 import com.github.tvbox.osc.R;
 
 import java.util.Locale;
+import java.util.Objects;
 
 public class ExoTrackNameProvider {
 
@@ -25,7 +25,7 @@ public class ExoTrackNameProvider {
      * @param resources Resources from which to obtain strings.
      */
     public @OptIn(markerClass = UnstableApi.class) ExoTrackNameProvider(Resources resources) {
-        this.resources = Assertions.checkNotNull(resources);
+        this.resources = Objects.requireNonNull(resources);
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -118,10 +118,8 @@ public class ExoTrackNameProvider {
         if (TextUtils.isEmpty(language) || C.LANGUAGE_UNDETERMINED.equals(language)) {
             return "";
         }
-        @SuppressLint("UnsafeOptInUsageError") Locale languageLocale =
-                Util.SDK_INT >= 21 ? Locale.forLanguageTag(language) : new Locale(language);
-        @SuppressLint("UnsafeOptInUsageError") Locale displayLocale =
-                Util.SDK_INT >= 24 ? Locale.getDefault(Locale.Category.DISPLAY) : Locale.getDefault();
+        Locale languageLocale = Locale.forLanguageTag(language);
+        Locale displayLocale = Build.VERSION.SDK_INT >= 24 ? Locale.getDefault(Locale.Category.DISPLAY) : Locale.getDefault();
         String languageName = languageLocale.getDisplayName(displayLocale);
         if (TextUtils.isEmpty(languageName)) {
             return "";

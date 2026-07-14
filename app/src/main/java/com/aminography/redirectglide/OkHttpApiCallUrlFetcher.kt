@@ -16,17 +16,17 @@ class OkHttpApiCallUrlFetcher(
 ) : OkHttpRedirectUrlFetcher(client, url), Callback {
 
     override fun consumeResponse(response: Response) {
-        responseBody = response.body()
+        responseBody = response.body
         if (response.isSuccessful && responseBody != null) {
             try {
                 val sourceUrl = (url as BaseApiCallGlideUrl).extractImageUrl(responseBody?.string())
                 callback?.onDataReady(GlideUrl(sourceUrl))
             } catch (e: IOException) {
-                callback?.onLoadFailed(HttpException(response.message(), response.code()))
+                callback?.onLoadFailed(HttpException(response.message, response.code))
                 e.printStackTrace()
             }
         } else {
-            callback?.onLoadFailed(HttpException(response.message(), response.code()))
+            callback?.onLoadFailed(HttpException(response.message, response.code))
         }
     }
 

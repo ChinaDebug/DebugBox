@@ -26,7 +26,6 @@ import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.ParserException;
-import androidx.media3.common.util.Assertions;
 import androidx.media3.common.util.ParsableBitArray;
 import androidx.media3.common.util.ParsableByteArray;
 import androidx.media3.common.util.TimestampAdjuster;
@@ -44,6 +43,8 @@ import androidx.media3.extractor.ts.SectionPayloadReader;
 import androidx.media3.extractor.ts.SectionReader;
 import androidx.media3.extractor.ts.TsPayloadReader;
 import androidx.media3.extractor.ts.TsUtil;
+
+import com.google.common.base.Preconditions;
 
 import java.io.IOException;
 import java.lang.annotation.Documented;
@@ -196,7 +197,7 @@ public final class MyTsExtractor implements Extractor {
             TimestampAdjuster timestampAdjuster,
             TsPayloadReader.Factory payloadReaderFactory,
             int timestampSearchBytes) {
-        this.payloadReaderFactory = Assertions.checkNotNull(payloadReaderFactory);
+        this.payloadReaderFactory = Preconditions.checkNotNull(payloadReaderFactory);
         this.timestampSearchBytes = timestampSearchBytes;
         this.mode = mode;
         if (mode == MODE_SINGLE_PMT || mode == MODE_HLS) {
@@ -255,7 +256,7 @@ public final class MyTsExtractor implements Extractor {
 
     @Override
     public void seek(long position, long timeUs) {
-        Assertions.checkState(mode != MODE_HLS);
+        Preconditions.checkState(mode != MODE_HLS);
         int timestampAdjustersCount = timestampAdjusters.size();
         for (int i = 0; i < timestampAdjustersCount; i++) {
             TimestampAdjuster timestampAdjuster = timestampAdjusters.get(i);

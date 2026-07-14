@@ -728,14 +728,9 @@ public class UpdateCheckManager {
             if (cm == null) {
                 return false;
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                Network network = cm.getActiveNetwork();
-                NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
-                return capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
-            } else {
-                android.net.NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                return activeNetwork != null && activeNetwork.getType() == ConnectivityManager.TYPE_WIFI;
-            }
+            Network network = cm.getActiveNetwork();
+            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+            return capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
         } catch (Exception e) {
             return false;
         }

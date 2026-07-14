@@ -5,6 +5,8 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 
 @Dao
@@ -20,8 +22,10 @@ public interface SearchDao {
     void deleteAll();
 
     @Query("SELECT * FROM T_SEARCH")
-    List<SearchHistory> getAll();
+    @NonNull
+    List<@NonNull SearchHistory> getAll();
 
     @Query("SELECT * FROM T_SEARCH WHERE searchKeyWords=:keyword")
-    List<SearchHistory> getByKeywords(String keyword);
+    @NonNull
+    List<@NonNull SearchHistory> getByKeywords(String keyword);
 }

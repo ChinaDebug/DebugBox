@@ -17,6 +17,8 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 
@@ -159,6 +161,7 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
         this(context, attrs, 0);
     }
 
+    @SuppressWarnings("unchecked")
     public BaseVideoView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
@@ -166,6 +169,7 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
         VideoViewConfig config = VideoViewManager.getConfig();
         mEnableAudioFocus = config.mEnableAudioFocus;
         mProgressManager = config.mProgressManager;
+        // 库使用原始类型设计，赋值时存在未检查转换
         mPlayerFactory = config.mPlayerFactory;
         mCurrentScreenScaleType = config.mScreenScaleType;
         mRenderViewFactory = config.mRenderViewFactory;
@@ -845,10 +849,12 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
     /**
      * 自定义播放核心，继承{@link PlayerFactory}实现自己的播放核心
      */
+    @SuppressWarnings("unchecked")
     public void setPlayerFactory(PlayerFactory playerFactory) {
         if (playerFactory == null) {
             throw new IllegalArgumentException("PlayerFactory can not be null!");
         }
+        // 库使用原始类型设计，赋值时存在未检查转换
         mPlayerFactory = playerFactory;
     }
 
@@ -887,16 +893,31 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
         setPlayerState(PLAYER_FULL_SCREEN);
     }
 
+    @SuppressWarnings("deprecation")
     private void hideSysBar(ViewGroup decorView) {
-        int uiOptions = decorView.getSystemUiVisibility();
-        uiOptions |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        Activity activity = getActivity();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && decorView.getWindowInsetsController() != null) {
+            WindowInsetsController controller = decorView.getWindowInsetsController();
+            controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            if (activity != null) {
+                activity.getWindow().setFlags(
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
+        } else {
+            int uiOptions = decorView.getSystemUiVisibility();
+            uiOptions |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            }
+            decorView.setSystemUiVisibility(uiOptions);
+            if (activity != null) {
+                activity.getWindow().setFlags(
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
         }
-        decorView.setSystemUiVisibility(uiOptions);
-        getActivity().getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
 
     @Override
@@ -932,14 +953,26 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
         setPlayerState(PLAYER_NORMAL);
     }
 
+    @SuppressWarnings("deprecation")
     private void showSysBar(ViewGroup decorView) {
-        int uiOptions = decorView.getSystemUiVisibility();
-        uiOptions &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            uiOptions &= ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        Activity activity = getActivity();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && decorView.getWindowInsetsController() != null) {
+            WindowInsetsController controller = decorView.getWindowInsetsController();
+            controller.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            if (activity != null) {
+                activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
+        } else {
+            int uiOptions = decorView.getSystemUiVisibility();
+            uiOptions &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                uiOptions &= ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            }
+            decorView.setSystemUiVisibility(uiOptions);
+            if (activity != null) {
+                activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
         }
-        decorView.setSystemUiVisibility(uiOptions);
-        getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
 
     /**

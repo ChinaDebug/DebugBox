@@ -20,7 +20,7 @@ package tv.danmaku.ijk.media.player;
 
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.media.AudioManager;
+import android.media.AudioAttributes;
 import android.media.MediaDataSource;
 import android.media.MediaPlayer;
 import android.media.TimedText;
@@ -55,7 +55,10 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         synchronized (mInitLock) {
             mInternalMediaPlayer = new MediaPlayer();
         }
-        mInternalMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mInternalMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                .build());
         mInternalListenerAdapter = new AndroidMediaPlayerListenerHolder(this);
         attachInternalListeners();
     }
@@ -305,10 +308,12 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void setLogEnabled(boolean enable) {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public boolean isPlayable() {
         return true;
     }
@@ -317,16 +322,19 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
      * misc
      */
     @Override
+    @SuppressWarnings("deprecation")
     public void setWakeMode(Context context, int mode) {
         mInternalMediaPlayer.setWakeMode(context, mode);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void setAudioStreamType(int streamtype) {
         mInternalMediaPlayer.setAudioStreamType(streamtype);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void setKeepInBackground(boolean keepInBackground) {
     }
 

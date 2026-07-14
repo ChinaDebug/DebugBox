@@ -1,29 +1,18 @@
-apply plugin: 'com.android.library'
-apply plugin: 'com.chaquo.python'
+plugins {
+    id 'com.android.library'
+    id 'com.chaquo.python'
+}
 
 android {
-    namespace 'com.undcover.freedom.pyramid'
-    compileSdk 34
+    namespace = 'com.undcover.freedom.pyramid'
+    compileSdk = 36
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 34
-        python {
-            version "3.8"
-            buildPython "py", "-3.8"
-            pip {
-                install "lxml"
-                install "pyquery"
-                install "requests"
-                install "jsonpath-ng"
-                install "cachetools"
-                install "pycryptodome"
-                install "beautifulsoup4"
-            }
-        }
+        minSdkVersion = 24
+        targetSdkVersion = 34
     }
 
-    flavorDimensions "abi"
+    flavorDimensions = ["abi"]
 
     productFlavors {
         arm32 {
@@ -48,8 +37,9 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+        coreLibraryDesugaringEnabled = true
     }
 
     sourceSets {
@@ -59,6 +49,22 @@ android {
     }
 }
 
-dependencies {
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        buildPython = ["py", "-3.11"]
+        pip {
+            install "lxml"
+            install "pyquery"
+            install "requests"
+            install "jsonpath-ng"
+            install "cachetools"
+            install "pycryptodome"
+            install "beautifulsoup4"
+        }
+    }
+}
 
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

@@ -109,7 +109,7 @@ public class PlayService extends Service {
     @Override
     public void onDestroy() {
         EventBus.getDefault().unregister(this);
-        stopForeground(true);
+        stopForeground(Service.STOP_FOREGROUND_REMOVE);
     }
 
     @Nullable

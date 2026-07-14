@@ -60,6 +60,21 @@ public class SearchSubtitleDialog extends BaseDialog {
             setOwnerActivity((Activity) context);
         }
         setContentView(R.layout.dialog_search_subtitle);
+        setOnKeyListener((dialog, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                if (!isSearchPag) {
+                    isSearchPag = true;
+                    loadingBar.setVisibility(View.GONE);
+                    mGridView.setVisibility(View.VISIBLE);
+                    searchAdapter.setNewData(zipSubtitles);
+                    searchAdapter.setEnableLoadMore(page < maxPage);
+                    return true;
+                }
+                dismiss();
+                return true;
+            }
+            return false;
+        });
         initView(context);
         initViewModel();
     }
@@ -222,19 +237,6 @@ public class SearchSubtitleDialog extends BaseDialog {
 
     public interface SubtitleLoader {
         void loadSubtitle(SubtitleBean subtitle);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (!isSearchPag) {
-            isSearchPag = true;
-            loadingBar.setVisibility(View.GONE);
-            mGridView.setVisibility(View.VISIBLE);
-            searchAdapter.setNewData(zipSubtitles);
-            searchAdapter.setEnableLoadMore(page < maxPage);
-            return;
-        }
-        dismiss();
     }
 
 }

@@ -153,7 +153,7 @@ public class SearchActivity extends BaseActivity {
 
     public void openSystemKeyBoard() {
         InputMethodManager imm = (InputMethodManager) this.getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.showSoftInput(this.getCurrentFocus(), InputMethodManager.SHOW_FORCED);
+        imm.showSoftInput(this.getCurrentFocus(), InputMethodManager.SHOW_IMPLICIT);
     }
 
     public void hideSystemKeyBoard() {
@@ -456,17 +456,17 @@ public class SearchActivity extends BaseActivity {
      * 拼音联想
      */
     private void loadRec(String key) {
-        OkGo.get("https://tv.aiseet.atianqi.com/i-tvbin/qtv_video/search/get_search_smart_box")
+        OkGo.<String>get("https://tv.aiseet.atianqi.com/i-tvbin/qtv_video/search/get_search_smart_box")
                 .params("format", "json")
                 .params("page_num", 0)
                 .params("page_size", 50) //随便改
                 .params("key", key)
-                .execute(new AbsCallback() {
+                .execute(new AbsCallback<String>() {
                     @Override
-                    public void onSuccess(Response response) {
+                    public void onSuccess(Response<String> response) {
                         try {
-                            ArrayList hots = new ArrayList<>();
-                            String result = (String) response.body();
+                            ArrayList<String> hots = new ArrayList<>();
+                            String result = response.body();
                             Gson gson = new Gson();
                             JsonElement json = gson.fromJson(result, JsonElement.class);
                             JsonArray groupDataArr = json.getAsJsonObject()

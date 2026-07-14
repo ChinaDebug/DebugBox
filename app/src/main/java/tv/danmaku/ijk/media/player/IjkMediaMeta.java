@@ -1,5 +1,6 @@
 package tv.danmaku.ijk.media.player;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 
@@ -176,8 +177,14 @@ public class IjkMediaMeta {
         }
     }
 
+    @SuppressWarnings("deprecation")
     public ArrayList<Bundle> getParcelableArrayList(String key) {
-        return mMediaMeta.getParcelableArrayList(key);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return mMediaMeta.getParcelableArrayList(key, Bundle.class);
+        } else {
+            // API 33 以下仅有无类型重载，属于平台兼容性分支，已确认安全
+            return mMediaMeta.getParcelableArrayList(key);
+        }
     }
 
     public String getDurationInline() {

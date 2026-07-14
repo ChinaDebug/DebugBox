@@ -44,7 +44,7 @@ open class OkHttpRedirectUrlFetcher(
     }
 
     override fun onResponse(call: Call, response: Response) {
-        when (val statusCode = response.code()) {
+        when (val statusCode = response.code) {
             301, 302, 303, 307, 308 -> {
                 response.close()
                 if (--redirectCount >= 0) {
@@ -68,7 +68,7 @@ open class OkHttpRedirectUrlFetcher(
         if (response.isSuccessful) {
             callback?.onDataReady(url)
         } else {
-            callback?.onLoadFailed(HttpException(response.message(), response.code()))
+            callback?.onLoadFailed(HttpException(response.message, response.code))
         }
     }
 

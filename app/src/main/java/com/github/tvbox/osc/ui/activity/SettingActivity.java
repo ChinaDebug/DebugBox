@@ -2,6 +2,7 @@ package com.github.tvbox.osc.ui.activity;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.content.ContextCompat;
 import androidx.viewpager.widget.ViewPager;
 
@@ -66,8 +68,58 @@ public class SettingActivity extends BaseActivity {
     @Override
     protected void init() {
         EventBus.getDefault().register(this);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (isFinishing()) {
+                    return;
+                }
+                if (cacheCleared) {
+                    Intent intent = new Intent(mContext, SplashActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    applyOverrideTransition(0, 0);
+                    finish();
+                    return;
+                }
+                if ((homeSourceKey != null && !homeSourceKey.equals(Hawk.get(HawkConfig.HOME_API, ""))) ||
+                        !currentApi.equals(Hawk.get(HawkConfig.API_URL, "")) || !currentLive.equals(Hawk.get(HawkConfig.LIVE_URL, "")) ||
+                        !currentEpg.equals(Hawk.get(HawkConfig.EPG_URL, "")) || dnsOpt != Hawk.get(HawkConfig.DOH_URL, 0)) {
+                    Intent intent = new Intent(mContext, SplashActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    // 判断是否需要使用缓存：只有API、直播、EPG地址都没变时才使用缓存
+                    boolean useCache = currentApi.equals(Hawk.get(HawkConfig.API_URL, ""))
+                            && currentLive.equals(Hawk.get(HawkConfig.LIVE_URL, ""))
+                            && currentEpg.equals(Hawk.get(HawkConfig.EPG_URL, ""));
+                    if (useCache) {
+                        intent.putExtra("useCache", true);
+                    } else {
+                        // 只有不使用缓存时才清理，避免清理后又要使用缓存的矛盾
+                        ApiConfig.get().clearAllCache();
+                        UpdateCheckManager.get().clearCache();
+                        // 重置检测状态，允许返回首页后立即检测历史记录更新
+                        UpdateCheckManager.get().resetCheckState();
+                    }
+                    startActivity(intent);
+                    applyOverrideTransition(0, 0);
+                    finish();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
         initView();
         initData();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyOverrideTransition(int enterAnim, int exitAnim) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, enterAnim, exitAnim);
+        } else {
+            overridePendingTransition(enterAnim, exitAnim);
+        }
     }
 
     private void initView() {
@@ -186,45 +238,6 @@ public class SettingActivity extends BaseActivity {
             mHandler.postDelayed(mDataRunnable, 200);
         }
         return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (isFinishing()) {
-            return;
-        }
-        if (cacheCleared) {
-            Intent intent = new Intent(mContext, SplashActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            overridePendingTransition(0, 0);
-            finish();
-            return;
-        }
-        if ((homeSourceKey != null && !homeSourceKey.equals(Hawk.get(HawkConfig.HOME_API, ""))) ||
-                !currentApi.equals(Hawk.get(HawkConfig.API_URL, "")) || !currentLive.equals(Hawk.get(HawkConfig.LIVE_URL, "")) ||
-                !currentEpg.equals(Hawk.get(HawkConfig.EPG_URL, "")) || dnsOpt != Hawk.get(HawkConfig.DOH_URL, 0)) {
-            Intent intent = new Intent(mContext, SplashActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-            // 判断是否需要使用缓存：只有API、直播、EPG地址都没变时才使用缓存
-            boolean useCache = currentApi.equals(Hawk.get(HawkConfig.API_URL, ""))
-                    && currentLive.equals(Hawk.get(HawkConfig.LIVE_URL, ""))
-                    && currentEpg.equals(Hawk.get(HawkConfig.EPG_URL, ""));
-            if (useCache) {
-                intent.putExtra("useCache", true);
-            } else {
-                // 只有不使用缓存时才清理，避免清理后又要使用缓存的矛盾
-                ApiConfig.get().clearAllCache();
-                UpdateCheckManager.get().clearCache();
-                // 重置检测状态，允许返回首页后立即检测历史记录更新
-                UpdateCheckManager.get().resetCheckState();
-            }
-            startActivity(intent);
-            overridePendingTransition(0, 0);
-            finish();
-        } else {
-            super.onBackPressed();
-        }
     }
 
     @Override

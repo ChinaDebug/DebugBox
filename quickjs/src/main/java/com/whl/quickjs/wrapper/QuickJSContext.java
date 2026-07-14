@@ -29,7 +29,7 @@ public class QuickJSContext {
         } catch (UnsatisfiedLinkError e) {
             throw new QuickJSException("The so library must be initialized before createContext! QuickJSLoader.init should be called on the Android platform. In the JVM, you need to manually call System.loadLibrary");
         }
-        currentThreadId = Thread.currentThread().getId();
+        currentThreadId = resolveCurrentThreadId();
     }
 
     public static QuickJSContext create() {
@@ -131,10 +131,17 @@ public class QuickJSContext {
     }
 
     private void checkSameThread() {
-        boolean isSameThread = currentThreadId == Thread.currentThread().getId();
+        boolean isSameThread = currentThreadId == resolveCurrentThreadId();
         if (!isSameThread) {
             throw new QuickJSException("Must be call same thread in QuickJSContext.create!");
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static long resolveCurrentThreadId() {
+        // Thread.getId() 在 Java 21 中已弃用，但 threadId() 要到 Android API 34 才可用。
+        // 为兼容 minSdk 24，继续通过 getId() 获取线程 ID（二者返回值相同）。
+        return Thread.currentThread().getId();
     }
 
     public long getCurrentThreadId() {

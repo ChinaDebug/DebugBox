@@ -5,12 +5,12 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
@@ -41,24 +41,6 @@ public class AppsActivity extends BaseActivity {
     private boolean isUnInstallClicked;
     private int appPosition;
 
-    private final AsyncTask<Void, Void, AppInfo[]> mApplicationLoader = new AsyncTask<Void, Void, AppInfo[]>() {
-        List<AppInfo> items = new ArrayList<>();
-
-        @Override
-        protected AppInfo[] doInBackground(Void... params) {
-            items = getInstallApps(getApplicationContext());
-            return items.toArray(new AppInfo[0]);
-        }
-
-        @Override
-        protected void onPostExecute(AppInfo[] apps) {
-            AppInfo.Sorter.sort(items);
-            appsAdapter.setNewData(items);
-            appsAdapter.notifyDataSetChanged();
-        }
-    };
-
-
     @Override
     protected int getLayoutResID() {
         return R.layout.activity_apps;
@@ -68,6 +50,17 @@ public class AppsActivity extends BaseActivity {
     protected void init() {
         initView();
         initData();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (delMode) {
+                    toggleDelMode();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
     }
 
     private void toggleDelMode() {
@@ -232,15 +225,6 @@ public class AppsActivity extends BaseActivity {
     protected void onDestroy() {
         super.onDestroy();
         EventBus.getDefault().unregister(this);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (delMode) {
-            toggleDelMode();
-            return;
-        }
-        super.onBackPressed();
     }
 
     @Override

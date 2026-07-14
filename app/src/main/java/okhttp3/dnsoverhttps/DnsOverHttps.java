@@ -38,9 +38,10 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.internal.platform.Platform;
-import okhttp3.internal.publicsuffix.PublicSuffixDatabase;
 import okio.ByteString;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * DNS over HTTPS implementation.
@@ -254,7 +255,7 @@ public class DnsOverHttps implements Dns {
 
     private List<InetAddress> readResponse(String hostname, Response response) throws Exception {
         if (response.cacheResponse() == null && response.protocol() != Protocol.HTTP_2) {
-            Platform.get().log(Platform.WARN, "Incorrect protocol: " + response.protocol(), null);
+            Logger.getLogger(DnsOverHttps.class.getName()).log(Level.WARNING, "Incorrect protocol: " + response.protocol());
         }
 
         try {
@@ -280,13 +281,14 @@ public class DnsOverHttps implements Dns {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private Request buildRequest(String hostname, int type) {
         Request.Builder requestBuilder = new Request.Builder().header("Accept", DNS_MESSAGE.toString());
 
         ByteString query = DnsRecordCodec.encodeQuery(hostname, type);
 
         if (post) {
-            requestBuilder = requestBuilder.url(url).post(RequestBody.create(DNS_MESSAGE, query));
+            requestBuilder = requestBuilder.url(url).post(RequestBody.create(query, DNS_MESSAGE));
         } else {
             String encoded = query.base64Url().replace("=", "");
             HttpUrl requestUrl = url.newBuilder().addQueryParameter("dns", encoded).build();
@@ -298,7 +300,8 @@ public class DnsOverHttps implements Dns {
     }
 
     static boolean isPrivateHost(String host) {
-        return PublicSuffixDatabase.get().getEffectiveTldPlusOne(host) == null;
+        HttpUrl url = HttpUrl.parse("http://" + host);
+        return url == null || url.topPrivateDomain() == null;
     }
 
     public static final class Builder {

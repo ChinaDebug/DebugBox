@@ -15,16 +15,17 @@ import java.util.List;
  * @date 2018/12/4
  */
 
+@SuppressWarnings("deprecation")
 public class HomePageAdapter extends FragmentPagerAdapter {
     public FragmentManager fragmentManager;
     public List<BaseLazyFragment> list;
 
     public HomePageAdapter(FragmentManager fm) {
-        super(fm);
+        super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
     }
 
     public HomePageAdapter(FragmentManager fm, List<BaseLazyFragment> list) {
-        super(fm);
+        super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
         this.fragmentManager = fm;
         this.list = list;
     }

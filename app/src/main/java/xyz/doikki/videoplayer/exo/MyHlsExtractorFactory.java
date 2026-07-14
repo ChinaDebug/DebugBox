@@ -1,8 +1,6 @@
 package xyz.doikki.videoplayer.exo;
 
 
-import static androidx.media3.common.util.Assertions.checkNotNull;
-
 import android.annotation.SuppressLint;
 import android.net.Uri;
 import android.text.TextUtils;
@@ -18,6 +16,7 @@ import androidx.media3.exoplayer.analytics.PlayerId;
 import androidx.media3.exoplayer.hls.HlsExtractorFactory;
 import androidx.media3.exoplayer.hls.HlsTrackMetadataEntry;
 import androidx.media3.exoplayer.hls.WebvttExtractor;
+import androidx.media3.extractor.text.SubtitleParser;
 import androidx.media3.extractor.Extractor;
 import androidx.media3.extractor.ExtractorInput;
 import androidx.media3.extractor.mp3.Mp3Extractor;
@@ -28,6 +27,7 @@ import androidx.media3.extractor.ts.AdtsExtractor;
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
 
 import com.google.androidx.media3.exoplayer.extractor.ts.MyTsExtractor;
+import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
 import java.io.EOFException;
@@ -137,10 +137,12 @@ public final class MyHlsExtractorFactory implements HlsExtractorFactory {
         // Only enable the EMSG TrackOutput if this is the 'variant' track (i.e. the main one) to avoid
         // creating a separate EMSG track for every audio track in a video stream.
         return new FragmentedMp4Extractor(
+                SubtitleParser.Factory.UNSUPPORTED,
                 /* flags= */ isFmp4Variant(format) ? FragmentedMp4Extractor.FLAG_ENABLE_EMSG_TRACK : 0,
                 timestampAdjuster,
                 /* sideloadedTrack= */ null,
-                muxedCaptionFormats != null ? muxedCaptionFormats : Collections.emptyList());
+                muxedCaptionFormats != null ? muxedCaptionFormats : Collections.emptyList(),
+                /* additionalEmsgTrackOutput= */ null);
     }
 
     /**
@@ -206,7 +208,7 @@ public final class MyHlsExtractorFactory implements HlsExtractorFactory {
         for (int i = 0; i < fileTypeOrder.size(); i++) {
             int fileType = fileTypeOrder.get(i);
             Extractor extractor =
-                    (Extractor) checkNotNull(
+                    (Extractor) Preconditions.checkNotNull(
                             createExtractorByFileType(fileType, format, muxedCaptionFormats, timestampAdjuster));
             if (sniffQuietly(extractor, sniffingExtractorInput)) {
                 return new MyBundledHlsMediaChunkExtractor(extractor, format, timestampAdjuster);
@@ -223,7 +225,7 @@ public final class MyHlsExtractorFactory implements HlsExtractorFactory {
         }
 
         return new MyBundledHlsMediaChunkExtractor(
-                checkNotNull(fallBackExtractor), format, timestampAdjuster);
+                Preconditions.checkNotNull(fallBackExtractor), format, timestampAdjuster);
     }
 
     @SuppressLint("SwitchIntDef") // HLS only supports a small subset of the defined file types.
@@ -235,7 +237,7 @@ public final class MyHlsExtractorFactory implements HlsExtractorFactory {
             TimestampAdjuster timestampAdjuster) {
         switch (fileType) {
             case FileTypes.WEBVTT:
-                return new WebvttExtractor(format.language, timestampAdjuster);
+                return new WebvttExtractor(format.language, timestampAdjuster, SubtitleParser.Factory.UNSUPPORTED, /* overwriteDurationDuringParsing= */ true);
             case FileTypes.ADTS:
                 return new AdtsExtractor();
             case FileTypes.AC3:

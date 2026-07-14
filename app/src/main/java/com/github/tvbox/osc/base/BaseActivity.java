@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
@@ -48,9 +50,18 @@ import xyz.doikki.videoplayer.util.CutoutUtil;
  */
 public abstract class BaseActivity extends AppCompatActivity implements CustomAdapt {
     protected Context mContext;
-    private LoadService mLoadService;
+    private LoadService<?> mLoadService;
 
     private static float screenRatio = -100.0f;
+
+    @SuppressWarnings("deprecation")
+    private void initScreenRatio() {
+        DisplayMetrics dm = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(dm);
+        int screenWidth = dm.widthPixels;
+        int screenHeight = dm.heightPixels;
+        screenRatio = (float) Math.max(screenWidth, screenHeight) / (float) Math.min(screenWidth, screenHeight);
+    }
 
     // takagen99 : Fix for Locale change not persist on higher Android version
     @Override
@@ -71,11 +82,14 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         try {
             if (screenRatio < 0) {
-                DisplayMetrics dm = new DisplayMetrics();
-                getWindowManager().getDefaultDisplay().getMetrics(dm);
-                int screenWidth = dm.widthPixels;
-                int screenHeight = dm.heightPixels;
-                screenRatio = (float) Math.max(screenWidth, screenHeight) / (float) Math.min(screenWidth, screenHeight);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    android.view.WindowMetrics metrics = getWindowManager().getCurrentWindowMetrics();
+                    int screenWidth = metrics.getBounds().width();
+                    int screenHeight = metrics.getBounds().height();
+                    screenRatio = (float) Math.max(screenWidth, screenHeight) / (float) Math.min(screenWidth, screenHeight);
+                } else {
+                    initScreenRatio();
+                }
             }
         } catch (Throwable th) {
             LOG.e(th);
@@ -127,8 +141,15 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         return 0;
     }
 
+    @SuppressWarnings("deprecation")
     public void hideSysBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
             uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
             //    uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
@@ -140,8 +161,15 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void vidHideSysBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
             uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
             uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
@@ -153,8 +181,19 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void hideSystemUI(boolean shownavbar) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                int types = WindowInsets.Type.statusBars();
+                if (!shownavbar) {
+                    types |= WindowInsets.Type.navigationBars();
+                }
+                controller.hide(types);
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiVisibility = getWindow().getDecorView().getSystemUiVisibility();
             uiVisibility |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
             uiVisibility |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
@@ -171,8 +210,14 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         }
     }
 
+    @SuppressWarnings("deprecation")
     public void showSystemUI() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiVisibility = getWindow().getDecorView().getSystemUiVisibility();
             uiVisibility &= ~View.SYSTEM_UI_FLAG_LOW_PROFILE;
             uiVisibility &= ~View.SYSTEM_UI_FLAG_FULLSCREEN;
@@ -206,9 +251,11 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
 
     protected abstract void init();
 
+    @SuppressWarnings("unchecked")
     protected void setLoadSir(View view) {
         if (mLoadService == null) {
-            mLoadService = LoadSir.getDefault().register(view, new Callback.OnReloadListener() {
+            // 库返回原始类型，转换为泛型时存在未检查转换
+            mLoadService = (LoadService<?>) LoadSir.getDefault().register(view, new Callback.OnReloadListener() {
                 @Override
                 public void onReload(View v) {
                 }
@@ -337,7 +384,7 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
                 opts.inJustDecodeBounds = false;
                 // 采样率
                 opts.inSampleSize = scale;
-                globalWp = new BitmapDrawable(BitmapFactory.decodeFile(wp.getAbsolutePath(), opts));
+                globalWp = new BitmapDrawable(getResources(), BitmapFactory.decodeFile(wp.getAbsolutePath(), opts));
             } else {
                 globalWp = null;
             }

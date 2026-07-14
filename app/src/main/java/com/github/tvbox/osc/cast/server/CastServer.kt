@@ -9,6 +9,8 @@ import com.github.tvbox.osc.util.LOG
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.*
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
@@ -200,8 +202,8 @@ class CastServer(
                     else -> "http://${device.hostAddress}:${device.port}/cast/control"
                 }
 
-                val mediaType = MediaType.parse("application/json; charset=utf-8")
-                val requestBody = RequestBody.create(mediaType, message.toJson())
+                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                val requestBody = message.toJson().toRequestBody(mediaType)
 
                 val request = Request.Builder()
                     .url(url)

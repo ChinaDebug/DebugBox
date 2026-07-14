@@ -37,6 +37,7 @@ import android.widget.TextView;
 import com.github.tvbox.osc.util.ToastHelper;
 import com.github.tvbox.osc.util.UpdateCheckManager;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -164,7 +165,54 @@ public class HomeActivity extends BaseActivity {
             EventBus.getDefault().register(this);
         } catch (Exception e) {
         }
- 
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                // 加载API期间禁止返回
+                if (isLoading()) {
+                    return;
+                }
+                // 如果处于 VOD 删除模式，则退出该模式并刷新界面
+                if (HawkConfig.hotVodDelete) {
+                    HawkConfig.hotVodDelete = false;
+                    UserFragment.notifyHomeAdapterChanged();
+                    return;
+                }
+
+                // 检查 fragments 状态
+                if (fragments.size() <= 0 || sortFocused >= fragments.size() || sortFocused < 0) {
+                    doExit();
+                    return;
+                }
+
+                BaseLazyFragment baseLazyFragment = fragments.get(sortFocused);
+                if (baseLazyFragment instanceof GridFragment) {
+                    GridFragment grid = (GridFragment) baseLazyFragment;
+                    // 如果当前 Fragment 能恢复之前保存的 UI 状态，则直接返回
+                    if (grid.restoreView()) {
+                        return;
+                    }
+                    // 如果 sortFocusView 存在且没有获取焦点，则请求焦点
+                    if (sortFocusView != null && !sortFocusView.isFocused()) {
+                        sortFocusView.requestFocus();
+                    }
+                    // 如果当前不是第一个界面，则将列表设置到第一项
+                    else if (sortFocused != 0) {
+                        mGridView.setSelection(0);
+                    } else {
+                        doExit();
+                    }
+                } else if (baseLazyFragment instanceof UserFragment && UserFragment.canScrollUp()) {
+                    // 如果 UserFragment 列表可以向上滚动，则滚动到顶部
+                    UserFragment.scrollToTop();
+                    mGridView.setSelection(0);
+                } else {
+                    doExit();
+                }
+            }
+        });
+
         if (ControlManager.mContext != null) {
             ControlManager.get().startServer();
         }
@@ -420,41 +468,23 @@ public class HomeActivity extends BaseActivity {
     // takagen99 : Check if network is available
     boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            Network network = cm.getActiveNetwork();
-            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
-            return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        } else {
-            android.net.NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
-            return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
-        }
+        Network network = cm.getActiveNetwork();
+        NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     private void initData() {
         if (isNetworkAvailable()) {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                Network network = cm.getActiveNetwork();
-                NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
-                if (capabilities != null) {
-                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_wifi));
-                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_mobile));
-                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_lan));
-                    }
-                }
-            } else {
-                android.net.NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
-                if (activeNetworkInfo != null) {
-                    if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_wifi));
-                    } else if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_mobile));
-                    } else if (activeNetworkInfo.getType() == ConnectivityManager.TYPE_ETHERNET) {
-                        tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_lan));
-                    }
+            Network network = cm.getActiveNetwork();
+            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+            if (capabilities != null) {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_wifi));
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_mobile));
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    tvWifi.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.hm_lan));
                 }
             }
         }
@@ -650,51 +680,6 @@ public class HomeActivity extends BaseActivity {
             mViewPager.setPageTransformer(true, new DefaultTransformer());
             mViewPager.setAdapter(pageAdapter);
             mViewPager.setCurrentItem(currentSelected, false);
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        // 加载API期间禁止返回
-        if(isLoading()){
-            return;
-        }
-        // 如果处于 VOD 删除模式，则退出该模式并刷新界面
-        if (HawkConfig.hotVodDelete) {
-            HawkConfig.hotVodDelete = false;
-            UserFragment.notifyHomeAdapterChanged();
-            return;
-        }
-
-        // 检查 fragments 状态
-        if (this.fragments.size() <= 0 || this.sortFocused >= this.fragments.size() || this.sortFocused < 0) {
-            doExit();
-            return;
-        }
-
-        BaseLazyFragment baseLazyFragment = this.fragments.get(this.sortFocused);
-        if (baseLazyFragment instanceof GridFragment) {
-            GridFragment grid = (GridFragment) baseLazyFragment;
-            // 如果当前 Fragment 能恢复之前保存的 UI 状态，则直接返回
-            if (grid.restoreView()) {
-                return;
-            }
-            // 如果 sortFocusView 存在且没有获取焦点，则请求焦点
-            if (this.sortFocusView != null && !this.sortFocusView.isFocused()) {
-                this.sortFocusView.requestFocus();
-            }
-            // 如果当前不是第一个界面，则将列表设置到第一项
-            else if (this.sortFocused != 0) {
-                this.mGridView.setSelection(0);
-            } else {
-                doExit();
-            }
-        } else if (baseLazyFragment instanceof UserFragment && UserFragment.canScrollUp()) {
-            // 如果 UserFragment 列表可以向上滚动，则滚动到顶部
-            UserFragment.scrollToTop();
-            this.mGridView.setSelection(0);
-        } else {
-            doExit();
         }
     }
 
