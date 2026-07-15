@@ -255,7 +255,9 @@ public class LivePlayActivity extends BaseActivity {
 
     @Override
     protected void init() {
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+        // 修复：把 OnBackPressedCallback 实例赋值给 backCallback，否则 exit() 中调用
+        // backCallback.setEnabled(false) 会因空指针崩溃。
+        backCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 if (tvLeftChannelListLayout.getVisibility() == View.VISIBLE) {
@@ -275,7 +277,8 @@ public class LivePlayActivity extends BaseActivity {
                     exit();
                 }
             }
-        });
+        };
+        getOnBackPressedDispatcher().addCallback(this, backCallback);
 
         // takagen99 : Hide only when video playing
         hideSystemUI(false);

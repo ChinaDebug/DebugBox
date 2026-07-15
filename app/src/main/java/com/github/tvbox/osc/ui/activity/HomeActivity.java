@@ -41,6 +41,8 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -147,7 +149,20 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         setTheme(R.style.AppTheme_NoActionBar);
+        if (savedInstanceState != null) {
+            savedInstanceState.remove("android:support:fragments");
+            savedInstanceState.remove("android:fragments");
+        }
         super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (outState != null) {
+            outState.remove("android:support:fragments");
+            outState.remove("android:fragments");
+        }
     }
 
     @Override
@@ -656,6 +671,30 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void initViewPager(AbsSortXml absXml) {
+        // 修复：每次重新初始化 ViewPager 前必须清空旧 Fragment 列表，否则重复添加会导致
+        // FragmentManager 状态混乱，进而引发从其他页面返回首页时的偶发崩溃。
+        if (pageAdapter != null) {
+            pageAdapter.clear();
+            pageAdapter = null;
+        }
+        if (!fragments.isEmpty()) {
+            fragments.clear();
+        }
+        // 同步清理 FragmentManager 中已 attach 到 ViewPager 容器的旧 Fragment，
+        // 避免新 Adapter 在 instantiateItem 时拿到类型不匹配的缓存 Fragment。
+        if (!isDestroyed() && !getSupportFragmentManager().isDestroyed()) {
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            boolean hasOld = false;
+            for (Fragment fragment : getSupportFragmentManager().getFragments()) {
+                if (fragment != null) {
+                    transaction.remove(fragment);
+                    hasOld = true;
+                }
+            }
+            if (hasOld) {
+                transaction.commitNowAllowingStateLoss();
+            }
+        }
         if (sortAdapter.getData().size() > 0) {
             for (MovieSort.SortData data : sortAdapter.getData()) {
                 if (data.id.equals("my0")) {

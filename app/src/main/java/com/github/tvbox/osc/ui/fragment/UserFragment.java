@@ -167,7 +167,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         tvHotListForGridRef = new WeakReference<>(tvHotListForGrid);
         tvHotListForGrid.setHasFixedSize(true);
         int spanCount = 5;
-        if (Hawk.get(HawkConfig.HOME_REC, 0) == 1 && homeSourceRec!=null) {
+        if (Hawk.get(HawkConfig.HOME_REC, 0) == 1 && homeSourceRec != null && !homeSourceRec.isEmpty()) {
             style=ImgUtil.initStyle();
         }
         if(style!=null && Hawk.get(HawkConfig.HOME_REC, 0) == 1) {
@@ -181,7 +181,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         if(Hawk.get(HawkConfig.HOME_REC, 0) == 0){
             tvRate="豆瓣热播";
         }else if(Hawk.get(HawkConfig.HOME_REC, 0) == 1){
-          tvRate= homeSourceRec != null ? "站点推荐" : "豆瓣热播";
+          tvRate="站点推荐";
         }
         HomeHotVodAdapter homeHotVodAdapter = new HomeHotVodAdapter(style,tvRate);
         homeHotVodAdapterRef = new WeakReference<>(homeHotVodAdapter);
@@ -338,13 +338,17 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
 
     private void initHomeHotVod(HomeHotVodAdapter adapter) {
         if (Hawk.get(HawkConfig.HOME_REC, 0) == 1) {
-            if (homeSourceRec != null) {
+            if (homeSourceRec != null && !homeSourceRec.isEmpty()) {
                 adapter.setNewData(homeSourceRec);
             }
             return;
         } else if (Hawk.get(HawkConfig.HOME_REC, 0) == 2) {
             return;
         }
+        loadDoubanHot(adapter);
+    }
+
+    private void loadDoubanHot(HomeHotVodAdapter adapter) {
         try {
             Calendar cal = Calendar.getInstance();
             int year = cal.get(Calendar.YEAR);
@@ -518,7 +522,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         if (homeRec == 0) {
             tvRate = "豆瓣热播";
         } else if (homeRec == 1) {
-            tvRate = homeSourceRec != null ? "站点推荐" : "豆瓣热播";
+            tvRate = "站点推荐";
         } else if (homeRec == 2) {
             tvRate = "历史记录";
         }
@@ -526,12 +530,12 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         
         if (homeRec == 2) {
             refreshHomeHotVod();
-        } else if (homeRec == 1 && homeSourceRec != null) {
-            adapter.setNewData(homeSourceRec);
+        } else if (homeRec == 1) {
+            if (homeSourceRec != null && !homeSourceRec.isEmpty()) {
+                adapter.setNewData(homeSourceRec);
+            }
         } else if (homeRec == 0) {
             initHomeHotVod(adapter);
-        } else {
-            adapter.setNewData(new ArrayList<>());
         }
     }
 

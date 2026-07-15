@@ -122,7 +122,8 @@ public class SourceViewModel extends ViewModel {
     // homeContent
     public void getSort(final String sourceKey) {
         LOG.i("echo--getSort-start");
-        if (sourceKey == null) {
+        // 修复：sourceKey 为空或空字符串时直接返回 null，避免后续 getSource 得到空对象后空指针崩溃。
+        if (sourceKey == null || sourceKey.trim().isEmpty()) {
             sortResult.postValue(null);
             return;
         }
@@ -132,6 +133,8 @@ public class SourceViewModel extends ViewModel {
         if (cached != null) {
             LOG.i("echo--getSort-cached--"+sourceKey);
             int homeRec = Hawk.get(HawkConfig.HOME_REC, 0);
+            // 修复：站点推荐模式下，如果缓存里没有视频推荐列表，则强制重新请求，
+            // 避免 API 提示加载成功但首页站点推荐不显示的问题。
             boolean shouldUseCache = (homeRec != 1) || (cached.videoList != null && !cached.videoList.isEmpty());
             if (shouldUseCache) {
                 sortResult.postValue(cached);
@@ -140,6 +143,11 @@ public class SourceViewModel extends ViewModel {
         }
 
         SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        // 修复：sourceBean 为空时直接返回，防止 sourceBean.getType() 触发空指针。
+        if (sourceBean == null) {
+            sortResult.postValue(null);
+            return;
+        }
         final int type = sourceBean.getType();
         if (type == 3) {
             spThreadPool.execute(new SortRunnable(this, sourceBean, sourceKey));

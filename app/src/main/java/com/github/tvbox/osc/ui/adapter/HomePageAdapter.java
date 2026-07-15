@@ -52,15 +52,11 @@ public class HomePageAdapter extends FragmentPagerAdapter {
 
     @Override
     public Fragment instantiateItem(ViewGroup container, int position) {
-        Fragment fragment = (Fragment) super.instantiateItem(container, position);
-        fragmentManager.beginTransaction().show(fragment).commitAllowingStateLoss();
-        return fragment;
+        return (Fragment) super.instantiateItem(container, position);
     }
 
     @Override
     public void destroyItem(ViewGroup container, int position, Object object) {
-        // super.destroyItem(container, position, object);
-        Fragment fragment = list.get(position);
-        fragmentManager.beginTransaction().hide(fragment).commitAllowingStateLoss();
+        super.destroyItem(container, position, object);
     }
 }
