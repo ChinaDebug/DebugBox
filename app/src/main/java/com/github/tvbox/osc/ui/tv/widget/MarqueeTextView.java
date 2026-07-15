@@ -4,16 +4,16 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
-/**
- * Created by acer on 2018/7/13.
- */
-
 @SuppressLint("AppCompatCustomView")
-public class MarqueeTextView extends TextView{
+public class MarqueeTextView extends TextView {
+    private boolean mSizeLocked;
+
     public MarqueeTextView(Context context) {
         this(context, null);
     }
@@ -33,5 +33,27 @@ public class MarqueeTextView extends TextView{
     @Override
     public boolean isFocused() {
         return true;
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (mSizeLocked) return;
+        post(() -> {
+            int w = getWidth();
+            int h = getHeight();
+            ViewGroup.LayoutParams lp = getLayoutParams();
+            if (w <= 0 || h <= 0 || lp == null) return;
+            boolean changed = false;
+            if (lp.width != w) { lp.width = w; changed = true; }
+            if (lp.height != h) { lp.height = h; changed = true; }
+            if (lp instanceof LinearLayout.LayoutParams
+                    && ((LinearLayout.LayoutParams) lp).weight != 0f) {
+                ((LinearLayout.LayoutParams) lp).weight = 0f;
+                changed = true;
+            }
+            if (changed) setLayoutParams(lp);
+            mSizeLocked = true;
+        });
     }
 }
