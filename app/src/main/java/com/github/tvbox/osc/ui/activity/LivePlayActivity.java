@@ -895,9 +895,23 @@ public class LivePlayActivity extends BaseActivity {
                 int currentPosition = (int) mVideoView.getCurrentPosition();
                 mCurrentTime.setText(stringForTimeVod(currentPosition));
                 mSeekBar.setProgress(currentPosition);
+                updateVideoSize();
             }
         }
     };
+
+    private void updateVideoSize() {
+        if (mVideoView == null) return;
+        int[] videoSize = mVideoView.getVideoSize();
+        if (videoSize != null && videoSize.length >= 2) {
+            int width = videoSize[0];
+            int height = videoSize[1];
+            // 仅当解析度有效时才刷新，避免偶发显示 0x0分辨率
+            if (width > 0 && height > 0) {
+                tv_size.setText(width + " x " + height);
+            }
+        }
+    }
 
     //显示底部EPG
     private void showBottomEpg() {
@@ -2146,9 +2160,7 @@ public class LivePlayActivity extends BaseActivity {
                         break;
                     case VideoView.STATE_PREPARED:
                         // takagen99 : Retrieve Video Resolution & Retrieve Video Duration
-                        if (mVideoView.getVideoSize().length >= 2) {
-                            tv_size.setText(mVideoView.getVideoSize()[0] + " x " + mVideoView.getVideoSize()[1]);
-                        }
+                        updateVideoSize();
                         // Show SeekBar if it's a VOD (with duration) and not a live stream
                         int duration = (int) mVideoView.getDuration();
                         boolean isLiveStream = mVideoView.isLive();
