@@ -50,10 +50,10 @@ public class Global {
         String header;
         String encodedUrl;
         try {
-            header = URLEncoder.encode(headers.toJsonString(), "UTF-8");
+            header = URLEncoder.encode(headers.stringify(), "UTF-8");
             encodedUrl = URLEncoder.encode(url, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            header = headers.toJsonString();
+            header = headers.stringify();
             encodedUrl = url;
         }
         return getProxy(true) + "&from=catvod" + "&siteType=" + siteType + "&siteKey=" + siteKey + "&header=" + header + "&url=" + encodedUrl;
@@ -152,7 +152,7 @@ public class Global {
         boolean mBlock = true;
         String mConfig = null;
         if (options != null) {
-            JSONObject op = options.toJsonObject();
+            JSONObject op = JSUtils.toJsonObject(options);
             if (op.has("config")) {
                 try {
                     mConfig = (String) op.get("config");
@@ -230,7 +230,7 @@ public class Global {
         boolean mBlock = true;
         String mConfig = null;
         if (options != null) {
-            JSONObject op = options.toJsonObject();
+            JSONObject op = JSUtils.toJsonObject(options);
             if (op.has("config")) {
                 try {
                     mConfig = (String) op.get("config");
@@ -284,7 +284,7 @@ public class Global {
 
     private JSObject req(String url, JSObject options) {
         try {
-            Req req = Req.objectFrom(options.toJsonObject().toString());
+            Req req = Req.objectFrom(JSUtils.toJsonObject(options).toString());
             Response res = Connect.to(url, req).execute();
             return Connect.success(runtime, req, res);
         } catch (Exception e) {
@@ -297,7 +297,7 @@ public class Global {
     public JSObject _http(String url, JSObject options) {
         JSFunction complete = options.getJSFunction("complete");
         if (complete == null) return req(url, options);
-        Req req = Req.objectFrom(options.toJsonObject().toString());
+        Req req = Req.objectFrom(JSUtils.toJsonObject(options).toString());
         Connect.to(url, req).enqueue(getCallback(complete, req));
         return null;
     }

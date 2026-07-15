@@ -1,37 +1,38 @@
 package com.github.tvbox.osc.util.js;
 
-import com.google.common.util.concurrent.SettableFuture;
 import com.whl.quickjs.wrapper.JSCallFunction;
 import com.whl.quickjs.wrapper.JSFunction;
 import com.whl.quickjs.wrapper.JSObject;
 
+import java.util.concurrent.CompletableFuture;
+
 public class Async {
 
-    private final SettableFuture<Object> future;
+    private final CompletableFuture<Object> future;
 
-    public static SettableFuture<Object> run(JSObject object, String name, Object[] args) {
+    public static CompletableFuture<Object> run(JSObject object, String name, Object[] args) {
         return new Async().call(object, name, args);
     }
 
     private Async() {
-        this.future = SettableFuture.create();
+        this.future = new CompletableFuture<>();
     }
 
-    private SettableFuture<Object> call(JSObject object, String name, Object[] args) {
+    private CompletableFuture<Object> call(JSObject object, String name, Object[] args) {
         try {
             JSFunction function = object.getJSFunction(name);
             if (function == null) {
-                future.set(null);
+                future.complete(null);
                 return future;
             }
             Object result = function.call(args);
             if (result instanceof JSObject) {
                 then(result);
             } else {
-                future.set(result);
+                future.complete(result);
             }
         } catch (Throwable t) {
-            future.setException(t);
+            future.completeExceptionally(t);
         }
         return future;
     }
@@ -42,16 +43,14 @@ public class Async {
         if (thenFn != null) {
             thenFn.call(callback);
         } else {
-            // If there's no then, complete immediately
-            future.set(result);
+            future.complete(result);
         }
     }
 
     private final JSCallFunction callback = new JSCallFunction() {
         @Override
         public Object call(Object... args) {
-            // args[0] holds the resolved value from the JS promise
-            future.set(args.length > 0 ? args[0] : null);
+            future.complete(args.length > 0 ? args[0] : null);
             return null;
         }
     };

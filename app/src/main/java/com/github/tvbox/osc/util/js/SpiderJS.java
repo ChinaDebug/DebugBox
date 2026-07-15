@@ -6,8 +6,7 @@ import com.github.catvod.crawler.Spider;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
-import com.github.tvbox.osc.util.js.FunCall;
-import com.whl.quickjs.android.QuickJSLoader;
+import com.whl.quickjs.wrapper.ContextSetter;
 import com.whl.quickjs.wrapper.Function;
 import com.whl.quickjs.wrapper.JSArray;
 import com.whl.quickjs.wrapper.JSCallFunction;
@@ -47,11 +46,8 @@ public class SpiderJS extends Spider {
         submit(() -> {
             executor.shutdownNow();
             runtime.destroy();
+            return null;
         });
-    }
-    
-    private void submit(Runnable runnable) {
-        executor.submit(runnable);
     }
 
     private <T> Future<T> submit(Callable<T> callable) {
@@ -59,7 +55,7 @@ public class SpiderJS extends Spider {
     }
 
     private Object call(String func, Object... args) throws Exception {
-        return executor.submit(FunCall.call(jsObject, func, args)).get();
+        return Async.run(jsObject, func, args).get();
     }
 
     private void initjs(Class<?> cls) throws Exception {
@@ -78,11 +74,11 @@ public class SpiderJS extends Spider {
             });
 
             initConsole();
-            runtime.getGlobalObject().bind(new Global(executor));
+            bind(runtime.getGlobalObject(), new Global(executor));
 
             if(cls != null){
                 Class<?>[] classes = cls.getDeclaredClasses();
-                JSObject apiObj = runtime.createJSObject();
+                JSObject apiObj = runtime.createNewJSObject();
 
                 LOG.e("cls","" + classes.length);
                 for (Class<?> classe : classes) {
@@ -95,12 +91,12 @@ public class SpiderJS extends Spider {
                     if (javaObj == null) {
                         throw new NullPointerException("The JavaObj cannot be null. An error occurred in newInstance!");
                     }
-                    JSObject claObj = runtime.createJSObject();
+                    JSObject claObj = runtime.createNewJSObject();
                     Method[] methods = classe.getDeclaredMethods();
                     for (Method method : methods) {
                         if (method.isAnnotationPresent(Function.class)) {
                             Object finalJavaObj = javaObj;
-                            claObj.set(method.getName(), new JSCallFunction() {
+                            runtime.setProperty(claObj, method.getName(), new JSCallFunction() {
                                 @Override
                                 public Object call(Object... objects) {
                                     try {
@@ -112,10 +108,10 @@ public class SpiderJS extends Spider {
                             });
                         }
                     }
-                    apiObj.set(classe.getSimpleName(), claObj);
+                    runtime.setProperty(apiObj, classe.getSimpleName(), claObj);
                     LOG.e("cls", classe.getSimpleName());
                 }
-                runtime.getGlobalObject().set("jsapi", apiObj);
+                runtime.setProperty(runtime.getGlobalObject(), "jsapi", apiObj);
             }
             String jsContent = FileUtils.loadModule(js);
 
@@ -129,24 +125,63 @@ public class SpiderJS extends Spider {
             }
             //LOG.e("cls", jsContent);
             runtime.evaluateModule(jsContent + "\n\n;console.log(typeof(" + key + ".init));\n\nconsole.log(typeof(req));\n\nconsole.log(Object.keys(" + key + "));", js);
-            jsObject = (JSObject) runtime.get(runtime.getGlobalObject(), key);
+            jsObject = (JSObject) runtime.getGlobalObject().getProperty(key);
             return null;
         }).get();
     }
 
     private void initConsole() {
-        JSObject local = runtime.createJSObject();
-        runtime.getGlobalObject().set("local", local);
-        local.bind(new local());
+        JSObject local = runtime.createNewJSObject();
+        runtime.setProperty(runtime.getGlobalObject(), "local", local);
+        bind(local, new local());
 
         runtime.setConsole(new QuickJSContext.Console() {
             @Override
             public void log(String s) {
                 LOG.i("QuJs", s);
             }
+
+            @Override
+            public void info(String s) {
+                LOG.i("QuJs", s);
+            }
+
+            @Override
+            public void warn(String s) {
+                LOG.i("QuJs", s);
+            }
+
+            @Override
+            public void error(String s) {
+                LOG.i("QuJs", s);
+            }
         });
 
         runtime.evaluate(FileUtils.loadModule("net.js"));
+    }
+
+    private void bind(JSObject target, Object receiver) {
+        for (Method method : receiver.getClass().getMethods()) {
+            if (method.isAnnotationPresent(ContextSetter.class)) {
+                try {
+                    method.invoke(receiver, runtime);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        for (Method method : receiver.getClass().getMethods()) {
+            if (!method.isAnnotationPresent(Function.class)) continue;
+            runtime.setProperty(target, method.getName(), new JSCallFunction() {
+                @Override
+                public Object call(Object... objects) {
+                    try {
+                        return method.invoke(receiver, objects);
+                    } catch (Throwable e) {
+                        return null;
+                    }
+                }
+            });
+        }
     }
 
     public void cancelByTag() {
@@ -203,7 +238,7 @@ public class SpiderJS extends Spider {
             try {
                 JSObject o = new JSUtils<String>().toObj(runtime, params);
                 JSFunction jsFunction = jsObject.getJSFunction("proxy");
-                JSONArray opt = new JSONArray(jsFunction.call(null, new Object[]{o}).toString());
+                JSONArray opt = new JSONArray(jsFunction.call(o).toString());
                 Object[] result = new Object[3];
                 result[0] = opt.opt(0);
                 result[1] = opt.opt(1);
