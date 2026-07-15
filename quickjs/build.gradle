@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-    api 'wang.harlon.quickjs:wrapper-android:2.1.0'
-    api 'wang.harlon.quickjs:wrapper-java:2.1.0'
+    api 'wang.harlon.quickjs:wrapper-android:3.2.3'
+    api 'wang.harlon.quickjs:wrapper-java:3.2.3'
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

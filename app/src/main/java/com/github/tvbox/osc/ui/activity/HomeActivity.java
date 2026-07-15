@@ -284,10 +284,15 @@ public class HomeActivity extends BaseActivity {
                 if (view != null && !HomeActivity.this.isDownOrUp) {
                     view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(250).start();
                     TextView textView = view.findViewById(R.id.tvTitle);
-                    textView.getPaint().setFakeBoldText(false);
-                    textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF_70));
-                    textView.invalidate();
-                    view.findViewById(R.id.tvFilter).setVisibility(View.GONE);
+                    if (textView != null) {
+                        textView.getPaint().setFakeBoldText(false);
+                        textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF_70));
+                        textView.invalidate();
+                    }
+                    View filterView = view.findViewById(R.id.tvFilter);
+                    if (filterView != null) {
+                        filterView.setVisibility(View.GONE);
+                    }
                 }
             }
 
@@ -298,14 +303,20 @@ public class HomeActivity extends BaseActivity {
                     HomeActivity.this.sortChange = true;
                     view.animate().scaleX(1.1f).scaleY(1.1f).setInterpolator(new BounceInterpolator()).setDuration(250).start();
                     TextView textView = view.findViewById(R.id.tvTitle);
-                    textView.getPaint().setFakeBoldText(true);
-                    textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF));
-                    textView.invalidate();
+                    if (textView != null) {
+                        textView.getPaint().setFakeBoldText(true);
+                        textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF));
+                        textView.invalidate();
+                    }
 //                    if (!sortAdapter.getItem(position).filters.isEmpty())
 //                        view.findViewById(R.id.tvFilter).setVisibility(View.VISIBLE);
                     if (position == -1) {
                         position = 0;
                         HomeActivity.this.mGridView.setSelection(0);
+                    }
+                    // position 越界保护
+                    if (position < 0 || position >= sortAdapter.getData().size()) {
+                        return;
                     }
                     MovieSort.SortData sortData = sortAdapter.getItem(position);
                     if (null != sortData && !sortData.filters.isEmpty()) {
@@ -321,6 +332,10 @@ public class HomeActivity extends BaseActivity {
             @Override
             public void onItemClick(TvRecyclerView parent, View itemView, int position) {
                 if (itemView != null && currentSelected == position) {
+                    // 修复：修复：fragmen列表ts 列表可，需要越界检查能正在重建，需要越界检查
+                    if (currentSelected < 0 || currentSelected >= fragments.size()) {
+                        return;
+                    }
                     BaseLazyFragment baseLazyFragment = fragments.get(currentSelected);
                     if ((baseLazyFragment instanceof GridFragment) && !sortAdapter.getItem(position).filters.isEmpty()) {// 弹出筛选
                         ((GridFragment) baseLazyFragment).showFilter();
@@ -332,6 +347,10 @@ public class HomeActivity extends BaseActivity {
         });
         this.mGridView.setOnInBorderKeyEventListener(new TvRecyclerView.OnInBorderKeyEventListener() {
             public boolean onInBorderKeyEvent(int direction, View view) {
+                // fragments 可能正在重建
+                if (sortFocused < 0 || sortFocused >= fragments.size()) {
+                    return false;
+                }
                 if (direction == View.FOCUS_UP) {
                     BaseLazyFragment baseLazyFragment = fragments.get(sortFocused);
                     if ((baseLazyFragment instanceof GridFragment)) {// 弹出筛选
@@ -671,8 +690,7 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void initViewPager(AbsSortXml absXml) {
-        // 修复：每次重新初始化 ViewPager 前必须清空旧 Fragment 列表，否则重复添加会导致
-        // FragmentManager 状态混乱，进而引发从其他页面返回首页时的偶发崩溃。
+        // 清空旧 Fragment 列表，避免 FragmentManager 状态混乱
         if (pageAdapter != null) {
             pageAdapter.clear();
             pageAdapter = null;
@@ -718,6 +736,10 @@ public class HomeActivity extends BaseActivity {
             }
             mViewPager.setPageTransformer(true, new DefaultTransformer());
             mViewPager.setAdapter(pageAdapter);
+            // currentSelected 越界保护
+            if (currentSelected < 0 || currentSelected >= fragments.size()) {
+                currentSelected = 0;
+            }
             mViewPager.setCurrentItem(currentSelected, false);
         }
     }
@@ -863,10 +885,17 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void showFilterIcon(int count) {
+        // currentView 可能在切换过程中为 null
+        if (currentView == null) return;
         boolean activated = count > 0;
-        currentView.findViewById(R.id.tvFilter).setVisibility(View.VISIBLE);
+        View filterView = currentView.findViewById(R.id.tvFilter);
+        if (filterView != null) {
+            filterView.setVisibility(View.VISIBLE);
+        }
         ImageView imgView = currentView.findViewById(R.id.tvFilter);
-        imgView.setColorFilter(activated ? this.getThemeColor() : Color.WHITE);
+        if (imgView != null) {
+            imgView.setColorFilter(activated ? this.getThemeColor() : Color.WHITE);
+        }
     }
 
     private final Runnable mDataRunnable = new Runnable() {
@@ -875,6 +904,10 @@ public class HomeActivity extends BaseActivity {
             if (sortChange) {
                 sortChange = false;
                 if (sortFocused != currentSelected) {
+                    // fragments 可能正在重建
+                    if (sortFocused < 0 || sortFocused >= fragments.size()) {
+                        return;
+                    }
                     currentSelected = sortFocused;
                     mViewPager.setCurrentItem(sortFocused, false);
                     changeTop(sortFocused != 0);

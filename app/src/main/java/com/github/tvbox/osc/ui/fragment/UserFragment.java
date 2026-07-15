@@ -136,7 +136,10 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
     private ImgUtil.Style style;
     @Override
     protected void init() {
-        EventBus.getDefault().register(this);
+        // 防止 Fragment 重建后重复注册 EventBus
+        if (!EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().register(this);
+        }
         tvDrive = findViewById(R.id.tvDrive);
         tvLive = findViewById(R.id.tvLive);
         tvSearch = findViewById(R.id.tvSearch);
@@ -597,9 +600,23 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
     }
 
     @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Fragment 的 View 销毁时注销 EventBus，避免重建后 init() 重复注册
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+        }
+        // 重置 style 引用，避免指向已销毁的 View 资源
+        style = null;
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().unregister(this);
+        // 兜底注销，避免极端情况下遗漏
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+        }
         if (ivHistoryIcon != null) {
             ivHistoryIcon.clearAnimation();
         }

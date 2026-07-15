@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.animation.BounceInterpolator;
 import androidx.core.content.ContextCompat;
 import android.widget.Toast;
@@ -156,8 +157,12 @@ public class GridFragment extends BaseLazyFragment {
     // 丢弃当前页面，将页面还原成上一个保存的页面
     public boolean restoreView() {
         if (mGrids.empty()) return false;
+        if (mGridView == null) return false;
         this.showSuccess();
-        ((ViewGroup) mGridView.getParent()).removeView(this.mGridView); // 重父窗口移除当前控件
+        ViewParent parent = mGridView.getParent();
+        if (parent instanceof ViewGroup) {
+            ((ViewGroup) parent).removeView(this.mGridView);
+        }
         GridInfo info = mGrids.pop();// 还原上次保存的控件
         this.sortData.id = info.sortID;
         this.mGridView = info.mGridView;
@@ -167,7 +172,6 @@ public class GridFragment extends BaseLazyFragment {
         this.isLoad = info.isLoad;
         this.focusedView = info.focusedView;
         this.mGridView.setVisibility(View.VISIBLE);
-//        if(this.focusedView != null){ this.focusedView.requestFocus(); }
         if (mGridView != null) mGridView.requestFocus();
         return true;
     }
@@ -179,15 +183,22 @@ public class GridFragment extends BaseLazyFragment {
         if (mGridView == null) { // 从layout中拿view
             mGridView = findViewById(R.id.mGridView);
         } else { // 复制当前view
-            TvRecyclerView v3 = new TvRecyclerView(this.mContext);
-            v3.setSpacingWithMargins(10, 10);
-            v3.setLayoutParams(mGridView.getLayoutParams());
-            v3.setPadding(mGridView.getPaddingLeft(), mGridView.getPaddingTop(), mGridView.getPaddingRight(), mGridView.getPaddingBottom());
-            v3.setClipToPadding(mGridView.getClipToPadding());
-            ((ViewGroup) mGridView.getParent()).addView(v3);
-            mGridView.setVisibility(View.GONE);
-            mGridView = v3;
-            mGridView.setVisibility(View.VISIBLE);
+            // 修复：mGridView 引用的 View 可能已被销毁，getParent 返回 null，需要判空保护
+            ViewParent parent = mGridView.getParent();
+            if (parent instanceof ViewGroup) {
+                TvRecyclerView v3 = new TvRecyclerView(this.mContext);
+                v3.setSpacingWithMargins(10, 10);
+                v3.setLayoutParams(mGridView.getLayoutParams());
+                v3.setPadding(mGridView.getPaddingLeft(), mGridView.getPaddingTop(), mGridView.getPaddingRight(), mGridView.getPaddingBottom());
+                v3.setClipToPadding(mGridView.getClipToPadding());
+                ((ViewGroup) parent).addView(v3);
+                mGridView.setVisibility(View.GONE);
+                mGridView = v3;
+                mGridView.setVisibility(View.VISIBLE);
+            } else {
+                // 重新查找
+                mGridView = findViewById(R.id.mGridView);
+            }
         }
         mGridView.setHasFixedSize(true);
         style=ImgUtil.initStyle();
@@ -298,21 +309,25 @@ public class GridFragment extends BaseLazyFragment {
     }
 
     private void initViewModel() {
-        if (sourceViewModel != null) {
-            return;
+        if (sourceViewModel == null) {
+            sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
         }
-        sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
-        sourceViewModel.listResult.observe(this, new Observer<AbsXml>() {
+        // 使用 ViewLifecycleOwner，View 销毁时自动移除观察者，避免 Fragment 重建后重复注册
+        sourceViewModel.listResult.observe(getViewLifecycleOwner(), new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
-//                if(mGridView != null) mGridView.requestFocus();
+                // Fragment 重建过程中 gridAdapter 可能为 null，需要判空保护
+                if (gridAdapter == null) return;
                 if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
                     if (page == 1) {
                         showSuccess();
                         isLoad = true;
                         gridAdapter.setNewData(absXml.movie.videoList);
                     } else {
-                        gridAdapter.addData(absXml.movie.videoList);
+                        // 限制总数据量，防止异常累积导致 OOM
+                        if (gridAdapter.getData().size() < 5000) {
+                            gridAdapter.addData(absXml.movie.videoList);
+                        }
                     }
                     page++;
                     maxPage = absXml.movie.pagecount;
@@ -348,6 +363,13 @@ public class GridFragment extends BaseLazyFragment {
             showEmpty();
             return;
         }
+        if (sourceViewModel == null) {
+            return;
+        }
+        if (sortData == null) {
+            showEmpty();
+            return;
+        }
         showLoading();
         isLoad = false;
         scrollTop();
@@ -368,7 +390,9 @@ public class GridFragment extends BaseLazyFragment {
 
     public void scrollTop() {
         isTop = true;
-        mGridView.scrollToPosition(0);
+        if (mGridView != null) {
+            mGridView.scrollToPosition(0);
+        }
     }
 
     public void showFilter() {
@@ -459,5 +483,15 @@ public class GridFragment extends BaseLazyFragment {
         if (mGrids != null) {
             mGrids.clear();
         }
+        // 释放 View 引用并重置分页状态
+        mGridView = null;
+        gridAdapter = null;
+        gridFilterDialog = null;
+        focusedView = null;
+        style = null;
+        page = 1;
+        maxPage = 1;
+        isLoad = false;
+        isTop = true;
     }
 }

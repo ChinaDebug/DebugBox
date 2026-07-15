@@ -236,9 +236,11 @@ public abstract class BaseLazyFragment extends Fragment implements CustomAdapt {
     public void onDestroyView() {
         super.onDestroyView();
         isViewCreated = false;
-        // 修复：Fragment 的 View 被销毁后必须释放 rootView 引用，否则 ViewPager 再次 attach 该 Fragment 时
-        // 会返回一个已被系统回收或仍挂在旧 parent 上的 View，导致从直播等页面返回首页时崩溃。
         rootView = null;
+        // 重置可见状态，确保 Fragment 重建后能重新走 init() 流程
+        currentVisibleState = false;
+        mIsFirstVisible = true;
+        mLoadService = null;
     }
 
     @SuppressWarnings("unchecked")
