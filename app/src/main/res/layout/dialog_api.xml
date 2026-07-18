@@ -274,7 +274,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:background="@drawable/input_dialog_api_input"
-                            android:hint="socks代理服务器IP:端口,……，exo播放失败时通过代理播放"
+                            android:hint="Socks代理IP:端口,Exo播放失败用代理播放"
                             android:inputType="text"
                             android:maxLines="1"
                             android:paddingLeft="@dimen/vs_2"

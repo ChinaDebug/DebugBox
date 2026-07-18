@@ -4980,26 +4980,151 @@ body[data-weui-theme="dark"] .weui-picker__mask {
   font-size: 14px;
 }
 
+/* TVBox Web 界面：搜索/推送/配置三页统一卡片式风格 */
+.weui-form {
+  background-color: #f5f6f8;
+  background-color: var(--weui-BG-0);
+}
+.weui-form__text-area {
+  padding-top: 24px;
+  padding-bottom: 8px;
+}
+.weui-form__title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.weui-form__control-area {
+  margin-top: 12px;
+  margin-bottom: 32px;
+}
+.weui-cells__group_form {
+  margin-top: 12px;
+}
+.weui-cells__group_form .weui-cells {
+  background: #fff;
+  background: var(--weui-BG-2);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  margin-left: 16px;
+  margin-right: 16px;
+  padding: 8px 14px;
+  overflow: hidden;
+}
+.weui-cells__group_form .weui-cell {
+  padding: 8px 0;
+  background: transparent !important;
+}
+.weui-cells__group_form .weui-cell:before {
+  display: none;
+}
+.weui-cells__group_form .weui-input,
+.weui-cells__group_form .weui-textarea,
+.weui-cells__group_form textarea {
+  background: #fff;
+  background: var(--weui-BG-2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--weui-FG-3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  min-height: 38px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.weui-cells__group_form .weui-input:focus,
+.weui-cells__group_form .weui-textarea:focus,
+.weui-cells__group_form textarea:focus {
+  border-color: #07c160;
+  border-color: var(--weui-BRAND);
+  box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.12);
+  outline: none;
+}
+.weui-cells__group_form .weui-vcode-btn {
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 12px;
+  line-height: 30px;
+  height: 30px;
+  min-height: 30px;
+  border: 0;
+  box-shadow: none;
+  margin-left: 10px;
+}
+.push-btn {
+  background: #07c160 !important;
+  color: #fff !important;
+}
+.push-btn-clear {
+  background: #fff !important;
+  color: #07c160 !important;
+  border: 1px solid #07c160 !important;
+}
+
+/* 推送状态提示 */
+.push-status {
+  display: block;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.push-status--direct,
+.push-status--detail {
+  background: rgba(7, 193, 96, 0.08);
+  color: #07c160;
+  border: 1px solid rgba(7, 193, 96, 0.2);
+}
+.push-status--unsupported {
+  background: rgba(250, 81, 81, 0.08);
+  color: #fa5151;
+  border: 1px solid rgba(250, 81, 81, 0.2);
+}
+.push-status__icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 50%;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.push-status--direct .push-status__icon,
+.push-status--detail .push-status__icon {
+  background: #07c160;
+  color: #fff;
+}
+.push-status--unsupported .push-status__icon {
+  background: #fa5151;
+  color: #fff;
+}
+
 /* 推送页提示 */
 .push-tips {
   margin: 16px 16px 0;
-  padding: 14px 16px;
-  background: rgba(0, 0, 0, 0.03);
-  background: var(--weui-BG-1);
+  padding: 14px;
+  background: #fff;
+  background: var(--weui-BG-2);
   border-radius: 12px;
-  font-size: 12px;
-  line-height: 1.6;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  font-size: 13px;
+  line-height: 1.7;
   color: rgba(0, 0, 0, 0.55);
   color: var(--weui-FG-1);
 }
 .push-tips__title {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: rgba(0, 0, 0, 0.75);
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: rgba(0, 0, 0, 0.85);
   color: var(--weui-FG-0);
+  font-size: 14px;
 }
 .push-tips__item {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   word-break: break-all;
 }
 .push-tips__item:last-child {
@@ -5009,10 +5134,25 @@ body[data-weui-theme="dark"] .weui-picker__mask {
   display: inline-block;
   min-width: 4.5em;
   color: #07c160;
+  font-weight: 600;
 }
-.push-btn {
-  background: #07c160 !important;
-  color: #fff !important;
+.push-tips__desc {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--weui-FG-3);
+  color: rgba(0, 0, 0, 0.45);
+  color: var(--weui-FG-1);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.push-url-input {
+  min-height: 88px;
+  height: auto !important;
+  resize: vertical;
+  line-height: 1.6;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 
 /* 移动端推送页优化 */

@@ -2,10 +2,13 @@ package com.github.tvbox.osc.server;
 
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.util.UrlUtils;
 
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * @author pj567
@@ -61,9 +64,43 @@ public class InputRequestProcess implements RequestProcess {
                             break;
                         }
                         case "push": {
-                            // 暂未实现
-                            mDataReceiver.onPushReceived(params.get("url").trim());
-                            break;
+                            String rawUrl = params.get("url");
+                            if (rawUrl == null || rawUrl.trim().isEmpty()) {
+                                JSONObject errResult = new JSONObject();
+                                try {
+                                    errResult.put("status", "error");
+                                    errResult.put("message", "推送地址不能为空");
+                                } catch (JSONException ignored) {
+                                }
+                                return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.BAD_REQUEST, errResult.toString());
+                            }
+                            String pushUrl = rawUrl.trim();
+                            mDataReceiver.onPushReceived(pushUrl);
+
+                            boolean isDirectPlayUrl = UrlUtils.isDirectPlayUrl(pushUrl);
+                            boolean hasPushAgent = ApiConfig.get().getSource("push_agent") != null;
+                            String pushType;
+                            String message;
+                            if (isDirectPlayUrl) {
+                                pushType = "direct";
+                                message = "已推送，直链地址将直接播放";
+                            } else if (hasPushAgent) {
+                                pushType = "detail";
+                                message = "已推送给 push_agent 源解析";
+                            } else {
+                                pushType = "unsupported";
+                                message = "检测到当前数据源中未配置含 push_agent 的源，无法推送该地址";
+                            }
+
+                            JSONObject result = new JSONObject();
+                            try {
+                                result.put("status", "ok");
+                                result.put("hasPushAgent", hasPushAgent);
+                                result.put("pushType", pushType);
+                                result.put("message", message);
+                            } catch (JSONException ignored) {
+                            }
+                            return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, result.toString());
                         }
                         case "mirror": {
                             //推送当前电影、电视剧……

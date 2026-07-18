@@ -46,12 +46,12 @@
 							<div class="weui-cells__group weui-cells__group_form">
 								<div class="weui-cells">
 									<div class="weui-cell weui-cell_active weui-cell_vcode weui-cell_wrap">
-										<div class="weui-cell__bd weui-flex">
-											<input id="push_url"
-												class="weui-input weui-cell__control weui-cell__control_flex"
-												type="text" value="" placeholder="请输入需要推送播放的地址..." />
-										</div>
+									<div class="weui-cell__bd weui-flex">
+										<textarea id="push_url"
+											class="weui-input weui-cell__control weui-cell__control_flex push-url-input"
+											rows="3" placeholder="请输入需要推送播放的地址..."></textarea>
 									</div>
+								</div>
 									<div class="weui-cell weui-cell_active weui-cell_vcode weui-cell_wrap">
 										<div class="weui-cell__bd weui-flex">
 											<button onclick="push(); return false;"
@@ -59,12 +59,13 @@
 										</div>
 										<div class="weui-cell__bd weui-flex">
 											<button onclick="$('#push_url').val('');"
-													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn">清空</button>
+													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn push-btn-clear">清空</button>
 										</div>
 									</div>
+									</div>
 								</div>
-							</div>
-							<div class="push-tips">
+								<div id="push_status" class="push-status" style="display:none;"></div>
+								<div class="push-tips">
 								<div class="push-tips__title">支持格式</div>
 								<div class="push-tips__item">
 									<span class="push-tips__label">直链播放</span>
@@ -72,11 +73,14 @@
 								</div>
 								<div class="push-tips__item">
 									<span class="push-tips__label">磁力/解析</span>
-									<span class="push-tips__value">magnet、ed2k、push://（需数据源含 push_agent）</span>
+									<span class="push-tips__value">magnet、ed2k、push://（需数据源有支持 push_agent 的源）</span>
 								</div>
 								<div class="push-tips__item">
 									<span class="push-tips__label">Base64</span>
 									<span class="push-tips__value">push://b64:base64编码后的地址</span>
+								</div>
+								<div class="push-tips__desc">
+									提示：push_agent 是指数据源中用于解析磁力、网盘分享页等非直链地址的源, 例如：手机/推送,远程推送这类名称的分类选项 
 								</div>
 							</div>
 						</div>
@@ -121,7 +125,7 @@
 										<div class="weui-cell__bd weui-flex">
 											<input id="diy_proxy_server"
 													class="weui-input weui-cell__control weui-cell__control_flex"
-													type="text" value="" placeholder="socks代理服务器IP:端口,……，exo播放失败时通过代理播放" />
+													type="text" value="" placeholder="Socks代理IP:端口,Exo播放失败用代理播放" />
 											<button onclick="proxys(); return false;"
 													class="weui-cell__control weui-btn weui-btn_default weui-vcode-btn">确定</button>
 										</div>

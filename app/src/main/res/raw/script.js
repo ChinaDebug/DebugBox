@@ -24,11 +24,31 @@ function push() {
         warnToast('请输入需要推送的地址');
         return false;
     }
-    doAction('push', { url: url }, function () {
-        successToast('已推送');
+    doAction('push', { url: url }, function (data) {
+        try {
+            var res = typeof data === 'string' ? JSON.parse(data) : data;
+            showPushStatus(res);
+        } catch (e) {
+            successToast('已推送');
+        }
     }, function () {
         warnToast('推送失败，请检查网络');
     });
+}
+
+function showPushStatus(res) {
+    var $status = $('#push_status');
+    $status.stop(true, true);
+    var pushType = ['direct', 'detail', 'unsupported'].indexOf(res.pushType) >= 0 ? res.pushType : 'detail';
+    var icon = pushType === 'unsupported' ? '!' : '✓';
+    var html = '<div class="push-status push-status--' + pushType + '">' +
+        '<span class="push-status__icon">' + icon + '</span>' +
+        '<span class="push-status__text">' + (res.message || '已推送') + '</span>' +
+        '</div>';
+    $status.html(html).show();
+    setTimeout(function () {
+        $status.fadeOut();
+    }, 3000);
 }
 
 function doAction(action, kv, onSuccess, onError) {

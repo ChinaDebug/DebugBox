@@ -35,6 +35,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.github.tvbox.osc.util.ToastHelper;
+import com.github.tvbox.osc.util.UrlUtils;
 import com.github.tvbox.osc.util.UpdateCheckManager;
 
 import androidx.activity.OnBackPressedCallback;
@@ -818,16 +819,7 @@ public class HomeActivity extends BaseActivity {
                 return;
             }
             // 对可直接播放的地址直接调用播放器
-            String lowerUrl = pushUrl.toLowerCase();
-            boolean isDirectPlayUrl = lowerUrl.startsWith("http://") || lowerUrl.startsWith("https://") || lowerUrl.startsWith("rtmp://") || lowerUrl.startsWith("rtsp://") || lowerUrl.startsWith("rtp://");
-            if (isDirectPlayUrl) {
-                isDirectPlayUrl = lowerUrl.endsWith(".m3u8") || lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".flv")
-                        || lowerUrl.endsWith(".mkv") || lowerUrl.endsWith(".ts") || lowerUrl.endsWith(".avi")
-                        || lowerUrl.endsWith(".wmv") || lowerUrl.endsWith(".webm") || lowerUrl.endsWith(".mov")
-                        || lowerUrl.endsWith(".rmvb") || lowerUrl.endsWith(".3gp") || lowerUrl.contains(".m3u8?")
-                        || lowerUrl.contains(".mp4?") || lowerUrl.contains(".flv?") || lowerUrl.contains(".ts?");
-            }
-            if (isDirectPlayUrl) {
+            if (UrlUtils.isDirectPlayUrl(pushUrl)) {
                 Intent newIntent = new Intent(mContext, PlayActivity.class);
                 newIntent.putExtra("url", pushUrl);
                 newIntent.putExtra("title", "推送视频");
@@ -840,7 +832,7 @@ public class HomeActivity extends BaseActivity {
                 newIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 HomeActivity.this.startActivity(newIntent);
             } else {
-                ToastHelper.showToast(mContext, "暂不支持该推送格式，请配置支持 push_agent 的数据源");
+                ToastHelper.showToast(mContext, "当前源未配置支持push_agent的源\n       无法解析该推送地址");
             }
         } else if (event.type == RefreshEvent.TYPE_FILTER_CHANGE) {
             if (currentView != null) {
