@@ -1,7 +1,5 @@
 #############################################
-#
-# 对于一些基本指令的添加
-#
+# 基础优化配置
 #############################################
 -optimizationpasses 5
 -dontusemixedcaseclassnames
@@ -9,24 +7,17 @@
 -dontskipnonpubliclibraryclassmembers
 -dontpreverify
 -verbose
--printmapping proguardMapping.txt
 -optimizations !code/simplification/cast,!field/*,!class/merging/*
--keepattributes *Annotation*,InnerClasses
--keepattributes EnclosingMethod
--keepattributes Signature
--keepattributes LineNumberTable
+-keepattributes *Annotation*,InnerClasses,EnclosingMethod,Signature,LineNumberTable,SourceFile,Exceptions
 -renamesourcefileattribute SourceFile
 
-# 将包里的类混淆后重新打包到一个统一的package中
--repackageclasses androidx.base
-#############################################
-#
-# Android开发中一些需要保留的公共部分
-#
-#############################################
+# 将包里的类混淆后重新打包到一个统一的package中（避免使用 androidx 等真实存在的包名）
+-repackageclasses o.a
 
-# 保留我们使用的四大组件，自定义的Application等等这些类不被混淆
-# 因为这些子类都有可能被外部调用
+#############################################
+# Android 基础保留
+#############################################
+# 保留四大组件及Application
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.Service
@@ -36,136 +27,188 @@
 -keep public class * extends android.preference.Preference
 -keep public class * extends android.view.View
 
-# 保留support下的所有类及其内部类
--keep class android.support.** {*;}
-# 保留继承的
--keep public class * extends android.support.v4.**
--keep public class * extends android.support.v7.**
--keep public class * extends android.support.annotation.**
-
--keep class com.google.android.material.** { *; }
--dontwarn com.google.android.material.**
--dontnote com.google.android.material.**
--dontwarn androidx.**
--keep class androidx.** { *; }
--keep interface androidx.** { *; }
-#-keep public class * extends androidx.**
-
--keep class org.xmlpull.v1.** {*;}
-
-# 保留R下面的资源
--keep class **.R$* {*;}
-
-# 保留本地native方法不被混淆
+# 保留本地native方法
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# 保留在Activity中的方法参数是view的方法，
-# 这样以来我们在layout中写的onClick就不会被影响
--keepclassmembers class * extends android.app.Activity{
+# 保留Activity中onClick方法
+-keepclassmembers class * extends android.app.Activity {
     public void *(android.view.View);
 }
 
-# 保留枚举类不被混淆
+# 保留枚举类
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
-# Nano
--keep class fi.iki.elonen.** { *; }
-
-# 保留我们自定义控件（继承自View）不被混淆
--keep public class * extends android.view.View{
-    *** get*();
-    void set*(***);
-    public <init>(android.content.Context);
-    public <init>(android.content.Context, android.util.AttributeSet);
-    public <init>(android.content.Context, android.util.AttributeSet, int);
-}
-
--keep public class * extends androidx.recyclerview.widget.RecyclerView$LayoutManager{
-    *** get*();
-    void set*(***);
-    public <init>(android.content.Context);
-    public <init>(android.content.Context, android.util.AttributeSet);
-    public <init>(android.content.Context, android.util.AttributeSet, int);
-}
-
--keep class com.orhanobut.hawk.** { *; }
-
-# 保留Parcelable序列化类不被混淆
+# 保留Parcelable序列化类
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
 
-# 保留Serializable序列化的类不被混淆
+# 保留Serializable序列化类的关键成员
 -keepclassmembers class * implements java.io.Serializable {
     static final long serialVersionUID;
     private static final java.io.ObjectStreamField[] serialPersistentFields;
-    !static !transient <fields>;
-    !private <fields>;
-    !private <methods>;
     private void writeObject(java.io.ObjectOutputStream);
     private void readObject(java.io.ObjectInputStream);
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
+    <fields>;
 }
 
-# 对于带有回调函数的onXXEvent、**On*Listener的，不能被混淆
+# 保留自定义View
+-keep public class * extends android.view.View {
+    *** get*();
+    void set*(***);
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+}
+
+# 保留RecyclerView LayoutManager
+-keep public class * extends androidx.recyclerview.widget.RecyclerView$LayoutManager {
+    *** get*();
+    void set*(***);
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+}
+
+# 保留R类
+-keep class **.R$* { *; }
+
+# 保留回调函数onXXEvent、**On*Listener
 -keepclassmembers class * {
     void *(**On*Event);
     void *(**On*Listener);
 }
-#okhttp
--dontwarn okhttp3.**
--keep class okhttp3.**{*;}
-#okio
--dontwarn okio.**
--keep class okio.**{*;}
-#loadsir
--dontwarn com.kingja.loadsir.**
--keep class com.kingja.loadsir.** {*;}
-#gson
-# Gson specific classes
--dontwarn sun.misc.**
-#-keep class com.google.gson.stream.** { *; }
-# Application classes that will be serialized/deserialized over Gson
--keep class com.google.gson.examples.android.model.** { <fields>; }
-# Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
-# JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
--keep class * extends com.google.gson.TypeAdapter
--keep class * implements com.google.gson.TypeAdapterFactory
--keep class * implements com.google.gson.JsonSerializer
--keep class * implements com.google.gson.JsonDeserializer
-# Prevent R8 from leaving Data object members always null
--keepclassmembers,allowobfuscation class * {
-  @com.google.gson.annotations.SerializedName <fields>;
-}
-#xstream
--keep class com.thoughtworks.xstream.converters.extended.SubjectConverter { *; }
--keep class com.thoughtworks.xstream.converters.extended.ThrowableConverter { *; }
--keep class com.thoughtworks.xstream.converters.extended.StackTraceElementConverter { *; }
--keep class com.thoughtworks.xstream.converters.extended.CurrencyConverter { *; }
--keep class com.thoughtworks.xstream.converters.extended.RegexPatternConverter { *; }
--keep class com.thoughtworks.xstream.converters.extended.CharsetConverter { *; }
--keep class com.thoughtworks.xstream.** { *; }
-#eventbus
+
+#############################################
+# Kotlin & 注解支持
+#############################################
+-keep class kotlin.Metadata { *; }
+-keepclassmembers class **$WhenMappings { <fields>; }
+-keepclassmembernames class kotlinx.** { volatile <fields>; }
+
+# androidx.annotation.Keep 注解（项目中有大量 @Keep）
+-keep @androidx.annotation.Keep class * { *; }
+-keepclassmembers @androidx.annotation.Keep class * { *; }
+
+#############################################
+# DataBinding
+#############################################
+-keep class androidx.databinding.** { *; }
+-dontwarn androidx.databinding.**
+-keep class * extends androidx.databinding.DataBinderMapper { *; }
+-keep class * extends androidx.databinding.ViewDataBinding { *; }
+-keep class com.github.tvbox.osc.BR { *; }
+
+#############################################
+# EventBus
+#############################################
 -keepclassmembers class * {
     @org.greenrobot.eventbus.Subscribe <methods>;
 }
 -keep enum org.greenrobot.eventbus.ThreadMode { *; }
-# And if you use AsyncExecutor:
 -keepclassmembers class * extends org.greenrobot.eventbus.util.ThrowableFailureEvent {
     <init>(java.lang.Throwable);
 }
-#bugly
--dontwarn com.tencent.bugly.**
--keep public class com.tencent.bugly.**{*;}
--keep class android.support.**{*;}
 
-#dkplayer
+#############################################
+# WebView JavascriptInterface
+#############################################
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+#############################################
+# Room 数据库
+#############################################
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
+-keepclassmembers @androidx.room.Entity class * {
+    @androidx.room.PrimaryKey <fields>;
+    @androidx.room.ColumnInfo <fields>;
+    @androidx.room.Embedded <fields>;
+}
+-keepclassmembers class * {
+    @androidx.room.Query <methods>;
+    @androidx.room.Insert <methods>;
+    @androidx.room.Update <methods>;
+    @androidx.room.Delete <methods>;
+}
+-dontwarn androidx.room.paging.**
+
+#############################################
+# Gson 序列化
+#############################################
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+  @com.google.gson.annotations.Expose <fields>;
+}
+
+#############################################
+# XStream 序列化
+#############################################
+-keep class com.thoughtworks.xstream.** { *; }
+-keepclassmembers class * {
+    @com.thoughtworks.xstream.annotations.XStreamAlias <fields>;
+    @com.thoughtworks.xstream.annotations.XStreamAsAttribute <fields>;
+    @com.thoughtworks.xstream.annotations.XStreamImplicit <fields>;
+    @com.thoughtworks.xstream.annotations.XStreamConverter <fields>;
+    @com.thoughtworks.xstream.annotations.XStreamOmitField <fields>;
+}
+-keep @com.thoughtworks.xstream.annotations.XStreamAlias class * { *; }
+
+#############################################
+# SimpleXML
+#############################################
+-keep class org.simpleframework.xml.** { *; }
+-dontwarn org.simpleframework.xml.**
+-keepclassmembers,allowobfuscation class * {
+    @org.simpleframework.xml.Path <fields>;
+    @org.simpleframework.xml.Root <fields>;
+    @org.simpleframework.xml.Text <fields>;
+    @org.simpleframework.xml.Element <fields>;
+    @org.simpleframework.xml.Attribute <fields>;
+    @org.simpleframework.xml.ElementList <fields>;
+}
+
+#############################################
+# 第三方库
+#############################################
+# OkHttp / Okio
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
+-dontwarn okio.**
+-keep class okio.** { *; }
+
+# Glide
+-keep public class * implements com.bumptech.glide.module.GlideModule
+-keep class * extends com.bumptech.glide.GeneratedAppGlideModule { <init>(...); }
+-keep public enum com.bumptech.glide.load.resource.bitmap.ImageHeaderParser$** {
+    **[] $VALUES;
+    public *;
+}
+
+# Hawk
+-keep class com.orhanobut.hawk.** { *; }
+
+# LoadSir
+-dontwarn com.kingja.loadsir.**
+-keep class com.kingja.loadsir.** { *; }
+
+# dkplayer
 -keep class com.dueeeke.videoplayer.** { *; }
 -dontwarn com.dueeeke.videoplayer.**
 
@@ -173,79 +216,104 @@
 -keep class tv.danmaku.ijk.** { *; }
 -dontwarn tv.danmaku.ijk.**
 
-# ExoPlayer
--keep class com.google.androidx.media3.exoplayer.** { *; }
--dontwarn com.google.androidx.media3.exoplayer.**
--keep class androidx.media3.exoplayer.** { *; }
--dontwarn androidx.media3.exoplayer.**
+# ExoPlayer / Media3
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
 
-# sardine webdav
+# Sardine WebDAV
 -keep class com.thegrizzlylabs.sardineandroid.** { *; }
 -dontwarn com.thegrizzlylabs.sardineandroid.**
 
-# filepicker
+# FilePicker
 -keep class com.obsez.android.lib.filechooser.** { *; }
 -dontwarn com.obsez.android.lib.filechooser.**
 
-# jcifs (smb)
+# jcifs (SMB)
 -keep class jcifs.** { *; }
 -dontwarn jcifs.**
 
-# 实体类（使用 XStream 和 Gson 序列化，需要保留字段名）
--keep class com.github.tvbox.osc.bean.** { <fields>; }
--keep class com.github.tvbox.osc.ui.fragment.homes.**{*;}
-#CardView
--keep class com.github.tvbox.osc.ui.tv.widget.card.**{*;}
-#ViewObj
--keep class com.github.tvbox.osc.ui.tv.widget.ViewObj{
-    <methods>;
-}
+# zxing
+-keep class com.google.zxing.** { *; }
 
-# 爬虫相关（关键：动态加载的类不能被混淆）
+# jsoup
+-keep class org.jsoup.** { *; }
+-dontwarn org.jsoup.**
+
+# NanoHttpd
+-keep class fi.iki.elonen.** { *; }
+
+# xmlpull
+-keep class org.xmlpull.v1.** { *; }
+
+# Conscrypt
+-dontwarn com.android.org.conscrypt.SSLParametersImpl
+-dontwarn org.apache.harmony.xnet.provider.psse.SSLParametersImpl
+-dontwarn org.conscrypt.**
+
+# OkGo
+-keep class com.lzy.okgo.** { *; }
+-dontwarn com.lzy.okgo.**
+
+#############################################
+# TVBox 业务核心（必须保留）
+#############################################
+# Bean 包：涉及 Gson/XStream/Serializable 序列化，必须保留类名、字段名和方法名
+-keep class com.github.tvbox.osc.bean.** { *; }
+-keep class com.github.tvbox.osc.ui.fragment.homes.** { *; }
+-keep class com.github.tvbox.osc.ui.tv.widget.card.** { *; }
+-keep class com.github.tvbox.osc.ui.tv.widget.ViewObj { *; }
+
+# 爬虫相关：动态加载的类不能被混淆
 -keep interface com.github.catvod.crawler.Spider { *; }
 -keep class * implements com.github.catvod.crawler.Spider {
     <init>();
     public <methods>;
 }
+-keep class com.github.catvod.crawler.* { *; }
 -keep class com.github.catvod.spider.Init {
     public static void init(android.content.Context);
 }
 -keep class com.github.catvod.spider.Proxy {
     public static java.lang.String proxy(java.util.Map);
 }
--keep class com.github.catvod.crawler.*{*;}
 
-# magnet：解决模拟器推送 磁力链接 闪退
--keep class com.xunlei.downloadlib.** {*;}
+# JS 桥接：Global / local 类通过反射向 QuickJS 暴露方法
+-keep class com.github.tvbox.osc.util.js.** { *; }
+-keep class com.whl.quickjs.wrapper.** { *; }
 
-# quickjs引擎
--keep class com.whl.quickjs.** {*;}
+# 其他核心业务包（Adapter/ViewModel/Server/Receiver/Cast/Subtitle/Player）
+-keep class com.github.tvbox.osc.ui.adapter.** { *; }
+-keep class com.github.tvbox.osc.viewmodel.** { *; }
+-keep class com.github.tvbox.osc.server.** { *; }
+-keep class com.github.tvbox.osc.receiver.** { *; }
+-keep class com.github.tvbox.osc.cast.** { *; }
+-keep class com.github.tvbox.osc.subtitle.** { *; }
+-keep class com.github.tvbox.osc.player.** { *; }
 
-# Gson
--keep class com.google.gson.**{*;}
-# 某些类会反射调用zxing导致生成二维码报错
--keep class com.google.zxing.** {*;}
+# Python 支持
+-keep public class com.undcover.freedom.pyramid.** { *; }
+-dontwarn com.undcover.freedom.pyramid.**
+-keep public class com.chaquo.python.** { *; }
+-dontwarn com.chaquo.python.**
 
-# from app -> build -> outputs -> mapping -> your_app_name -> missing_rules.txt
-# Please add these rules to your existing keep rules in order to suppress warnings.
-# This is generated automatically by the Android Gradle plugin.
+# 迅雷下载库
+-keep class com.xunlei.downloadlib.** { *; }
+-dontwarn com.xunlei.downloadlib.**
 
-# 保留 JavaScript 接口（WebView 调用）
--keepclassmembers class * {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# QuickJS 引擎
+-keep class com.whl.quickjs.** { *; }
 
-# 保留 Room 数据库实体和 DAO
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
--keep @androidx.room.Dao class *
+#############################################
+# 保留重要工具类（避免反射或序列化失败）
+#############################################
+-keep class com.github.tvbox.osc.util.DefaultConfig { *; }
+-keep class com.github.tvbox.osc.util.HawkConfig { *; }
+-keep class com.github.tvbox.osc.util.LOG { *; }
+-keep class com.github.tvbox.osc.util.MD5 { *; }
 
-# 保留 Kotlin 元数据（用于反射）
--keep class kotlin.Metadata { *; }
--keepclassmembers class **$WhenMappings {
-    <fields>;
-}
--dontwarn com.android.org.conscrypt.SSLParametersImpl
+#############################################
+#  suppress warnings（AGP/R8 自动生成，按需补充）
+#############################################
 -dontwarn com.ctc.wstx.stax.WstxInputFactory
 -dontwarn com.ctc.wstx.stax.WstxOutputFactory
 -dontwarn java.awt.Color
@@ -274,7 +342,6 @@
 -dontwarn nu.xom.ParsingException
 -dontwarn nu.xom.Text
 -dontwarn nu.xom.ValidityException
--dontwarn org.apache.harmony.xnet.provider.jsse.SSLParametersImpl
 -dontwarn org.codehaus.jettison.AbstractXMLStreamWriter
 -dontwarn org.codehaus.jettison.mapped.Configuration
 -dontwarn org.codehaus.jettison.mapped.MappedNamespaceConvention
@@ -314,23 +381,3 @@
 -dontwarn org.joda.time.format.ISODateTimeFormat
 -dontwarn org.kxml2.io.KXmlParser
 -dontwarn org.xmlpull.mxp1.MXParser
-
-# SimpleXML
--keep interface org.simpleframework.xml.core.Label { public *; }
--keep class * implements org.simpleframework.xml.core.Label { public *; }
--keep interface org.simpleframework.xml.core.Parameter { public *; }
--keep class * implements org.simpleframework.xml.core.Parameter { public *; }
--keep interface org.simpleframework.xml.core.Extractor { public *; }
--keep class * implements org.simpleframework.xml.core.Extractor { public *; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Path <fields>; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Root <fields>; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Text <fields>; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Element <fields>; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.Attribute <fields>; }
--keepclassmembers,allowobfuscation class * { @org.simpleframework.xml.ElementList <fields>; }
-
-# Python支持
--keep public class com.undcover.freedom.pyramid.** { *; }
--dontwarn com.undcover.freedom.pyramid.**
--keep public class com.chaquo.python.** { *; }
--dontwarn com.chaquo.python.**

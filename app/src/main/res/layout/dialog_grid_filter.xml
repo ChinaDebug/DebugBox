@@ -11,6 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:background="@drawable/shape_dialog_filter_bg"
+        android:descendantFocusability="afterDescendants"
         android:orientation="vertical"
         android:padding="@dimen/vs_20">
 

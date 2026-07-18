@@ -116,5 +116,65 @@ public class GridFilterDialog extends BaseDialog {
         layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
         getWindow().getDecorView().setPadding(0, 0, 0, 0);
         getWindow().setAttributes(layoutParams);
+        if (filterRoot != null) {
+            filterRoot.post(this::requestFirstFilterFocus);
+        }
+    }
+
+    /**
+     * 将焦点落到第一个筛选行的第一个选项上
+     */
+    private void requestFirstFilterFocus() {
+        if (filterRoot == null || filterRoot.getChildCount() == 0) {
+            return;
+        }
+        // 如果已经有子 View 获取焦点，则不再强制重置焦点
+        if (hasFocusedChild(filterRoot)) {
+            return;
+        }
+        View firstLine = filterRoot.getChildAt(0);
+        if (firstLine == null) {
+            return;
+        }
+        TvRecyclerView firstRow = firstLine.findViewById(R.id.mFilterKv);
+        if (firstRow == null || firstRow.getLayoutManager() == null) {
+            return;
+        }
+        firstRow.post(new Runnable() {
+            int retryCount = 0;
+
+            @Override
+            public void run() {
+                if (firstRow.getLayoutManager() == null) {
+                    return;
+                }
+                View item = firstRow.getLayoutManager().findViewByPosition(0);
+                if (item != null) {
+                    item.requestFocus();
+                    return;
+                }
+                // 子 View 尚未布局完成，先滚动到目标位置再等待下一帧重试
+                firstRow.setSelectedPosition(0);
+                if (++retryCount < 5) {
+                    firstRow.post(this);
+                }
+            }
+        });
+    }
+
+    /**
+     * 判断弹窗内容中是否已有 View 获取焦点
+     */
+    private boolean hasFocusedChild(View view) {
+        return view != null && view.hasFocus();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // 部分 ROM 窗口焦点恢复滞后，窗口重新获得焦点时再次尝试落入焦点
+        if (hasFocus && filterRoot != null) {
+            filterRoot.post(this::requestFirstFilterFocus);
+        }
     }
 }

@@ -899,6 +899,13 @@ public class HomeActivity extends BaseActivity {
                     if (sortFocused < 0 || sortFocused >= fragments.size()) {
                         return;
                     }
+                    // 切换菜单前，重置离开菜单的筛选状态
+                    if (currentSelected >= 0 && currentSelected < fragments.size()) {
+                        BaseLazyFragment oldFragment = fragments.get(currentSelected);
+                        if (oldFragment instanceof GridFragment) {
+                            ((GridFragment) oldFragment).resetFilterState();
+                        }
+                    }
                     currentSelected = sortFocused;
                     mViewPager.setCurrentItem(sortFocused, false);
                     changeTop(sortFocused != 0);
