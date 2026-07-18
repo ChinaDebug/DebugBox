@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 
@@ -46,14 +47,13 @@ public class SubtitleHelper {
     };
 
     public static int getSubtitleTextAutoSize(Activity activity) {
-        double screenSqrt = ScreenUtils.getSqrt(activity);
-        int subtitleTextSize = 20;
-        if (screenSqrt > 7.0 && screenSqrt <= 13.0) {
-            subtitleTextSize = 24;
-        } else if (screenSqrt > 13.0 && screenSqrt <= 50.0) {
-            subtitleTextSize = 36;
-        } else if (screenSqrt > 50.0) {
-            subtitleTextSize = 46;
+        Configuration cfg = activity.getResources().getConfiguration();
+        int smallestScreenWidthDp = cfg.smallestScreenWidthDp;
+        int subtitleTextSize = 18;
+        if (smallestScreenWidthDp >= 600 && smallestScreenWidthDp < 960) {
+            subtitleTextSize = 22;
+        } else if (smallestScreenWidthDp >= 960) {
+            subtitleTextSize = 28;
         }
         return subtitleTextSize;
     }

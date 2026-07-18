@@ -76,6 +76,7 @@ import com.github.tvbox.osc.player.thirdparty.MXPlayer;
 import com.github.tvbox.osc.player.thirdparty.ReexPlayer;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.server.RemoteServer;
+import com.github.tvbox.osc.subtitle.SubtitleEngine;
 import com.github.tvbox.osc.subtitle.model.Subtitle;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
@@ -200,6 +201,7 @@ public class PlayFragment extends BaseLazyFragment {
     private long videoDuration = -1;
     private List<String> videoSegmentationURL = new ArrayList<>();
     private boolean historySaved = false;
+    private SearchSubtitleDialog searchSubtitleDialog;
 
     @Override
     protected int getLayoutResID() {
@@ -549,12 +551,38 @@ public class PlayFragment extends BaseLazyFragment {
 
     //设置字幕
     void setSubtitle(String path) {
-        if (path != null && path.length() > 0) {
-            // 设置字幕
-            mController.mSubtitleView.setVisibility(View.GONE);
-            mController.mSubtitleView.setSubtitlePath(path);
-            mController.mSubtitleView.setVisibility(View.VISIBLE);
+        if (path == null || path.length() == 0) {
+            ToastHelper.showToast(mContext, "字幕地址无效");
+            if (searchSubtitleDialog != null && searchSubtitleDialog.isShowing()) {
+                searchSubtitleDialog.notifyLoadResult(false, "字幕地址无效");
+            }
+            return;
         }
+        // 设置字幕
+        mController.mSubtitleView.setVisibility(View.GONE);
+        mController.mSubtitleView.setOnSubtitleLoadListener(new SubtitleEngine.OnSubtitleLoadListener() {
+            @Override
+            public void onSuccess() {
+                ToastHelper.showToast(mContext, "字幕加载成功");
+                mController.mSubtitleView.setOnSubtitleLoadListener(null);
+                if (searchSubtitleDialog != null && searchSubtitleDialog.isShowing()) {
+                    searchSubtitleDialog.notifyLoadResult(true, null);
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                ToastHelper.showToast(mContext, "字幕加载失败：" + error);
+                mController.mSubtitleView.setOnSubtitleLoadListener(null);
+                if (searchSubtitleDialog != null && searchSubtitleDialog.isShowing()) {
+                    searchSubtitleDialog.notifyLoadResult(false, "字幕加载失败：" + error);
+                }
+            }
+        });
+        // 重新设置缓存键，避免关闭字幕后 key 为空导致保存缓存时崩溃
+        mController.mSubtitleView.setPlaySubtitleCacheKey(subtitleCacheKey);
+        mController.mSubtitleView.setSubtitlePath(path);
+        mController.mSubtitleView.setVisibility(View.VISIBLE);
     }
 
     void selectMySubtitle() {
@@ -578,7 +606,7 @@ public class PlayFragment extends BaseLazyFragment {
         subtitleDialog.setSearchSubtitleListener(new SubtitleDialog.SearchSubtitleListener() {
         	@Override
             public void openSearchSubtitleDialog() {
-                SearchSubtitleDialog searchSubtitleDialog = new SearchSubtitleDialog(getActivity());
+                searchSubtitleDialog = new SearchSubtitleDialog(getActivity());
                 searchSubtitleDialog.setSubtitleLoader(new SearchSubtitleDialog.SubtitleLoader() {
                 	@Override
                     public void loadSubtitle(SubtitleBean subtitle) {
@@ -588,12 +616,27 @@ public class PlayFragment extends BaseLazyFragment {
                             public void run() {
                                 String zimuUrl = subtitle.getUrl();
                                 LOG.i("Remote SubtitleBean Url: " + zimuUrl);
-                                setSubtitle(zimuUrl); //设置字幕
-                                if (searchSubtitleDialog != null) {
-                                    searchSubtitleDialog.dismiss();
+                                if (TextUtils.isEmpty(zimuUrl)) {
+                                    onLoadError("未获取到字幕下载地址");
+                                    return;
                                 }
+                                setSubtitle(zimuUrl); //设置字幕
                             }
                         });
+                    }
+
+                    @Override
+                    public void onLoadSuccess() {
+                        if (searchSubtitleDialog != null && searchSubtitleDialog.isShowing()) {
+                            searchSubtitleDialog.notifyLoadResult(true, null);
+                        }
+                    }
+
+                    @Override
+                    public void onLoadError(String error) {
+                        if (searchSubtitleDialog != null && searchSubtitleDialog.isShowing()) {
+                            searchSubtitleDialog.notifyLoadResult(false, error);
+                        }
                     }
                 });
               /*  EventBus.getDefault().register(searchSubtitleDialog);
@@ -603,12 +646,8 @@ public class PlayFragment extends BaseLazyFragment {
                         EventBus.getDefault().unregister(dialog);
                     }
                 });*/
-                if (mVodInfo.playFlag.contains("Ali") || mVodInfo.playFlag.contains("parse")) {
-                    String searchWord = (mVodInfo.playNote != null && !mVodInfo.playNote.isEmpty()) ? mVodInfo.playNote : mVodInfo.name;
-                    searchSubtitleDialog.setSearchWord(searchWord);
-                } else {
-                    searchSubtitleDialog.setSearchWord(mVodInfo.name);
-                }
+                // 统一使用影片名作为字幕搜索词，避免 playNote 等备注信息导致搜索不准确
+                searchSubtitleDialog.setSearchWord(mVodInfo.name);
                 searchSubtitleDialog.show();
             }
         });
@@ -667,12 +706,15 @@ public class PlayFragment extends BaseLazyFragment {
         subtitleDialog.setCloseSubtitleListener(new SubtitleDialog.CloseSubtitleListener() {
             @Override
             public void closeSubtitle() {
-                // 关闭字幕：清除字幕内容、停止字幕引擎、隐藏字幕视图
+                // 关闭字幕：停止引擎、清理缓存、重置状态、隐藏字幕视图
                 if (mController.mSubtitleView != null) {
                     mController.mSubtitleView.destroy();
                     mController.mSubtitleView.clearSubtitleCache();
                     mController.mSubtitleView.setText("");
                     mController.mSubtitleView.setVisibility(View.GONE);
+                    // 重置内置字幕标记，避免重新加载时状态混乱
+                    mController.mSubtitleView.isInternal = false;
+                    mController.mSubtitleView.hasInternal = false;
                 }
                 ToastHelper.showToast(mContext, getString(R.string.vod_sub_off));
             }
@@ -2045,9 +2087,12 @@ public class PlayFragment extends BaseLazyFragment {
         videoSegmentationURL.clear();
         // 重置弹幕加载状态（注意：不重置danmuText，因为它是动态加载的）
         danmuLoaded = false;
-        // 清除字幕显示，避免上一集字幕残留
+        // 重置字幕引擎，避免切换播放器后字幕延迟或残留（不清理缓存，切换后需恢复字幕路径）
         if (mController != null && mController.mSubtitleView != null) {
+            mController.mSubtitleView.destroy();
             mController.mSubtitleView.setText("");
+            mController.mSubtitleView.isInternal = false;
+            mController.mSubtitleView.hasInternal = false;
         }
         if (mVodInfo.seriesMap == null || mVodInfo.playFlag == null || !mVodInfo.seriesMap.containsKey(mVodInfo.playFlag)) {
             return;

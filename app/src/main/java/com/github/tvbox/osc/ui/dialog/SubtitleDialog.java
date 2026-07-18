@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.github.tvbox.osc.R;
@@ -24,32 +23,32 @@ public class SubtitleDialog extends BaseDialog {
     public TextView selectClose;
 
     // 字幕大小
-    private ImageView subtitleSizeMinus;
+    private TextView subtitleSizeMinus;
     private TextView subtitleSizeText;
-    private ImageView subtitleSizePlus;
+    private TextView subtitleSizePlus;
 
     // 字体颜色
-    private ImageView subtitleTextColorMinus;
+    private TextView subtitleTextColorMinus;
     private TextView subtitleTextColorText;
-    private ImageView subtitleTextColorPlus;
+    private TextView subtitleTextColorPlus;
 
     // 描边颜色
-    private ImageView subtitleStrokeColorMinus;
+    private TextView subtitleStrokeColorMinus;
     private TextView subtitleStrokeColorText;
-    private ImageView subtitleStrokeColorPlus;
+    private TextView subtitleStrokeColorPlus;
 
     // 字体粗细
-    private ImageView subtitleBoldMinus;
+    private TextView subtitleBoldMinus;
     private TextView subtitleBoldText;
-    private ImageView subtitleBoldPlus;
+    private TextView subtitleBoldPlus;
 
     // 预览
     private SimpleSubtitleView subtitleStyleText;
 
     // 时间调整
-    private ImageView subtitleTimeMinus;
+    private TextView subtitleTimeMinus;
     private TextView subtitleTimeText;
-    private ImageView subtitleTimePlus;
+    private TextView subtitleTimePlus;
 
     // 重置按钮
     private TextView subtitleReset;

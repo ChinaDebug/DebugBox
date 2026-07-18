@@ -12,8 +12,10 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.widget.TextView;
 
+import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.subtitle.DefaultSubtitleEngine;
+import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.subtitle.SubtitleEngine;
 import com.github.tvbox.osc.subtitle.model.Subtitle;
 import com.github.tvbox.osc.util.MD5;
@@ -21,6 +23,7 @@ import com.github.tvbox.osc.util.StringUtils;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.List;
 
 import xyz.doikki.videoplayer.player.AbstractPlayer;
@@ -116,6 +119,11 @@ public class SimpleSubtitleView extends TextView
         if (subtitleCacheKey != null && subtitleCacheKey.length() > 0) {
             CacheManager.delete(MD5.string2MD5(subtitleCacheKey), "");
         }
+        // 清空当前缓存键，防止关闭后仍被复用
+        setPlaySubtitleCacheKey("");
+        // 清理网络字幕下载的临时文件，避免磁盘持续增长
+        File zimuDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/zimu/");
+        FileUtils.recursiveDelete(zimuDir);
     }
 
     @Override
@@ -231,5 +239,10 @@ public class SimpleSubtitleView extends TextView
     @Override
     public void setOnSubtitleChangeListener(OnSubtitleChangeListener listener) {
         mSubtitleEngine.setOnSubtitleChangeListener(listener);
+    }
+
+    @Override
+    public void setOnSubtitleLoadListener(OnSubtitleLoadListener listener) {
+        mSubtitleEngine.setOnSubtitleLoadListener(listener);
     }
 }

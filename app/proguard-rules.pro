@@ -381,3 +381,72 @@
 -dontwarn org.joda.time.format.ISODateTimeFormat
 -dontwarn org.kxml2.io.KXmlParser
 -dontwarn org.xmlpull.mxp1.MXParser
+
+#############################################
+# 播放器核心保留（开启混淆后卡顿/黑屏）
+#############################################
+# 保留 ExoPlayer / Media3 全部公开 API 及内部实现类
+-keep class androidx.media3.** { *; }
+-keep interface androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
+# 保留 ExoPlayer 渲染器、轨道选择器等通过反射/SPI 加载的类
+-keep class * extends androidx.media3.exoplayer.Renderer { *; }
+-keep class * extends androidx.media3.exoplayer.trackselection.TrackSelector { *; }
+-keep class androidx.media3.exoplayer.mediacodec.MediaCodecRenderer { *; }
+-keepclassmembers class androidx.media3.exoplayer.mediacodec.MediaCodecRenderer { *; }
+
+# 保留 IjkPlayer 所有类及 native 方法
+-keep class tv.danmaku.ijk.** { *; }
+-keepclasseswithmembernames class tv.danmaku.ijk.** {
+    native <methods>;
+}
+-dontwarn tv.danmaku.ijk.**
+
+# 显式保留被 native 调用的 IjkPlayer 方法/字段
+-keep @tv.danmaku.ijk.media.player.annotations.CalledByNative class * {
+    <methods>;
+    <fields>;
+}
+-keep @tv.danmaku.ijk.media.player.annotations.AccessedByNative class * {
+    <methods>;
+    <fields>;
+}
+-keepclassmembers class * {
+    @tv.danmaku.ijk.media.player.annotations.CalledByNative <methods>;
+    @tv.danmaku.ijk.media.player.annotations.CalledByNative <fields>;
+    @tv.danmaku.ijk.media.player.annotations.AccessedByNative <methods>;
+    @tv.danmaku.ijk.media.player.annotations.AccessedByNative <fields>;
+}
+
+# 保留 dkplayer 全部核心模块（player / render / controller / util / exo / ijk）
+-keep class xyz.doikki.videoplayer.** { *; }
+-dontwarn xyz.doikki.videoplayer.**
+
+# 保留 ExoPlayer 自定义 OkHttpDataSource 扩展包
+-keep class com.google.androidx.media3.exoplayer.ext.okhttp.** { *; }
+-keepclassmembers class com.google.androidx.media3.exoplayer.ext.okhttp.OkHttpDataSource$Factory {
+    private java.lang.String userAgent;
+}
+-dontwarn com.google.androidx.media3.exoplayer.ext.okhttp.**
+
+# 保留 Guava 相关类（OkHttpDataSource 使用了 Predicate / HttpHeaders）
+-keep class com.google.common.base.Predicate { *; }
+-keep class com.google.common.net.HttpHeaders { *; }
+-dontwarn com.google.common.**
+
+# 保留播放器包装类、自定义 View / Render、控制器、第三方播放器、弹幕
+-keep class com.github.tvbox.osc.player.** { *; }
+
+# 保留 IJKCode 完整类（JSON 反序列化用）
+-keep class com.github.tvbox.osc.bean.IJKCode { *; }
+
+# 保留字幕相关类
+-keep class com.github.tvbox.osc.subtitle.** { *; }
+-dontwarn com.github.tvbox.osc.subtitle.**
+
+# 保留反射/序列化相关属性
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses

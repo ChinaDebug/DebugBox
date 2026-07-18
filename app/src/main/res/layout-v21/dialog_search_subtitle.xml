@@ -85,16 +85,35 @@
 
         </ScrollView>
 
-        <ProgressBar
-            android:id="@+id/loadingBar"
-            android:layout_width="@dimen/vs_50"
-            android:layout_height="@dimen/vs_50"
+        <LinearLayout
+            android:id="@+id/loadingContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:indeterminateBehavior="repeat"
-            android:indeterminateTintMode="src_atop"
-            android:indeterminateTint="?attr/color_theme_70"
-            android:indeterminateOnly="true"
-            android:visibility="gone" />
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/loadingBar"
+                android:layout_width="@dimen/vs_50"
+                android:layout_height="@dimen/vs_50"
+                android:indeterminateBehavior="repeat"
+                android:indeterminateTintMode="src_atop"
+                android:indeterminateTint="?attr/color_theme_70"
+                android:indeterminateOnly="true" />
+
+            <TextView
+                android:id="@+id/loadingTip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:text="正在加载字幕..."
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_22" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

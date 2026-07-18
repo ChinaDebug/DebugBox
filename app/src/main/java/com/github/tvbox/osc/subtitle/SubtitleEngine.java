@@ -83,6 +83,13 @@ public interface SubtitleEngine {
     void setOnSubtitleChangeListener(OnSubtitleChangeListener listener);
 
     /**
+     * 设置字幕加载状态监听接口
+     *
+     * @param listener OnSubtitleLoadListener
+     */
+    void setOnSubtitleLoadListener(OnSubtitleLoadListener listener);
+
+    /**
      * 幕准备完成监接口
      */
     interface OnSubtitlePreparedListener {
@@ -94,6 +101,14 @@ public interface SubtitleEngine {
      */
     interface OnSubtitleChangeListener {
         void onSubtitleChanged(@Nullable Subtitle subtitle);
+    }
+
+    /**
+     * 字幕加载状态监听接口
+     */
+    interface OnSubtitleLoadListener {
+        void onSuccess();
+        void onError(String error);
     }
 
 }

@@ -8,6 +8,7 @@ import com.github.tvbox.osc.bean.SubtitleBean;
 import com.github.tvbox.osc.bean.SubtitleData;
 import com.github.tvbox.osc.ui.dialog.SearchSubtitleDialog;
 import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.util.ToastHelper;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.AbsCallback;
 
@@ -234,11 +235,17 @@ public class SubtitleViewModel extends ViewModel {
             @Override
             public void onFailure(Call call, IOException e) {
                 LOG.e(e);
+                subtitleLoader.onLoadError("获取字幕下载地址失败，请重试");
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                subtitle.setUrl(response.header("location"));
+                String location = response.header("location");
+                if (TextUtils.isEmpty(location)) {
+                    subtitleLoader.onLoadError("未获取到字幕下载地址");
+                    return;
+                }
+                subtitle.setUrl(location);
                 subtitleLoader.loadSubtitle(subtitle);
             }
         });

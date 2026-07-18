@@ -43,6 +43,7 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
     private AbstractPlayer mMediaPlayer;
     private OnSubtitlePreparedListener mOnSubtitlePreparedListener;
     private OnSubtitleChangeListener mOnSubtitleChangeListener;
+    private OnSubtitleLoadListener mOnSubtitleLoadListener;
 
     public DefaultSubtitleEngine() {
 
@@ -81,9 +82,14 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
                 mSubtitles = new ArrayList<>(captions.values());
                 setSubtitleDelay(SubtitleHelper.getTimeDelay());
                 notifyPrepared();
+                notifyLoadSuccess();
 
                 String subtitlePath = subtitleLoadSuccessResult.subtitlePath;
-                if (subtitlePath.startsWith("http://") || subtitlePath.startsWith("https://")) {
+                // 缓存键为空时不保存，避免 MD5.string2MD5 因空字符串返回 null 导致崩溃
+                String cacheKey = getPlaySubtitleCacheKey();
+                if (TextUtils.isEmpty(cacheKey)) {
+                    LOG.d(TAG, "onSuccess: playSubtitleCacheKey is empty, skip cache save.");
+                } else if (subtitlePath.startsWith("http://") || subtitlePath.startsWith("https://")) {
                     String subtitleFileCacheDir = App.getInstance().getCacheDir().getAbsolutePath() + "/zimu/";
                     File cacheDir = new File(subtitleFileCacheDir);
                     if (!cacheDir.exists()) {
@@ -92,17 +98,18 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
                     String subtitleFile = subtitleFileCacheDir + subtitleLoadSuccessResult.fileName;
                     File cacheSubtitleFile = new File(subtitleFile);
                     boolean writeResult = FileUtils.writeSimple(subtitleLoadSuccessResult.content.getBytes(), cacheSubtitleFile);
-                    if (writeResult && playSubtitleCacheKey != null) {
-                        CacheManager.save(MD5.string2MD5(getPlaySubtitleCacheKey()), subtitleFile);
+                    if (writeResult) {
+                        CacheManager.save(MD5.string2MD5(cacheKey), subtitleFile);
                     }
                 } else {
-                    CacheManager.save(MD5.string2MD5(getPlaySubtitleCacheKey()), path);
+                    CacheManager.save(MD5.string2MD5(cacheKey), path);
                 }
             }
 
             @Override
             public void onError(final Exception exception) {
                 LOG.e(TAG, "onError", exception);
+                notifyLoadError(exception != null ? exception.getMessage() : "");
             }
         });
     }
@@ -135,7 +142,7 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
         mSubtitles = thisSubtitles;
     }
 
-    private static String playSubtitleCacheKey;
+    private String playSubtitleCacheKey;
     public void setPlaySubtitleCacheKey(String cacheKey) {
         playSubtitleCacheKey = cacheKey;
     }
@@ -191,7 +198,6 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
         LOG.d(TAG, "destroy: ");
         stopWorkThread();
         reset();
-
     }
 
     private void initWorkThread() {
@@ -274,6 +280,23 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
     @Override
     public void setOnSubtitleChangeListener(final OnSubtitleChangeListener listener) {
         mOnSubtitleChangeListener = listener;
+    }
+
+    @Override
+    public void setOnSubtitleLoadListener(final OnSubtitleLoadListener listener) {
+        mOnSubtitleLoadListener = listener;
+    }
+
+    private void notifyLoadSuccess() {
+        if (mOnSubtitleLoadListener != null) {
+            mOnSubtitleLoadListener.onSuccess();
+        }
+    }
+
+    private void notifyLoadError(final String error) {
+        if (mOnSubtitleLoadListener != null) {
+            mOnSubtitleLoadListener.onError(error);
+        }
     }
 
 }

@@ -659,6 +659,8 @@ class DetailActivity : BaseActivity() {
             }, 150)
             llLayout.descendantFocusability = ViewGroup.FOCUS_BEFORE_DESCENDANTS
         }
+        // 全屏/小窗切换后同步刷新字幕大小
+        toggleSubtitleTextSize()
     }
 
     private fun jumpToPlay() {
@@ -716,6 +718,8 @@ class DetailActivity : BaseActivity() {
             }
 
             playFragment?.setData(bundle)
+            // 预览小窗初始化时同步计算字幕大小
+            toggleSubtitleTextSize()
             previewPlayingFlag = info.playFlag
             previewPlayIndex = info.getplayIndex()
             isPreviewPlaying = true

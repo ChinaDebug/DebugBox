@@ -2,9 +2,12 @@ package com.github.tvbox.osc.ui.dialog;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -43,7 +46,9 @@ public class SearchSubtitleDialog extends BaseDialog {
     private TextView subtitleSearchBtn;
     private EditText subtitleSearchEt;
     private SubtitleLoader mSubtitleLoader;
+    private View loadingContainer;
     private ProgressBar loadingBar;
+    private TextView loadingTip;
     private SubtitleViewModel subtitleViewModel;
     private int page = 1;
     private final int maxPage = 5;
@@ -64,7 +69,7 @@ public class SearchSubtitleDialog extends BaseDialog {
             if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
                 if (!isSearchPag) {
                     isSearchPag = true;
-                    loadingBar.setVisibility(View.GONE);
+                    loadingContainer.setVisibility(View.GONE);
                     mGridView.setVisibility(View.VISIBLE);
                     searchAdapter.setNewData(zipSubtitles);
                     searchAdapter.setEnableLoadMore(page < maxPage);
@@ -80,7 +85,9 @@ public class SearchSubtitleDialog extends BaseDialog {
     }
 
     protected void initView(Context context) {
+        loadingContainer = findViewById(R.id.loadingContainer);
         loadingBar = findViewById(R.id.loadingBar);
+        loadingTip = findViewById(R.id.loadingTip);
         mGridView = findViewById(R.id.mGridView);
         subtitleSearchEt = findViewById(R.id.input_sub);
         subtitleSearchBtn = findViewById(R.id.inputSubmit);
@@ -90,6 +97,9 @@ public class SearchSubtitleDialog extends BaseDialog {
         mGridView.setHasFixedSize(true);
         mGridView.setLayoutManager(new V7LinearLayoutManager(getContext(), 1, false));
         mGridView.setAdapter(searchAdapter);
+        mGridView.setFocusable(true);
+        mGridView.setFocusableInTouchMode(true);
+        mGridView.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         searchAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
@@ -99,12 +109,16 @@ public class SearchSubtitleDialog extends BaseDialog {
                 if (mSubtitleLoader != null) {
                     if (subtitle.getIsZip()) {
                         isSearchPag = false;
-                        loadingBar.setVisibility(View.VISIBLE);
+                        loadingTip.setText("正在加载字幕列表...");
+                        loadingContainer.setVisibility(View.VISIBLE);
                         mGridView.setVisibility(View.GONE);
                         subtitleViewModel.getSearchResultSubtitleUrls(subtitle);
                     } else {
+                        // 显示加载中，不立即关闭弹窗，等待加载结果
+                        loadingTip.setText("正在加载字幕...");
+                        loadingContainer.setVisibility(View.VISIBLE);
+                        mGridView.setVisibility(View.GONE);
                         loadSubtitle(subtitle);
-                        dismiss();
                     }
                 }
             }
@@ -133,24 +147,45 @@ public class SearchSubtitleDialog extends BaseDialog {
         searchAdapter.setNewData(new ArrayList<>());
     }
 
-    // takagen99 : Fix on Key Enter
+    // 搜索框按键处理：参照首页SearchActivity模式，实现TV端方向键焦点切换
     private final View.OnKeyListener onSoftKeyPress = new View.OnKeyListener() {
         public boolean onKey(View v, int keyCode, KeyEvent event) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
-                // hide soft keyboard, set focus on next button
-                subtitleSearchEt.clearFocus();
-                subtitleSearchBtn.requestFocus();
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+                    // 回车/确认键：焦点移到搜索按钮
+                    subtitleSearchEt.clearFocus();
+                    subtitleSearchBtn.requestFocus();
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    // 下键：焦点移到搜索结果列表
+                    View nextView = subtitleSearchEt.focusSearch(View.FOCUS_DOWN);
+                    if (nextView != null) {
+                        nextView.requestFocus();
+                    }
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    // 右键：光标在末尾或文本为空时，焦点移到右侧搜索按钮
+                    int len = subtitleSearchEt.getText().length();
+                    if (len == 0 || subtitleSearchEt.getSelectionStart() == len) {
+                        View nextView = subtitleSearchEt.focusSearch(View.FOCUS_RIGHT);
+                        if (nextView != null) {
+                            nextView.requestFocus();
+                        }
+                        return true;
+                    }
+                }
             }
             return false;
         }
     };
 
     public void setSearchWord(String wd) {
-        wd = wd.replaceAll("(?:（|\\(|\\[|【|\\.mp4|\\.mkv|\\.avi|\\.MP4|\\.MKV|\\.AVI)", "");
-        wd = wd.replaceAll("(?:：|\\:|）|\\)|\\]|】|\\.)", " ");
-        int len = wd.length();
-        int finalLen = len >= 36 ? 36 : len;
-        wd = wd.substring(0, finalLen).trim();
+        if (wd == null) {
+            wd = "";
+        }
+        // 仅移除常见视频文件扩展名，保留片名原始格式，避免过度处理导致片名失真
+        wd = wd.replaceAll("(?i)\\.(mp4|mkv|avi|mov|wmv|flv|ts)$", "");
+        wd = wd.trim();
         subtitleSearchEt.setText(wd);
         subtitleSearchEt.setSelection(wd.length());
         subtitleSearchEt.requestFocus();
@@ -160,9 +195,12 @@ public class SearchSubtitleDialog extends BaseDialog {
         isSearchPag = true;
         searchAdapter.setNewData(new ArrayList<>());
         if (!TextUtils.isEmpty(wd)) {
-            loadingBar.setVisibility(View.VISIBLE);
+            loadingTip.setText("正在搜索字幕...");
+            loadingContainer.setVisibility(View.VISIBLE);
             mGridView.setVisibility(View.GONE);
             searchWord = wd;
+            // 搜索后搜索框失去焦点，结果列表请求焦点，便于方向键直接选择字幕
+            subtitleSearchEt.clearFocus();
             subtitleViewModel.searchResult(wd, page = 1);
         } else {
             ToastHelper.showToast(getContext(), "输入内容不能为空");
@@ -174,8 +212,15 @@ public class SearchSubtitleDialog extends BaseDialog {
         subtitleViewModel.searchResult.observe((LifecycleOwner) mContext, new Observer<SubtitleData>() {
             @Override
             public void onChanged(SubtitleData subtitleData) {
-                loadingBar.setVisibility(View.GONE);
+                loadingContainer.setVisibility(View.GONE);
                 mGridView.setVisibility(View.VISIBLE);
+                // 视图显示完成后再请求焦点，避免焦点被搜索框抢回
+                mGridView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mGridView.requestFocus();
+                    }
+                });
                 if (subtitleData == null) {
                     ToastHelper.showToast(getContext(), "搜索出错，请重试");
                     return;
@@ -237,6 +282,40 @@ public class SearchSubtitleDialog extends BaseDialog {
 
     public interface SubtitleLoader {
         void loadSubtitle(SubtitleBean subtitle);
+
+        void onLoadSuccess();
+
+        void onLoadError(String error);
+    }
+
+    /**
+     * 通知字幕加载结果，成功则关闭弹窗，失败则恢复列表显示。
+     * 该方法可能在子线程被回调，因此切到主线程操作视图。
+     */
+    public void notifyLoadResult(boolean success, String message) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (!TextUtils.isEmpty(message)) {
+                    ToastHelper.showToast(getContext(), message);
+                }
+                if (success) {
+                    dismiss();
+                } else {
+                    loadingContainer.setVisibility(View.GONE);
+                    mGridView.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void dismiss() {
+        super.dismiss();
+        // 关闭弹窗时清空上次搜索结果，避免下次打开仍显示旧数据
+        searchAdapter.setNewData(new ArrayList<>());
+        zipSubtitles.clear();
+        page = 1;
     }
 
 }
