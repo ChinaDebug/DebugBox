@@ -265,7 +265,7 @@ public class HistoryActivity extends BaseActivity {
         List<VodInfo> vodInfoList = new ArrayList<>();
         for (VodInfo vodInfo : allVodRecord) {
             if (vodInfo.playNote != null && !vodInfo.playNote.isEmpty()) {
-                vodInfo.note = "看到" + vodInfo.playNote;
+                vodInfo.note = vodInfo.playNote;
             }
             vodInfoList.add(vodInfo);
         }

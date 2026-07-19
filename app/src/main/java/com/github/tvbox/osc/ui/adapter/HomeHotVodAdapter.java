@@ -18,10 +18,27 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.ImgUtil;
 import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.orhanobut.hawk.Hawk;
+import com.owen.tvrecyclerview.widget.TvRecyclerView;
 
 import java.util.ArrayList;
 import me.jessyan.autosize.utils.AutoSizeUtils;
 public class HomeHotVodAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHolder> {
+    // 监听 item 焦点变化，仅当卡片获取焦点时才让集名跑马灯滚动
+    private static final View.OnFocusChangeListener mNoteFocusListener = new View.OnFocusChangeListener() {
+        @Override
+        public void onFocusChange(View v, boolean hasFocus) {
+            // 保留 TvRecyclerView 原有的焦点处理，避免覆盖后导致片名无法滚动
+            if (v.getParent() instanceof TvRecyclerView) {
+                ((TvRecyclerView) v.getParent()).onFocusChange(v, hasFocus);
+            }
+            TextView tvNote = v.findViewById(R.id.tvNote);
+            if (tvNote != null && tvNote.getVisibility() == View.VISIBLE) {
+                // 使用 hasFocus() 兼容焦点在子控件上的情况
+                tvNote.setSelected(v.hasFocus());
+            }
+        }
+    };
+
     private int defaultWidth;
     private final ImgUtil.Style style;
     private String tvYearValue;
@@ -63,13 +80,27 @@ public class HomeHotVodAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
             }
         }
         tvYear.setText(tvYearValue);
-        TextView tvRate = helper.getView(R.id.tvNote);
+        // 首页推荐模式不显示“看到”前缀，仅在历史模式下显示
+        boolean isHistoryMode = Hawk.get(HawkConfig.HOME_REC, 0) == 2;
+        TextView tvNotePrefix = helper.getView(R.id.tvNotePrefix);
+        TextView tvNote = helper.getView(R.id.tvNote);
         if (item.note == null || item.note.isEmpty()) {
-            tvRate.setVisibility(View.GONE);
+            tvNote.setVisibility(View.GONE);
+            tvNotePrefix.setVisibility(View.GONE);
         } else {
-            tvRate.setText(item.note);
-            tvRate.setVisibility(View.VISIBLE);
+            tvNote.setText(item.note);
+            tvNote.setVisibility(View.VISIBLE);
+            // 根据当前 item 焦点状态初始化跑马灯，只有获取焦点时才滚动
+            tvNote.setSelected(helper.itemView.hasFocus());
+            if (isHistoryMode) {
+                // 首页历史记录场景下固定显示“看到”前缀，集名单独滚动
+                tvNotePrefix.setText("看到");
+                tvNotePrefix.setVisibility(View.VISIBLE);
+            } else {
+                tvNotePrefix.setVisibility(View.GONE);
+            }
         }
+        helper.itemView.setOnFocusChangeListener(mNoteFocusListener);
         helper.setText(R.id.tvName, item.name);
 
         ImageView ivThumb = helper.getView(R.id.ivThumb);
