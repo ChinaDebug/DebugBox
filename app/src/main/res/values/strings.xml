@@ -190,6 +190,11 @@
     <string name="vod_remaining_time">Remaining Time</string>
     <string name="vod_ends_at">Ends at</string>
 
+    <string name="screen_display_net_speed">Network Speed</string>
+    <string name="screen_display_seek_time">Seek Time</string>
+    <string name="screen_display_sys_time">System Time</string>
+    <string name="screen_display_battery">Battery</string>
+
     // EXO Player
     <string name="exo_track_selection_title_video">Video</string>
     <string name="exo_track_selection_title_audio">Audio</string>

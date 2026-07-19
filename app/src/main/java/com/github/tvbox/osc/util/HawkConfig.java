@@ -66,6 +66,11 @@ public class HawkConfig {
     public static final String BACKGROUND_PLAY_TYPE = "background_play_type";
     public static final String FAST_SEARCH_MODE = "fast_search_mode";
     public static final String SCREEN_DISPLAY = "screen_display";
+    // 屏显子项开关：分别控制右上角网速 / 进度时间 / 系统时间 / 电量是否常驻
+    public static final String SCREEN_DISPLAY_NET_SPEED = "screen_display_net_speed";
+    public static final String SCREEN_DISPLAY_SEEK_TIME = "screen_display_seek_time";
+    public static final String SCREEN_DISPLAY_SYS_TIME = "screen_display_sys_time";
+    public static final String SCREEN_DISPLAY_BATTERY = "screen_display_battery";
     public static final String SEARCH_FILTER_KEY = "search_filter_key";
 
     // Live Settings

@@ -200,7 +200,7 @@
             android:textSize="@dimen/ts_22" />
 
         <TextView
-            android:id="@+id/tv_MPBS_top"
+            android:id="@+id/tv_MPBS_top_r"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical|right"

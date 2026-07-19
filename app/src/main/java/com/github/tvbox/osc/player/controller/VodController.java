@@ -73,8 +73,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import xyz.doikki.videoplayer.player.VideoView;
 import xyz.doikki.videoplayer.util.PlayerUtils;
@@ -277,10 +279,29 @@ public class VodController extends BaseController {
     // screen_display
     TextView mPlayPauseTime;
     TextView mPlayLoadNetSpeedRightTop;
+    TextView mMpbsTopr;            // 网速单位 Mbps
     LinearLayout mTopRoot2;
     TextView seekTime; //右上角进度时间显示
     LinearLayout mScreendisplay; //增加屏显开关
     BatteryView mBatteryView; // 电量图标（含内部数显）
+
+    // 屏显子项可见性配置：分别对应 网速 / 进度时间 / 系统时间 / 电量
+    // 默认全部关闭，由用户主动通过菜单勾选
+    private boolean sdNetSpeed = false;
+    private boolean sdSeekTime = false;
+    private boolean sdSysTime = false;
+    private boolean sdBattery = false;
+
+    // 当前正在显示的 PopupWindow 引用，避免重复弹出
+    private PlayerPopupMenu mCurrentPopup;
+
+    // 播放倍速统一档位：上下键导航与 PopupWindow 菜单共用同一套档位
+    // 参考 B 站 / 爱奇艺 / 腾讯视频 + 3.0
+    private static final float[] SUPPORTED_SPEEDS = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f};
+
+    // 长按倍速按钮临时快进：记录长按前的速度，松手恢复
+    private float mSpeedBeforeLongPress = 0f;
+    private boolean mIsLongPressSpeeding = false;
 
     // bottom container
     LinearLayout mBottomRoot;
@@ -490,10 +511,16 @@ public class VodController extends BaseController {
         // screen_display
         mPlayPauseTime = findViewById(R.id.tv_system_time);
         mPlayLoadNetSpeedRightTop = findViewById(R.id.tv_play_load_net_speed_right_top);
+        mMpbsTopr = findViewById(R.id.tv_MPBS_top_r);
         mTopRoot2 = findViewById(R.id.tv_top_r_container);
         seekTime = findViewById(R.id.tv_seek_time); //右上角进度时间显示
         mScreendisplay = findViewById(R.id.screen_display); //增加屏显开关
         mBatteryView = findViewById(R.id.battery_view);
+
+        // 旧版 SCREEN_DISPLAY 总开关首次迁移到子项配置，保持用户原有显示行为
+        migrateScreenDisplayConfig();
+        loadScreenDisplayConfig();
+        applyScreenDisplay();
 
         mLockView.setOnClickListener(new OnClickListener() {
             @Override
@@ -620,30 +647,49 @@ public class VodController extends BaseController {
             }
         });
         // Button : SPEED of video --------------------------------------
+        // 点击在按钮位置向上弹出 PopupWindow 风格的倍速菜单
         mFFwdBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 mHandler.removeCallbacks(mHideBottomRunnable);
                 mHandler.postDelayed(mHideBottomRunnable, 8000);
-                try {
-                    float speed = (float) mPlayerConfig.getDouble("sp");
-                    increasePlaySpeed(speed);
-                } catch (JSONException e) {
-                    LOG.e(e);
-                }
+                showPlaySpeedMenu(view);
             }
         });
-        // takagen99: Add long press to reset speed
-        mFFwdBtn.setOnLongClickListener(new OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                float currentSpeed = mControlWrapper.getSpeed();
-                if (currentSpeed == 1.0f) {
-                    setPlaySpeed(5.0f);
-                } else {
-                    setPlaySpeed(1.0f);
+        // 长按倍速按钮：按住期间以最大档位 3.0 快进，松手恢复原速（临时快进，不修改配置）
+        mFFwdBtn.setOnTouchListener(new OnTouchListener() {
+            private static final int LONG_PRESS_DELAY = 500;
+            private final Runnable mLongPressAction = new Runnable() {
+                @Override
+                public void run() {
+                    // 触发长按临时快进，使用 SUPPORTED_SPEEDS 最大档位
+                    mSpeedBeforeLongPress = mControlWrapper.getSpeed();
+                    mIsLongPressSpeeding = true;
+                    setPlaySpeed(SUPPORTED_SPEEDS[SUPPORTED_SPEEDS.length - 1]);
                 }
-                return true;
+            };
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int action = event.getAction();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    // 延时判断是否为长按
+                    mHandler.postDelayed(mLongPressAction, LONG_PRESS_DELAY);
+                } else if (action == MotionEvent.ACTION_UP
+                        || action == MotionEvent.ACTION_CANCEL) {
+                    // 松手或事件取消：移除未触发的长按回调
+                    mHandler.removeCallbacks(mLongPressAction);
+                    if (mIsLongPressSpeeding) {
+                        // 已在快进状态，恢复原速
+                        mIsLongPressSpeeding = false;
+                        setPlaySpeed(mSpeedBeforeLongPress > 0 ? mSpeedBeforeLongPress : 1.0f);
+                        mSpeedBeforeLongPress = 0f;
+                        // 消费事件，避免触发 OnClickListener 弹出菜单
+                        return true;
+                    }
+                }
+                // 未触发长按则让 OnClickListener 正常处理（弹出菜单）
+                return false;
             }
         });
 //        mFFwdBtn.setOnFocusChangeListener(new OnFocusChangeListener() {
@@ -1078,15 +1124,12 @@ public class VodController extends BaseController {
             }
         });
 
-        //屏显开关
-        mTopRoot2.setVisibility(Hawk.get(HawkConfig.SCREEN_DISPLAY, GONE));
+        //屏显开关：在按钮位置向上弹出 PopupWindow 风格的多选菜单
+        // mTopRoot2 可见性已由 applyScreenDisplay() 统一控制，此处不再覆盖
         mScreendisplay.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                mTopRoot2.setVisibility(mTopRoot2.getVisibility() == VISIBLE ? GONE : VISIBLE);
-                Hawk.put(HawkConfig.SCREEN_DISPLAY, mTopRoot2.getVisibility());
-                hideBottom();
-                //Toast.makeText(getContext(), "点击显示网速 播放进度 时间", Toast.LENGTH_SHORT).show();
+                showScreenDisplayMenu(view);
             }
         });
 
@@ -1552,35 +1595,207 @@ public class VodController extends BaseController {
     };
 
     public void hideBottom() {
+        // 控制栏隐藏前先关闭弹出的菜单，避免菜单残留
+        if (mCurrentPopup != null && mCurrentPopup.isShowing()) {
+            mCurrentPopup.dismiss();
+            mCurrentPopup = null;
+        }
         mHandler.removeMessages(1002);
         mHandler.sendEmptyMessage(1003);
         mHandler.removeCallbacks(mHideBottomRunnable);
     }
 
-    void increasePlaySpeed(float speed) {
-        if (speed == 5) {
-            speed = 0.25f;
-        } else if (speed >= 2 & speed < 3) {
-            speed += 0.5f;
-        } else if (speed >= 3) {
-            speed += 1.0f;
-        } else {
-            speed += 0.25f;
+    /**
+     * 旧版 SCREEN_DISPLAY 总开关首次迁移到子项配置：仅执行一次
+     * 新版默认关闭所有屏显子项，由用户主动通过菜单选择常驻项目
+     */
+    private void migrateScreenDisplayConfig() {
+        // 子项配置已存在则视为已迁移过，跳过
+        if (Hawk.contains(HawkConfig.SCREEN_DISPLAY_NET_SPEED)) {
+            return;
         }
-        setPlaySpeed(speed);
+        // 新版默认全部关闭，避免新用户被未请求的屏显信息打扰
+        Hawk.put(HawkConfig.SCREEN_DISPLAY_NET_SPEED, false);
+        Hawk.put(HawkConfig.SCREEN_DISPLAY_SEEK_TIME, false);
+        Hawk.put(HawkConfig.SCREEN_DISPLAY_SYS_TIME, false);
+        Hawk.put(HawkConfig.SCREEN_DISPLAY_BATTERY, false);
+        Hawk.put(HawkConfig.SCREEN_DISPLAY, GONE);
+    }
+
+    /**
+     * 从 Hawk 加载屏显子项配置到内存字段
+     * 默认值统一为 false：未设置过的子项不显示
+     */
+    private void loadScreenDisplayConfig() {
+        sdNetSpeed = Hawk.get(HawkConfig.SCREEN_DISPLAY_NET_SPEED, false);
+        sdSeekTime = Hawk.get(HawkConfig.SCREEN_DISPLAY_SEEK_TIME, false);
+        sdSysTime = Hawk.get(HawkConfig.SCREEN_DISPLAY_SYS_TIME, false);
+        sdBattery = Hawk.get(HawkConfig.SCREEN_DISPLAY_BATTERY, false);
+    }
+
+    /**
+     * 应用屏显子项可见性：每个子项独立控制，全部未选时整体容器隐藏
+     */
+    private void applyScreenDisplay() {
+        if (mTopRoot2 == null) {
+            return;
+        }
+        // 网速数值与 Mbps 单位同步显示
+        int netVis = sdNetSpeed ? VISIBLE : GONE;
+        if (mPlayLoadNetSpeedRightTop != null) {
+            mPlayLoadNetSpeedRightTop.setVisibility(netVis);
+        }
+        if (mMpbsTopr != null) {
+            mMpbsTopr.setVisibility(netVis);
+        }
+        if (seekTime != null) {
+            seekTime.setVisibility(sdSeekTime ? VISIBLE : GONE);
+        }
+        if (mPlayPauseTime != null) {
+            mPlayPauseTime.setVisibility(sdSysTime ? VISIBLE : GONE);
+        }
+        if (mBatteryView != null) {
+            mBatteryView.setVisibility(sdBattery ? VISIBLE : GONE);
+        }
+        // 至少一个子项开启则显示整体容器，否则整体隐藏
+        boolean anyOn = sdNetSpeed || sdSeekTime || sdSysTime || sdBattery;
+        mTopRoot2.setVisibility(anyOn ? VISIBLE : GONE);
+        // 同步更新总开关状态，保留向后兼容
+        Hawk.put(HawkConfig.SCREEN_DISPLAY, anyOn ? VISIBLE : GONE);
+    }
+
+    /**
+     * 在屏显按钮位置向上弹出 PopupWindow 风格的多选菜单
+     * 用户勾选切换子项可见性，菜单保持打开由用户按返回键关闭
+     */
+    private void showScreenDisplayMenu(View anchor) {
+        // 已有菜单显示则先关闭，避免重复弹出
+        if (mCurrentPopup != null && mCurrentPopup.isShowing()) {
+            mCurrentPopup.dismiss();
+            mCurrentPopup = null;
+            return;
+        }
+        // 选项顺序固定：网速 / 进度时间 / 系统时间 / 电量
+        List<String> items = new ArrayList<>();
+        items.add(HomeActivity.getRes().getString(R.string.screen_display_net_speed));
+        items.add(HomeActivity.getRes().getString(R.string.screen_display_seek_time));
+        items.add(HomeActivity.getRes().getString(R.string.screen_display_sys_time));
+        items.add(HomeActivity.getRes().getString(R.string.screen_display_battery));
+        // 初始选中位置集合
+        Set<Integer> selected = new HashSet<>();
+        if (sdNetSpeed) selected.add(0);
+        if (sdSeekTime) selected.add(1);
+        if (sdSysTime) selected.add(2);
+        if (sdBattery) selected.add(3);
+        // 选项宽度：参考控制栏按钮尺寸
+        int itemWidth = getResources().getDimensionPixelSize(R.dimen.vs_180);
+        // 菜单显示期间暂停控制栏自动隐藏，避免用户操作时控制栏消失
+        mHandler.removeCallbacks(mHideBottomRunnable);
+        mCurrentPopup = PlayerPopupMenu.showMulti(getContext(), anchor, items, selected, itemWidth,
+                new PlayerPopupMenu.OnMultiToggleCallback() {
+                    @Override
+                    public void onToggle(int position, boolean nowSelected) {
+                        switch (position) {
+                            case 0:
+                                sdNetSpeed = nowSelected;
+                                Hawk.put(HawkConfig.SCREEN_DISPLAY_NET_SPEED, nowSelected);
+                                break;
+                            case 1:
+                                sdSeekTime = nowSelected;
+                                Hawk.put(HawkConfig.SCREEN_DISPLAY_SEEK_TIME, nowSelected);
+                                break;
+                            case 2:
+                                sdSysTime = nowSelected;
+                                Hawk.put(HawkConfig.SCREEN_DISPLAY_SYS_TIME, nowSelected);
+                                break;
+                            case 3:
+                                sdBattery = nowSelected;
+                                Hawk.put(HawkConfig.SCREEN_DISPLAY_BATTERY, nowSelected);
+                                break;
+                            default:
+                                break;
+                        }
+                        // 实时应用到右上角屏显容器
+                        applyScreenDisplay();
+                    }
+                });
+        // 菜单关闭后重启控制栏 8 秒自动隐藏倒计时
+        mCurrentPopup.setOnDismissListener(() -> mHandler.postDelayed(mHideBottomRunnable, 8000));
+    }
+
+    /**
+     * 在倍速按钮位置向上弹出 PopupWindow 风格的单选菜单
+     * 列出支持的倍数档位，点击立即切换并关闭菜单
+     */
+    private void showPlaySpeedMenu(View anchor) {
+        // 已有菜单显示则先关闭，避免重复弹出
+        if (mCurrentPopup != null && mCurrentPopup.isShowing()) {
+            mCurrentPopup.dismiss();
+            mCurrentPopup = null;
+            return;
+        }
+        if (mPlayerConfig == null) {
+            return;
+        }
+        try {
+            float currentSpeed = (float) mPlayerConfig.getDouble("sp");
+            // 使用统一档位 SUPPORTED_SPEEDS，与上下键导航一致
+            int defaultPos = findSpeedIndex(currentSpeed);
+            List<String> items = new ArrayList<>();
+            for (float s : SUPPORTED_SPEEDS) {
+                items.add("x" + s);
+            }
+            // 选项宽度：略大于倍速按钮，保证 "x0.25" 等文本完整显示
+            int itemWidth = getResources().getDimensionPixelSize(R.dimen.vs_150);
+            // 菜单显示期间暂停控制栏自动隐藏，避免用户操作时控制栏消失
+            mHandler.removeCallbacks(mHideBottomRunnable);
+            mCurrentPopup = PlayerPopupMenu.showSingle(getContext(), anchor, items, defaultPos, itemWidth,
+                    new PlayerPopupMenu.OnSingleSelectCallback() {
+                        @Override
+                        public void onSelect(int position) {
+                            setPlaySpeed(SUPPORTED_SPEEDS[position]);
+                            hideBottom();
+                        }
+                    });
+            // 菜单关闭后重启控制栏 8 秒自动隐藏倒计时
+            mCurrentPopup.setOnDismissListener(() -> mHandler.postDelayed(mHideBottomRunnable, 8000));
+        } catch (JSONException e) {
+            LOG.e(e);
+        }
+    }
+
+    void increasePlaySpeed(float speed) {
+        int idx = findSpeedIndex(speed);
+        // 循环到下一档：最大档位下一个回到最小档位
+        int next = (idx + 1) % SUPPORTED_SPEEDS.length;
+        setPlaySpeed(SUPPORTED_SPEEDS[next]);
     }
 
     void decreasePlaySpeed(float speed) {
-        if (speed == 0.25f) {
-            speed = 5.0f;
-        } else if (speed > 3) {
-            speed -= 1.0f;
-        } else if (speed > 2 & speed <= 3) {
-            speed -= 0.5f;
-        } else {
-            speed -= 0.25f;
+        int idx = findSpeedIndex(speed);
+        // 循环到上一档：最小档位上一个回到最大档位
+        int prev = (idx - 1 + SUPPORTED_SPEEDS.length) % SUPPORTED_SPEEDS.length;
+        setPlaySpeed(SUPPORTED_SPEEDS[prev]);
+    }
+
+    /**
+     * 在 SUPPORTED_SPEEDS 中查找当前速度的档位索引
+     * 若当前速度不在档位数组中，返回最接近且不小于当前速度的档位索引
+     */
+    private int findSpeedIndex(float speed) {
+        for (int i = 0; i < SUPPORTED_SPEEDS.length; i++) {
+            if (Math.abs(SUPPORTED_SPEEDS[i] - speed) < 0.001f) {
+                return i;
+            }
         }
-        setPlaySpeed(speed);
+        // 不在档位中：找第一个不小于当前速度的档位
+        for (int i = 0; i < SUPPORTED_SPEEDS.length; i++) {
+            if (SUPPORTED_SPEEDS[i] >= speed) {
+                return i;
+            }
+        }
+        // 当前速度超过最大档位，返回最大档位索引
+        return SUPPORTED_SPEEDS.length - 1;
     }
 
     void setPlaySpeed(float value) {
