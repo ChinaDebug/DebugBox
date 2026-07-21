@@ -278,25 +278,21 @@ public class ApiConfig {
                 .execute(new AbsCallback<File>() {
 
                     @Override
-                    public File convertResponse(okhttp3.Response response){
+                    public File convertResponse(okhttp3.Response response) {
                         File cacheDir = cache.getParentFile();
-                        assert cacheDir != null;
+                        if (cacheDir == null || response.body() == null) {
+                            return null;
+                        }
                         if (!cacheDir.exists()) cacheDir.mkdirs();
                         if (cache.exists()) cache.delete();
-                        // 3. 使用 try-with-resources 确保流关闭
-                        assert response.body() != null;
                         try (FileOutputStream fos = new FileOutputStream(cache)) {
                             if (isJarInImg) {
-                                String respData = response.body().string();
-                                LOG.i("echo---jar Response: " + respData);
-                                byte[] imgJar = getImgJar(respData);
+                                byte[] imgJar = getImgJar(response.body().string());
                                 if (imgJar == null || imgJar.length == 0) {
-                                    LOG.e("echo---Generated JAR data is empty");
-                                    callback.error("JAR data is empty");
+                                    return null;
                                 }
                                 fos.write(imgJar);
                             } else {
-                                // 使用流式传输避免内存溢出
                                 InputStream inputStream = response.body().byteStream();
                                 byte[] buffer = new byte[4096];
                                 int bytesRead;
@@ -319,15 +315,13 @@ public class ApiConfig {
                                 if (jarLoader.load(file.getAbsolutePath())) {
                                     callback.success();
                                 } else {
-                                    LOG.e("echo---jar Loader returned false");
                                     callback.error("从网络上加载jar写入缓存后加载失败");
                                 }
                             } catch (Exception e) {
-                                LOG.e("echo---jar Loader threw exception: " + e.getMessage());
+                                LOG.e(e);
                                 callback.error("JAR加载异常: " + e.getMessage());
                             }
                         } else {
-                            LOG.e("echo---jar File not found");
                             callback.error("从网络上加载jar地址字节数据为空");
                         }
                     }
@@ -335,10 +329,10 @@ public class ApiConfig {
                     @Override
                     public void onError(Response<File> response) {
                         Throwable ex = response.getException();
-                        if (ex != null) {
-                            LOG.i("echo---jar Request failed: " + ex.getMessage());
+                        if (cache.exists() && jarLoader.load(cache.getAbsolutePath())) {
+                            callback.success();
+                            return;
                         }
-                        if(cache.exists())jarLoader.load(cache.getAbsolutePath());
                         callback.error(ex != null ? "从网络上加载jar失败：" + ex.getMessage() : "未知网络错误");
                     }
                 });

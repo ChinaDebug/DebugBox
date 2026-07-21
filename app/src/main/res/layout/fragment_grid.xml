@@ -19,6 +19,6 @@
         android:paddingRight="@dimen/vs_60"
         android:paddingBottom="@dimen/vs_40"
         app:tv_horizontalSpacingWithMargins="@dimen/vs_20"
-        app:tv_selectedItemIsCentered="true"
+        app:tv_selectedItemIsCentered="false"
         app:tv_verticalSpacingWithMargins="@dimen/vs_20" />
 </LinearLayout>

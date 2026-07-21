@@ -2,6 +2,7 @@
 package com.github.catvod.crawler;
 
 import android.content.Context;
+import android.os.Build;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.util.FileUtils;
@@ -46,54 +47,58 @@ public class JarLoader {
         classLoaders.clear();
     }
 
+    private boolean makeJarReadOnly(String jarPath) {
+        // Android 14+ 动态加载代码要求被加载文件必须为只读，否则系统会抛出异常
+        if (Build.VERSION.SDK_INT < 34) {
+            return true;
+        }
+        File jarFile = new File(jarPath);
+        if (!jarFile.exists()) {
+            return false;
+        }
+        boolean result = jarFile.setReadOnly();
+        if (!result) {
+            // setReadOnly 失败时尝试通过显式关闭写权限达到只读效果
+            result = jarFile.setWritable(false, false) && jarFile.setReadable(true, false);
+        }
+        if (!result) {
+            LOG.e("设置 jar 只读失败: " + jarPath);
+        }
+        return result;
+    }
+
     private boolean loadClassLoader(String jar, String key) {
         if (classLoaders.containsKey(key)){
             return true;
         }
         boolean success = false;
         try {
+            makeJarReadOnly(jar);
             File cacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_csp");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
             final DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, App.getInstance().getClassLoader());
-            int count = 0;
-            do {
-                try {
-                    final Class<?> classInit = classLoader.loadClass("com.github.catvod.spider.Init");
-                    if (classInit != null) {
-                        final Method initMethod = classInit.getMethod("init", Context.class);
-                        Thread initThread = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    initMethod.invoke(null, App.getInstance());
-                                } catch (Exception e) {
-                                    LOG.e(e);
-                                }
-                            }
-                        });
-                        initThread.start();
-                        initThread.join();
-                        success = true;
-                        try {
-                            Class<?> proxy = classLoader.loadClass("com.github.catvod.spider.Proxy");
-                            Method proxyMethod = proxy.getMethod("proxy", Map.class);
-                            proxyMethods.put(key, proxyMethod);
-                        } catch (Throwable th) {
-                            LOG.e(th);
-                        }
-                        break;
+            try {
+                Class<?> classInit = classLoader.loadClass("com.github.catvod.spider.Init");
+                if (classInit != null) {
+                    Method initMethod = classInit.getMethod("init", Context.class);
+                    initMethod.invoke(null, App.getInstance());
+                    success = true;
+                    try {
+                        Class<?> proxy = classLoader.loadClass("com.github.catvod.spider.Proxy");
+                        Method proxyMethod = proxy.getMethod("proxy", Map.class);
+                        proxyMethods.put(key, proxyMethod);
+                    } catch (Throwable th) {
+                        LOG.e(th);
                     }
-                    Thread.sleep(200);
-                } catch (Throwable th) {
-                    LOG.e(th);
                 }
-                count++;
-            } while (count < 2);
+            } catch (Throwable th) {
+                LOG.e(th);
+            }
 
             if (success) {
                 classLoaders.put(key, classLoader);
-            } 
+            }
         } catch (Throwable th) {
             LOG.e(th);
         }
@@ -122,21 +127,15 @@ public class JarLoader {
         }
         try {
             Response response = OkGo.<File>get(jar).execute();
-            assert response.body() != null;
-            InputStream is = response.body().byteStream();
-            OutputStream os = new FileOutputStream(cache);
-            try {
+            if (response.body() == null) {
+                return null;
+            }
+            try (InputStream is = response.body().byteStream();
+                 OutputStream os = new FileOutputStream(cache)) {
                 byte[] buffer = new byte[2048];
                 int length;
                 while ((length = is.read(buffer)) > 0) {
                     os.write(buffer, 0, length);
-                }
-            } finally {
-                try {
-                    is.close();
-                    os.close();
-                } catch (Exception e) {
-                    LOG.e(e);
                 }
             }
             loadClassLoader(cache.getAbsolutePath(), key);
