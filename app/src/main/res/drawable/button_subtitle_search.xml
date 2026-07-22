@@ -3,29 +3,29 @@
     <item android:state_focused="true" android:state_pressed="true">
         <shape>
             <corners android:radius="@dimen/vs_30" />
-            <solid android:color="?attr/color_theme_70" />
+            <solid android:color="?attr/color_theme_40" />
             <stroke android:width="2mm" android:color="@android:color/white" />
         </shape>
     </item>
     <item android:state_focused="false" android:state_pressed="true">
         <shape>
             <corners android:radius="@dimen/vs_30" />
-            <solid android:color="?attr/color_theme_70" />
-            <stroke android:width="1mm" android:color="?attr/color_theme" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke android:width="2mm" android:color="@android:color/white" />
         </shape>
     </item>
     <item android:state_focused="true">
         <shape>
             <corners android:radius="@dimen/vs_30" />
-            <solid android:color="?attr/color_theme_70" />
+            <solid android:color="?attr/color_theme_40" />
             <stroke android:width="2mm" android:color="@android:color/white" />
         </shape>
     </item>
     <item android:state_focused="false" android:state_pressed="false">
         <shape>
             <corners android:radius="@dimen/vs_30" />
-            <solid android:color="@android:color/transparent" />
-            <stroke android:width="1mm" android:color="#80FFFFFF" />
+            <solid android:color="@color/color_dialog_glass_btn_bg" />
+            <stroke android:width="1mm" android:color="@color/color_dialog_glass_btn_stroke" />
         </shape>
     </item>
 </selector>

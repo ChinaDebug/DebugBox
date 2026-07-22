@@ -1031,18 +1031,14 @@ public class HomeActivity extends BaseActivity {
         if (sites.size() > 0) {
             SelectDialog<SourceBean> dialog = new SelectDialog<>(HomeActivity.this);
 
-            // Multi Column Selection
-            int spanCount = (int) Math.floor(sites.size() / 10);
-            if (spanCount <= 1) spanCount = 1;
-            if (spanCount >= 3) spanCount = 3;
+            int spanCount = (int) Math.floor(sites.size() / 20.0);
+            spanCount = Math.min(spanCount, 2);
 
             TvRecyclerView tvRecyclerView = dialog.findViewById(R.id.list);
-            tvRecyclerView.setLayoutManager(new V7GridLayoutManager(dialog.getContext(), spanCount));
+            tvRecyclerView.setLayoutManager(new V7GridLayoutManager(dialog.getContext(), spanCount + 1));
             ConstraintLayout cl_root = dialog.findViewById(R.id.cl_root);
             ViewGroup.LayoutParams clp = cl_root.getLayoutParams();
-            if (spanCount != 1) {
-                clp.width = AutoSizeUtils.mm2px(dialog.getContext(), 400 + 260 * (spanCount - 1));
-            }
+            clp.width = AutoSizeUtils.mm2px(dialog.getContext(), 380 + 200 * spanCount);
 
             dialog.setTip(getString(R.string.dia_source));
             dialog.setAdapter(tvRecyclerView, new SelectDialogAdapter.SelectDialogInterface<SourceBean>() {

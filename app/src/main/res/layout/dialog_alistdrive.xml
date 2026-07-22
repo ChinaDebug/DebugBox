@@ -27,7 +27,7 @@
                 android:layout_marginRight="@dimen/vs_20"
                 android:gravity="center_vertical|end"
                 android:text="空间名称"
-                android:textColor="@color/color_FF000000"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/ts_20" />
 
             <EditText
@@ -35,7 +35,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/vs_50"
                 android:layout_weight="1"
-                android:background="@drawable/shape_live_channel_num"
+                android:background="@drawable/input_dialog_api_input"
                 android:hint="空间名称"
                 android:inputType="text"
                 android:maxLines="1"
@@ -59,7 +59,7 @@
                 android:layout_marginRight="@dimen/vs_20"
                 android:gravity="center_vertical|end"
                 android:text="Alist地址"
-                android:textColor="@color/color_FF000000"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/ts_20" />
 
             <EditText
@@ -67,7 +67,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/vs_50"
                 android:layout_weight="1"
-                android:background="@drawable/shape_live_channel_num"
+                android:background="@drawable/input_dialog_api_input"
                 android:hint="Alist 网站地址"
                 android:inputType="text"
                 android:maxLines="1"
@@ -90,7 +90,7 @@
                 android:layout_marginRight="@dimen/vs_20"
                 android:gravity="center_vertical|end"
                 android:text="初始路径"
-                android:textColor="@color/color_FF000000"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/ts_20" />
 
             <EditText
@@ -98,7 +98,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/vs_50"
                 android:layout_weight="1"
-                android:background="@drawable/shape_live_channel_num"
+                android:background="@drawable/input_dialog_api_input"
                 android:hint="初始路径"
                 android:inputType="text"
                 android:maxLines="1"
@@ -121,7 +121,7 @@
                 android:layout_marginRight="@dimen/vs_20"
                 android:gravity="center_vertical|end"
                 android:text="密码"
-                android:textColor="@color/color_FF000000"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/ts_20" />
 
             <EditText
@@ -129,7 +129,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/vs_50"
                 android:layout_weight="1"
-                android:background="@drawable/shape_live_channel_num"
+                android:background="@drawable/input_dialog_api_input"
                 android:hint="密码"
                 android:inputType="text"
                 android:maxLines="1"

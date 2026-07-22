@@ -3,5 +3,6 @@
     <corners
         android:topLeftRadius="@dimen/vs_10"
         android:topRightRadius="@dimen/vs_10" />
-    <solid android:color="@color/color_3D3D3D_80" />
+    <solid android:color="@color/color_dialog_glass_bg" />
+    <stroke android:width="@dimen/vs_1" android:color="@color/color_dialog_glass_border" />
 </shape>
