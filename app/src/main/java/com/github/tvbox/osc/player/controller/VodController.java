@@ -1610,8 +1610,11 @@ public class VodController extends BaseController {
      * 新版默认关闭所有屏显子项，由用户主动通过菜单选择常驻项目
      */
     private void migrateScreenDisplayConfig() {
-        // 子项配置已存在则视为已迁移过，跳过
-        if (Hawk.contains(HawkConfig.SCREEN_DISPLAY_NET_SPEED)) {
+        // 任意一个子项配置已存在则视为已迁移过，跳过；
+        if (Hawk.contains(HawkConfig.SCREEN_DISPLAY_NET_SPEED)
+                || Hawk.contains(HawkConfig.SCREEN_DISPLAY_SEEK_TIME)
+                || Hawk.contains(HawkConfig.SCREEN_DISPLAY_SYS_TIME)
+                || Hawk.contains(HawkConfig.SCREEN_DISPLAY_BATTERY)) {
             return;
         }
         // 新版默认全部关闭，避免新用户被未请求的屏显信息打扰
@@ -1675,6 +1678,8 @@ public class VodController extends BaseController {
             mCurrentPopup = null;
             return;
         }
+        // 显示前重新从 Hawk 加载最新配置，确保菜单勾选状态与持久化一致
+        loadScreenDisplayConfig();
         // 选项顺序固定：网速 / 进度时间 / 系统时间 / 电量
         List<String> items = new ArrayList<>();
         items.add(HomeActivity.getRes().getString(R.string.screen_display_net_speed));

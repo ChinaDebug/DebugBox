@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -59,12 +60,12 @@ public class PlayerPopupMenu {
     /**
      * 显示单选菜单：当前选中项前缀 √，点击立即触发回调并关闭
      *
-     * @param context         上下文
-     * @param anchor          锚定按钮
-     * @param items           选项文案列表
-     * @param selectedPos     当前选中位置
-     * @param itemWidth       选项宽度（像素）
-     * @param callback        选中回调
+     * @param context     上下文
+     * @param anchor      锚定按钮
+     * @param items       选项文案列表
+     * @param selectedPos 当前选中位置
+     * @param itemWidth   选项宽度（像素）
+     * @param callback    选中回调
      */
     public static PlayerPopupMenu showSingle(Context context, View anchor,
                                              List<String> items, int selectedPos,
@@ -73,24 +74,18 @@ public class PlayerPopupMenu {
         PlayerPopupMenu menu = new PlayerPopupMenu(context, anchor, itemWidth);
         for (int i = 0; i < items.size(); i++) {
             final int pos = i;
-            TextView item = (TextView) LayoutInflater.from(context)
-                    .inflate(R.layout.item_player_popup_menu, menu.mContainer, false);
-            // 选中项前缀 √
-            item.setText((pos == selectedPos ? "√ " : "") + items.get(pos));
-            // 设置固定宽度保证菜单整齐
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(itemWidth > 0 ? itemWidth
-                    : ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = context.getResources().getDimensionPixelSize(R.dimen.vs_5);
-            item.setLayoutParams(lp);
-            item.setOnClickListener(v -> {
-                menu.mPopupWindow.dismiss();
-                if (callback != null) {
-                    callback.onSelect(pos);
+            View itemRoot = createItemBase(menu, items.get(pos), itemWidth,
+                    pos == selectedPos);
+            itemRoot.setOnClickListener(v -> menu.performSingleSelect(callback, pos));
+            itemRoot.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    menu.performSingleSelect(callback, pos);
+                    return true;
                 }
+                return false;
             });
-            menu.mContainer.addView(item);
+            menu.mContainer.addView(itemRoot);
         }
-        // 单选：默认聚焦当前选中项
         int focusPos = (selectedPos >= 0 && selectedPos < items.size()) ? selectedPos : 0;
         menu.showUpward(focusPos);
         return menu;
@@ -99,12 +94,12 @@ public class PlayerPopupMenu {
     /**
      * 显示多选菜单：已选项前缀 √，点击只切换状态不关闭，由用户按返回键关闭
      *
-     * @param context          上下文
-     * @param anchor           锚定按钮
-     * @param items            选项文案列表
+     * @param context           上下文
+     * @param anchor            锚定按钮
+     * @param items             选项文案列表
      * @param selectedPositions 已选位置集合
-     * @param itemWidth        选项宽度（像素）
-     * @param callback         切换回调
+     * @param itemWidth         选项宽度（像素）
+     * @param callback          切换回调
      */
     public static PlayerPopupMenu showMulti(Context context, View anchor,
                                             List<String> items, Set<Integer> selectedPositions,
@@ -113,33 +108,79 @@ public class PlayerPopupMenu {
         PlayerPopupMenu menu = new PlayerPopupMenu(context, anchor, itemWidth);
         for (int i = 0; i < items.size(); i++) {
             final int pos = i;
-            final TextView item = (TextView) LayoutInflater.from(context)
-                    .inflate(R.layout.item_player_popup_menu, menu.mContainer, false);
             boolean checked = selectedPositions != null && selectedPositions.contains(pos);
-            item.setText((checked ? "√ " : "") + items.get(pos));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(itemWidth > 0 ? itemWidth
-                    : ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = context.getResources().getDimensionPixelSize(R.dimen.vs_5);
-            item.setLayoutParams(lp);
-            item.setOnClickListener(v -> {
-                boolean nowChecked = !item.getText().toString().startsWith("√");
-                item.setText((nowChecked ? "√ " : "") + items.get(pos));
-                if (callback != null) {
-                    callback.onToggle(pos, nowChecked);
+            View itemRoot = createItemBase(menu, items.get(pos), itemWidth, checked);
+            final TextView checkView = itemRoot.findViewById(R.id.tv_popup_check);
+            itemRoot.setOnClickListener(v -> menu.performMultiToggle(checkView, callback, pos));
+            itemRoot.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    menu.clearOtherFocus(v);
+                    v.requestFocus();
+                    return false;
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    menu.performMultiToggle(checkView, callback, pos);
+                    return true;
                 }
+                return false;
             });
-            menu.mContainer.addView(item);
+            menu.mContainer.addView(itemRoot);
         }
-        // 多选：默认聚焦第一个已选项，未选任何项则聚焦第一个
         int focusPos = 0;
         if (selectedPositions != null && !selectedPositions.isEmpty()) {
-            for (int pos : selectedPositions) {
-                focusPos = pos;
-                break;
+            for (int i = 0; i < items.size(); i++) {
+                if (selectedPositions.contains(i)) {
+                    focusPos = i;
+                    break;
+                }
             }
         }
         menu.showUpward(focusPos);
         return menu;
+    }
+
+    /** 创建并设置菜单项通用样式，返回根 View */
+    private static View createItemBase(PlayerPopupMenu menu, String text, int itemWidth, boolean checked) {
+        Context context = menu.mAnchor.getContext();
+        View itemRoot = LayoutInflater.from(context)
+                .inflate(R.layout.item_player_popup_menu, menu.mContainer, false);
+        TextView checkView = itemRoot.findViewById(R.id.tv_popup_check);
+        TextView textView = itemRoot.findViewById(R.id.tv_popup_item);
+        // 左侧勾选标记独立控制，√ 与文字不再挤压在同一行
+        checkView.setVisibility(checked ? View.VISIBLE : View.INVISIBLE);
+        textView.setText(text);
+        // 设置固定宽度保证菜单整齐
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(itemWidth > 0 ? itemWidth
+                : ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = context.getResources().getDimensionPixelSize(R.dimen.vs_5);
+        itemRoot.setLayoutParams(lp);
+        return itemRoot;
+    }
+
+    /** 单选：触发回调并关闭菜单 */
+    private void performSingleSelect(OnSingleSelectCallback callback, int pos) {
+        mPopupWindow.dismiss();
+        if (callback != null) {
+            callback.onSelect(pos);
+        }
+    }
+
+    /** 多选：切换勾选状态并触发回调 */
+    private void performMultiToggle(TextView checkView, OnMultiToggleCallback callback, int pos) {
+        boolean nowChecked = checkView.getVisibility() != View.VISIBLE;
+        checkView.setVisibility(nowChecked ? View.VISIBLE : View.INVISIBLE);
+        if (callback != null) {
+            callback.onToggle(pos, nowChecked);
+        }
+    }
+
+    /** 多选：触摸/鼠标切换前清除其它 item 的焦点，避免多个 item 同时高亮 */
+    private void clearOtherFocus(View current) {
+        for (int i = 0; i < mContainer.getChildCount(); i++) {
+            View child = mContainer.getChildAt(i);
+            if (child != current && child.isFocused()) {
+                child.clearFocus();
+            }
+        }
     }
 
     /**
@@ -173,11 +214,19 @@ public class PlayerPopupMenu {
         mPopupWindow.showAtLocation(mAnchor, Gravity.NO_GRAVITY, x, y);
 
         // 聚焦指定位置的菜单项，TV 端可直接 D-pad 导航
-        int pos = (focusPosition >= 0 && focusPosition < mContainer.getChildCount())
+        final int pos = (focusPosition >= 0 && focusPosition < mContainer.getChildCount())
                 ? focusPosition : 0;
-        if (mContainer.getChildCount() > pos) {
-            mContainer.getChildAt(pos).requestFocus();
-        }
+        // 先让容器获取焦点，确保 PopupWindow 窗口焦点进入菜单区域，
+        // 再延迟聚焦到目标子项，避免触摸/鼠标点击后焦点仍留在底层控制栏
+        mContainer.requestFocus();
+        mContainer.post(() -> {
+            if (mContainer.getChildCount() > pos) {
+                View target = mContainer.getChildAt(pos);
+                if (target != null) {
+                    target.requestFocus();
+                }
+            }
+        });
     }
 
     /** 主动关闭菜单 */

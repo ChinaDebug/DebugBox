@@ -9,6 +9,7 @@
                 <shape>
                     <corners android:radius="@dimen/vs_5" />
                     <solid android:color="?attr/color_theme_40" />
+                    <stroke android:width="2mm" android:color="@android:color/white" />
                 </shape>
             </item>
             <item
@@ -16,15 +17,14 @@
                 android:state_pressed="true">
                 <shape>
                     <corners android:radius="@dimen/vs_5" />
-                    <solid android:color="?attr/color_theme_40" />
+                    <solid android:color="@color/color_dialog_glass_btn_bg" />
                 </shape>
             </item>
             <item android:state_focused="true">
                 <shape>
                     <corners android:radius="@dimen/vs_5" />
                     <solid android:color="?attr/color_theme_40" />
-	    <!--添加选中边框-->
-	    <stroke android:width="2mm" android:color="@android:color/white" />
+                    <stroke android:width="2mm" android:color="@android:color/white" />
                 </shape>
             </item>
             <item
@@ -32,7 +32,7 @@
                 android:state_pressed="false">
                 <shape>
                     <corners android:radius="@dimen/vs_5" />
-                    <solid android:color="@color/color_3D3D3D_50" />
+                    <solid android:color="@color/color_dialog_glass_btn_bg" />
                 </shape>
             </item>
         </selector>

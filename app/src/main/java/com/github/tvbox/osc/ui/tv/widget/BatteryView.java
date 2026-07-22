@@ -62,14 +62,14 @@ public class BatteryView extends View {
         RectF bodyBg = new RectF(bodyLeft, bodyTop, bodyRight, bodyBottom);
         canvas.drawRoundRect(bodyBg, corner, corner, paint);
 
-        // 填充颜色：充电绿色、低电量红色、正常白色
+        // 填充颜色：充电绿色、低电量红色、正常半透明浅灰
         paint.setStyle(Paint.Style.FILL);
         if (charging) {
             paint.setColor(0xFF4CAF50);
         } else if (level <= 20) {
             paint.setColor(0xFFFF5722);
         } else {
-            paint.setColor(0xFFFFFFFF);
+            paint.setColor(0xB3D0D0D0);
         }
 
         float fillPadding = stroke + padding * 0.5f;
@@ -99,14 +99,15 @@ public class BatteryView extends View {
 
         // 在电池内部绘制电量百分比（白色带黑色描边，确保在任意填充色上都可见）
         String text = String.valueOf(level);
-        float textSize = (bodyBottom - bodyTop) * 0.58f;
+        float textSize = (bodyBottom - bodyTop) * 0.72f;
         paint.setTextSize(textSize);
         paint.setTextAlign(Paint.Align.CENTER);
+        paint.setFakeBoldText(true);
         paint.getTextBounds(text, 0, text.length(), textBounds);
         float textX = (bodyLeft + bodyRight) / 2f;
         float textY = (bodyTop + bodyBottom) / 2f - textBounds.exactCenterY();
 
-        float outlineWidth = Math.max(1.5f, textSize * 0.12f);
+        float outlineWidth = Math.max(2.0f, textSize * 0.15f);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(outlineWidth);
         paint.setColor(0xFF000000);

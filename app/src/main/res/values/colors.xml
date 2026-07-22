@@ -29,6 +29,12 @@
     <!-- Main Dialog BG -->
     <color name="color_6A6A6A_95">#F26A6A6A</color>
 
+    <!-- 弹窗玻璃态背景与边框 -->
+    <color name="color_dialog_glass_bg">#D91D202A</color>
+    <color name="color_dialog_glass_border">#33FFFFFF</color>
+    <color name="color_dialog_glass_btn_bg">#CC353744</color>
+    <color name="color_dialog_glass_btn_stroke">#22FFFFFF</color>
+
     <color name="color_FFFFFF">#FFFFFF</color>
     <color name="color_FFFFFF_90">#E6FFFFFF</color>
     <color name="color_FFFFFF_80">#CCFFFFFF</color>

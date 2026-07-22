@@ -8,7 +8,7 @@
         android:layout_width="@dimen/vs_960"
         android:layout_height="@dimen/vs_480"
         android:layout_gravity="center"
-        android:background="@drawable/shape_live_channel_num"
+        android:background="@drawable/shape_dialog_bg_main"
         android:orientation="vertical"
         android:padding="@dimen/vs_30">
 

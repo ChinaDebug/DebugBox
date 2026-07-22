@@ -1,19 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- PopupWindow 菜单项：复用 button_dialog_main selector，TV 端焦点自带白色描边 -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/tv_popup_item"
+<!-- PopupWindow 菜单项：左侧固定宽度的勾选区 + 右侧文字区，保持文字位置不变并对齐 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/popup_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/button_dialog_main"
     android:clickable="true"
-    android:ellipsize="end"
     android:focusable="true"
-    android:gravity="center"
-    android:maxLines="1"
-    android:paddingLeft="@dimen/vs_30"
+    android:focusableInTouchMode="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingLeft="@dimen/vs_10"
     android:paddingTop="@dimen/vs_10"
-    android:paddingRight="@dimen/vs_30"
-    android:paddingBottom="@dimen/vs_10"
-    android:textColor="@color/color_FFFFFF"
-    android:textSize="@dimen/ts_22"
-    android:textStyle="bold" />
+    android:paddingRight="@dimen/vs_10"
+    android:paddingBottom="@dimen/vs_10">
+
+    <!-- 勾选标记区：宽度固定且尽量窄，未选中时隐藏但保留占位，保证所有项文字对齐 -->
+    <TextView
+        android:id="@+id/tv_popup_check"
+        android:layout_width="@dimen/vs_20"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="√"
+        android:textColor="@color/color_FFFFFF"
+        android:textSize="@dimen/ts_22"
+        android:textStyle="bold"
+        android:visibility="invisible" />
+
+    <!-- 选项文案区 -->
+    <TextView
+        android:id="@+id/tv_popup_item"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/color_FFFFFF"
+        android:textSize="@dimen/ts_22"
+        android:textStyle="bold" />
+</LinearLayout>

@@ -66,6 +66,7 @@
     <dimen name="vs_320">320mm</dimen>
     <dimen name="vs_340">340mm</dimen>
     <dimen name="vs_400">400mm</dimen>
+    <dimen name="vs_410">410mm</dimen>
     <dimen name="vs_420">420mm</dimen>
     <dimen name="vs_440">440mm</dimen>
     <dimen name="vs_450">450mm</dimen>

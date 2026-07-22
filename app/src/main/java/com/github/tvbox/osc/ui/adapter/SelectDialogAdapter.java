@@ -1,6 +1,8 @@
 package com.github.tvbox.osc.ui.adapter;
 
 import android.annotation.SuppressLint;
+import android.content.res.TypedArray;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -85,12 +87,19 @@ public class SelectDialogAdapter<T> extends ListAdapter<T, SelectDialogAdapter.S
     }
 
     @Override
-    public void onBindViewHolder(@NonNull @NotNull SelectDialogAdapter.SelectViewHolder holder, @SuppressLint("RecyclerView") int position) {    
+    public void onBindViewHolder(@NonNull @NotNull SelectDialogAdapter.SelectViewHolder holder, @SuppressLint("RecyclerView") int position) {
         T value = data.get(position);
         String name = dialogInterface.getDisplay(value);
-        if (!muteCheck && position == select)
-            name = "√ " + name;
-        ((TextView) holder.itemView.findViewById(R.id.tvName)).setText(name);
+        TextView tvName = holder.itemView.findViewById(R.id.tvName);
+        if (!muteCheck && position == select) {
+            // 选中项使用主题色并加粗显示
+            tvName.setTextColor(getThemeColor(holder.itemView));
+            tvName.setTypeface(Typeface.defaultFromStyle(Typeface.BOLD));
+        } else {
+            tvName.setTextColor(0xffffffff);
+            tvName.setTypeface(Typeface.defaultFromStyle(Typeface.NORMAL));
+        }
+        tvName.setText(name);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -102,5 +111,12 @@ public class SelectDialogAdapter<T> extends ListAdapter<T, SelectDialogAdapter.S
                 dialogInterface.click(value, position);
             }
         });
+    }
+
+    private int getThemeColor(View view) {
+        TypedArray a = view.getContext().obtainStyledAttributes(R.styleable.themeColor);
+        int themeColor = a.getColor(R.styleable.themeColor_color_theme, 0xffffffff);
+        a.recycle();
+        return themeColor;
     }
 }
