@@ -12,6 +12,7 @@ import android.widget.TextView;
 import java.lang.ref.WeakReference;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
@@ -147,7 +148,9 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         tvCollect = findViewById(R.id.tvFavorite);
         tvHistory = findViewById(R.id.tvHistory);
         tvPush = findViewById(R.id.tvPush);
-        tvUserHomeRef = new WeakReference<>(findViewById(R.id.tvUserHome));
+        LinearLayout tvUserHome = findViewById(R.id.tvUserHome);
+        isUserHomeVisible = tvUserHome.getVisibility() == View.VISIBLE;
+        tvUserHomeRef = new WeakReference<>(tvUserHome);
         tvHistoryBadge = findViewById(R.id.tvHistoryBadge);
         tvDrive.setOnClickListener(this);
         tvLive.setOnClickListener(this);
@@ -259,6 +262,19 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
                 @Override
                 public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
                     itemView.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+
+                    // 根据焦点所在行统一控制 tvUserHome 显示/隐藏
+                    // 方向键与鼠标/触摸点击都会回调 onItemSelected，避免仅依赖 onScrolled 导致鼠标点击时未隐藏
+                    TvRecyclerView gridRefInner = tvHotListForGridRef.get();
+                    if (gridRefInner != null) {
+                        int spanCount = 1;
+                        RecyclerView.LayoutManager lm = gridRefInner.getLayoutManager();
+                        if (lm instanceof GridLayoutManager) {
+                            spanCount = ((GridLayoutManager) lm).getSpanCount();
+                        }
+                        int row = position / spanCount;
+                        setUserHomeVisibleInternal(row == 0);
+                    }
                 }
 
                 @Override
@@ -270,35 +286,28 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
                 @Override
                 public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                     super.onScrolled(recyclerView, dx, dy);
-                    
+
                     TvRecyclerView gridRefInner = tvHotListForGridRef.get();
-                    LinearLayout userHomeInner = tvUserHomeRef.get();
-                    boolean canScrollUp = gridRefInner != null && !gridRefInner.canScrollVertically(-1);
-                    
+                    if (gridRefInner == null) return;
+
                     if (dy > 0) {
-                        if (isUserHomeVisible && userHomeInner != null) {
-                            userHomeInner.setVisibility(View.GONE);
-                            isUserHomeVisible = false;
-                        }
-                    } else if (dy < 0 && !canScrollUp) {
-                        if (isUserHomeVisible && userHomeInner != null) {
-                            userHomeInner.setVisibility(View.GONE);
-                            isUserHomeVisible = false;
-                        }
+                        // 向上滚动时隐藏 tvUserHome，避免遮挡内容
+                        setUserHomeVisibleInternal(false);
+                    } else if (dy < 0 && isGridNearTop(gridRefInner)) {
+                        // 向下滚动接近顶部时提前显示 tvUserHome，避免临界顶部出现空白区
+                        setUserHomeVisibleInternal(true);
                     }
                 }
-                
+
                 @Override
                 public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                     super.onScrollStateChanged(recyclerView, newState);
-                    
+
                     TvRecyclerView gridRefInner = tvHotListForGridRef.get();
-                    LinearLayout userHomeInner = tvUserHomeRef.get();
-                    if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                        boolean canScrollUp = gridRefInner != null && !gridRefInner.canScrollVertically(-1);
-                        if (canScrollUp && !isUserHomeVisible && userHomeInner != null) {
-                            userHomeInner.setVisibility(View.VISIBLE);
-                            isUserHomeVisible = true;
+                    if (newState == RecyclerView.SCROLL_STATE_IDLE && gridRefInner != null) {
+                        // 滚动停止时若已接近顶部也提前显示 tvUserHome
+                        if (isGridNearTop(gridRefInner)) {
+                            setUserHomeVisibleInternal(true);
                         }
                     }
                 }
@@ -630,26 +639,30 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         tvUserHomeRef.clear();
     }
 
+    private static boolean isGridNearTop(TvRecyclerView grid) {
+        return grid != null && grid.computeVerticalScrollOffset() < grid.getResources().getDimensionPixelSize(R.dimen.vs_80);
+    }
+
+    private static void setUserHomeVisibleInternal(boolean visible) {
+        LinearLayout userHome = tvUserHomeRef.get();
+        if (userHome == null || isUserHomeVisible == visible) return;
+        userHome.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+        isUserHomeVisible = visible;
+    }
+
     public static void setUserHomeVisibility(int visibility) {
         LinearLayout userHome = tvUserHomeRef.get();
         if (userHome != null) {
-            userHome.setVisibility(visibility);
+            // 外部只能控制 VISIBLE/INVISIBLE，禁止 GONE 导致重新布局抖动
+            boolean visible = visibility == View.VISIBLE;
+            userHome.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+            isUserHomeVisible = visible;
         }
     }
 
     public static void updateUserHomeVisibility() {
-        LinearLayout userHome = tvUserHomeRef.get();
         TvRecyclerView grid = tvHotListForGridRef.get();
-        if (userHome != null && grid != null) {
-            boolean canScrollUp = !grid.canScrollVertically(-1);
-            if (canScrollUp) {
-                userHome.setVisibility(View.VISIBLE);
-                isUserHomeVisible = true;
-            } else {
-                userHome.setVisibility(View.GONE);
-                isUserHomeVisible = false;
-            }
-        }
+        setUserHomeVisibleInternal(isGridNearTop(grid));
     }
 
     public static void notifyHomeAdapterChanged() {

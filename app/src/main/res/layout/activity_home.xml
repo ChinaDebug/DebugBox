@@ -10,7 +10,7 @@
         android:id="@+id/topLayout"
         android:layout_width="match_parent"
         android:layout_height="@dimen/vs_50"
-        android:layout_marginTop="@dimen/vs_20"
+        android:layout_marginTop="@dimen/vs_10"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingLeft="@dimen/vs_50"
@@ -159,7 +159,6 @@
             android:id="@+id/mViewPager"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingTop="@dimen/vs_10" />
+            android:clipToPadding="false" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

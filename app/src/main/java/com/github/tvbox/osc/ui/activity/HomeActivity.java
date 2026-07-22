@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
 import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.IntEvaluator;
 import android.animation.ObjectAnimator;
@@ -926,71 +927,86 @@ public class HomeActivity extends BaseActivity {
     }
 
     byte topHide = 0;
+    private AnimatorSet topAnimatorSet;
 
     private void changeTop(boolean hide) {
+        // 目标状态已经达成则忽略，避免重复动画
+        if (topHide == (hide ? 1 : 0)) {
+            return;
+        }
+        if (topAnimatorSet != null && topAnimatorSet.isRunning()) {
+            topAnimatorSet.cancel();
+        }
+
+        topAnimatorSet = new AnimatorSet();
         ViewObj viewObj = new ViewObj(topLayout, (ViewGroup.MarginLayoutParams) topLayout.getLayoutParams());
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.addListener(new Animator.AnimatorListener() {
+        int marginStart = hide ? AutoSizeUtils.mm2px(this.mContext, 20.0f) : 0;
+        int marginEnd = hide ? 0 : AutoSizeUtils.mm2px(this.mContext, 20.0f);
+        // height 保持 1mm 而非 0，避免 ConstraintLayout 在 height=0 时触发 contentLayout 跳变
+        int minHeight = AutoSizeUtils.mm2px(this.mContext, 1.0f);
+        int heightStart = hide ? AutoSizeUtils.mm2px(this.mContext, 50.0f) : minHeight;
+        int heightEnd = hide ? minHeight : AutoSizeUtils.mm2px(this.mContext, 50.0f);
+        float alphaStart = hide ? 1.0f : 0.0f;
+        float alphaEnd = hide ? 0.0f : 1.0f;
+
+        topAnimatorSet.playTogether(
+                ObjectAnimator.ofObject(viewObj, "marginTop", new IntEvaluator(), marginStart, marginEnd),
+                ObjectAnimator.ofObject(viewObj, "height", new IntEvaluator(), heightStart, heightEnd),
+                ObjectAnimator.ofFloat(this.topLayout, "alpha", alphaStart, alphaEnd));
+        topAnimatorSet.setDuration(250);
+        topAnimatorSet.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationStart(Animator animation) {
-
+                topHide = 2; // 动画中
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
                 topHide = (byte) (hide ? 1 : 0);
+                // 动画结束再强制同步一次，兜底防止某些机型动画最后一帧未更新
+                if (hide) {
+                    viewObj.setHeight(minHeight);
+                    viewObj.setMarginTop(0);
+                    topLayout.setAlpha(0f);
+                } else {
+                    viewObj.setHeight(AutoSizeUtils.mm2px(mContext, 50.0f));
+                    viewObj.setMarginTop(AutoSizeUtils.mm2px(mContext, 20.0f));
+                    topLayout.setAlpha(1f);
+                }
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-
+                // 动画被取消时强制同步到目标状态，防止卡在中间态
+                topHide = (byte) (hide ? 1 : 0);
+                if (hide) {
+                    viewObj.setHeight(minHeight);
+                    viewObj.setMarginTop(0);
+                    topLayout.setAlpha(0f);
+                } else {
+                    viewObj.setHeight(AutoSizeUtils.mm2px(mContext, 50.0f));
+                    viewObj.setMarginTop(AutoSizeUtils.mm2px(mContext, 20.0f));
+                    topLayout.setAlpha(1f);
+                }
             }
         });
-        // Hide Top =======================================================
-        if (hide && topHide == 0) {
-            animatorSet.playTogether(ObjectAnimator.ofObject(viewObj, "marginTop", new IntEvaluator(),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 20.0f)),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 0.0f))),
-                    ObjectAnimator.ofObject(viewObj, "height", new IntEvaluator(),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 50.0f)),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 1.0f))),
-                    ObjectAnimator.ofFloat(this.topLayout, "alpha", 1.0f, 0.0f));
-            animatorSet.setDuration(250);
-            animatorSet.start();
-            tvName.setFocusable(false);
-            tvWifi.setFocusable(false);
-            tvFind.setFocusable(false);
-            tvStyle.setFocusable(false);
-            tvMenu.setFocusable(false);
-            return;
-        }
-        // Show Top =======================================================
-        if (!hide && topHide == 1) {
-            animatorSet.playTogether(ObjectAnimator.ofObject(viewObj, "marginTop", new IntEvaluator(),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 0.0f)),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 20.0f))),
-                    ObjectAnimator.ofObject(viewObj, "height", new IntEvaluator(),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 1.0f)),
-                            Integer.valueOf(AutoSizeUtils.mm2px(this.mContext, 50.0f))),
-                    ObjectAnimator.ofFloat(this.topLayout, "alpha", 0.0f, 1.0f));
-            animatorSet.setDuration(250);
-            animatorSet.start();
-            tvName.setFocusable(true);
-            tvWifi.setFocusable(true);
-            tvFind.setFocusable(true);
-            tvStyle.setFocusable(true);
-            tvMenu.setFocusable(true);
-        }
+
+        tvName.setFocusable(!hide);
+        tvWifi.setFocusable(!hide);
+        tvFind.setFocusable(!hide);
+        tvStyle.setFocusable(!hide);
+        tvMenu.setFocusable(!hide);
+
+        topAnimatorSet.start();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // 取消顶部栏动画，防止内存泄漏及销毁后对 View 的操作异常
+        if (topAnimatorSet != null && topAnimatorSet.isRunning()) {
+            topAnimatorSet.cancel();
+        }
         // 先注销EventBus,防止内存泄露
         try {
             EventBus.getDefault().unregister(this);
