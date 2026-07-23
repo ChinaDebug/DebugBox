@@ -5,7 +5,6 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-
     <com.github.tvbox.osc.player.MyVideoView
         android:id="@+id/mVideoView"
         android:layout_width="match_parent"
@@ -23,7 +22,8 @@
         android:layout_height="@dimen/vs_50"
         android:layout_gravity="center"
         android:indeterminateBehavior="repeat"
-        android:indeterminateDrawable="@drawable/anim_loading"
+        android:indeterminateTintMode="src_atop"
+        android:indeterminateTint="?attr/color_theme_70"
         android:indeterminateOnly="true" />
 
     <ImageView

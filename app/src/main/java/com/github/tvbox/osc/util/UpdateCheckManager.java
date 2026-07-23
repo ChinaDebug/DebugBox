@@ -55,6 +55,48 @@ public class UpdateCheckManager {
     private static final int CHECK_TIMEOUT_SECONDS = 5;
     private static final int CHECK_TOTAL_TIMEOUT_SECONDS = 45;
 
+    // 集数数字提取正则，按优先级排列，越明确的格式越靠前
+    private static final java.util.regex.Pattern[] EPISODE_NUMBER_PATTERNS = {
+            java.util.regex.Pattern.compile("第([\\d零一二两三四五六七八九十百千万]+)[集话章节回期]"),
+            java.util.regex.Pattern.compile("(?i)EP(\\d+)"),
+            java.util.regex.Pattern.compile("(?i)\\bE(\\d+)\\b"),
+            java.util.regex.Pattern.compile("(?i)S\\d+E(\\d+)"),
+            java.util.regex.Pattern.compile("(?i)Vol(?:ume)?\\.?\\s*(\\d+)"),
+            java.util.regex.Pattern.compile("_(\\d+)\\s*$"),
+            java.util.regex.Pattern.compile("_(\\d+)"),
+            java.util.regex.Pattern.compile("\\.(\\d+)\\s*$"),
+            java.util.regex.Pattern.compile("\\s(\\d+)\\s*$"),
+            java.util.regex.Pattern.compile("^[\\s\\-]*(\\d+)\\s*$"),
+            java.util.regex.Pattern.compile("-(\\d+)\\s*$")
+    };
+
+    // 非主线集数的关键字，仅在无明确模式时用于兜底过滤
+    private static final String[] EPISODE_NOISE_KEYWORDS = {
+            "预告", "片花", "花絮", "彩蛋", "总集", "ova", "oad", "sp", "pv"
+    };
+
+    // 中文数字与单位映射，用于支持 "第一集"、"第十二集" 等中文集数命名
+    private static final java.util.Map<Character, Integer> CHINESE_DIGITS = new java.util.HashMap<>();
+    private static final java.util.Map<Character, Integer> CHINESE_UNITS = new java.util.HashMap<>();
+
+    static {
+        CHINESE_DIGITS.put('零', 0);
+        CHINESE_DIGITS.put('一', 1);
+        CHINESE_DIGITS.put('二', 2);
+        CHINESE_DIGITS.put('两', 2);
+        CHINESE_DIGITS.put('三', 3);
+        CHINESE_DIGITS.put('四', 4);
+        CHINESE_DIGITS.put('五', 5);
+        CHINESE_DIGITS.put('六', 6);
+        CHINESE_DIGITS.put('七', 7);
+        CHINESE_DIGITS.put('八', 8);
+        CHINESE_DIGITS.put('九', 9);
+        CHINESE_UNITS.put('十', 10);
+        CHINESE_UNITS.put('百', 100);
+        CHINESE_UNITS.put('千', 1000);
+        CHINESE_UNITS.put('万', 10000);
+    }
+
     private static volatile UpdateCheckManager instance;
     private final ExecutorService executor;
     private final ThreadPoolExecutor checkExecutor;
@@ -513,15 +555,8 @@ public class UpdateCheckManager {
         if (playNote == null || playNote.isEmpty()) {
             return -1;
         }
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+").matcher(playNote);
-        if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group()) - 1;
-            } catch (NumberFormatException e) {
-                return -1;
-            }
-        }
-        return -1;
+        int number = extractEpisodeNumberRaw(playNote);
+        return number > 0 ? number - 1 : -1;
     }
 
     private String fetchDetailJson(String sourceKey, String vodId) {
@@ -582,7 +617,7 @@ public class UpdateCheckManager {
                 return 0;
             }
 
-            String pattern = inferEpisodePattern(playedEpisodeName);
+            java.util.regex.Pattern pattern = inferEpisodePattern(playedEpisodeName);
             String[] episodes = targetPlayUrl.contains("#") ? targetPlayUrl.split("#") : new String[]{targetPlayUrl};
 
             int maxNumber = 0;
@@ -594,7 +629,11 @@ public class UpdateCheckManager {
                 if (TextUtils.isEmpty(episodeName)) {
                     continue;
                 }
-                if (pattern != null && !episodeName.matches(pattern)) {
+                if (pattern != null && !pattern.matcher(episodeName).matches()) {
+                    continue;
+                }
+                // 无明确模式时，过滤掉预告/花絮/特别篇等非主线干扰项
+                if (pattern == null && isNoiseEpisode(episodeName)) {
                     continue;
                 }
                 int number = extractEpisodeNumberRaw(episodeName);
@@ -609,15 +648,45 @@ public class UpdateCheckManager {
         }
     }
 
-    private String inferEpisodePattern(String episodeName) {
+    private java.util.regex.Pattern inferEpisodePattern(String episodeName) {
         if (TextUtils.isEmpty(episodeName)) {
             return null;
         }
-        if (episodeName.matches(".*第\\d+[集话].*")) {
-            return ".*第\\d+[集话].*";
+        // 优先匹配带明确集数标识的模式，避免片名中的数字被误判
+        if (episodeName.matches(".*第[\\d零一二两三四五六七八九十百千万]+[集话章节回期].*")) {
+            return java.util.regex.Pattern.compile(".*第[\\d零一二两三四五六七八九十百千万]+[集话章节回期].*");
         }
-        if (episodeName.matches("(?i)EP\\d+.*")) {
-            return ".*(?i)EP\\d+.*";
+        if (episodeName.matches("(?i).*EP\\d+.*")) {
+            return java.util.regex.Pattern.compile(".*(?i)EP\\d+.*");
+        }
+        if (episodeName.matches("(?i).*\\bE\\d+\\b.*")) {
+            return java.util.regex.Pattern.compile(".*(?i)\\bE\\d+\\b.*");
+        }
+        if (episodeName.matches("(?i).*S\\d+E\\d+.*")) {
+            // 兼容美剧 "S01E01" 类命名
+            return java.util.regex.Pattern.compile(".*(?i)S\\d+E\\d+.*");
+        }
+        if (episodeName.matches("(?i).*Vol(?:ume)?\\.?\\s*\\d+.*")) {
+            // 兼容 "Vol.1" / "Volume 1" 类命名
+            return java.util.regex.Pattern.compile(".*(?i)Vol(?:ume)?\\.?\\s*\\d+.*");
+        }
+        if (episodeName.matches(".*_\\d+.*")) {
+            // 兼容 "斗罗大陆2绝世唐门_001" 这类下划线分隔的集数命名
+            return java.util.regex.Pattern.compile(".*_\\d+.*");
+        }
+        if (episodeName.matches("^\\s*-?\\d+\\s*$")) {
+            return java.util.regex.Pattern.compile("^\\s*-?\\d+\\s*$");
+        }
+        if (episodeName.matches(".*\\.\\d+\\s*$")) {
+            // 兼容 "name.01" 类命名
+            return java.util.regex.Pattern.compile(".*\\.\\d+\\s*$");
+        }
+        if (episodeName.matches(".*\\s\\d+\\s*$")) {
+            // 兼容 "name 01" 类命名
+            return java.util.regex.Pattern.compile(".*\\s\\d+\\s*$");
+        }
+        if (episodeName.matches(".*-\\d+\\s*$")) {
+            return java.util.regex.Pattern.compile(".*-\\d+\\s*$");
         }
         return null;
     }
@@ -633,19 +702,90 @@ public class UpdateCheckManager {
         return episodeUrl;
     }
 
+    /**
+     * 判断集数名是否为预告/花絮/特别篇等非主线干扰项
+     */
+    private boolean isNoiseEpisode(String episodeName) {
+        if (TextUtils.isEmpty(episodeName)) {
+            return false;
+        }
+        String lower = episodeName.toLowerCase();
+        for (String keyword : EPISODE_NOISE_KEYWORDS) {
+            if (lower.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private int extractEpisodeNumberRaw(String name) {
         if (name == null || name.isEmpty()) {
             return 0;
         }
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+").matcher(name);
-        if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group());
-            } catch (NumberFormatException e) {
-                return 0;
+        String trimmed = name.trim();
+        // 按优先级尝试明确的集数格式，越明确的格式越靠前
+        for (java.util.regex.Pattern pattern : EPISODE_NUMBER_PATTERNS) {
+            java.util.regex.Matcher matcher = pattern.matcher(trimmed);
+            if (matcher.find()) {
+                try {
+                    String group = matcher.group(1);
+                    if (group != null && !group.isEmpty()) {
+                        char first = group.charAt(0);
+                        if (first >= '0' && first <= '9') {
+                            return Integer.parseInt(group);
+                        } else {
+                            return chineseNumberToInt(group);
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    // 继续尝试下一个模式
+                }
             }
         }
-        return 0;
+        // 兜底：取最后一个连续数字，但排除疑似年份，避免把片名/年份数字误判为集数
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\d+").matcher(trimmed);
+        int lastNumber = 0;
+        while (matcher.find()) {
+            try {
+                int number = Integer.parseInt(matcher.group());
+                if (number >= 1900 && number <= 2099) {
+                    continue;
+                }
+                lastNumber = number;
+            } catch (NumberFormatException e) {
+                // 忽略超长数字
+            }
+        }
+        return lastNumber;
+    }
+
+    /**
+     * 将中文数字字符串转换为阿拉伯数字，支持零到万级
+     */
+    private int chineseNumberToInt(String chinese) {
+        if (chinese == null || chinese.isEmpty()) {
+            return 0;
+        }
+        int result = 0;
+        int current = 0;
+        for (int i = 0; i < chinese.length(); i++) {
+            char c = chinese.charAt(i);
+            Integer digit = CHINESE_DIGITS.get(c);
+            if (digit != null) {
+                current = digit;
+            } else {
+                Integer unit = CHINESE_UNITS.get(c);
+                if (unit != null) {
+                    // 单位前若无数字，按一处理，如 "十"、"百"
+                    if (current == 0) {
+                        current = 1;
+                    }
+                    result += current * unit;
+                    current = 0;
+                }
+            }
+        }
+        return result + current;
     }
 
     private int parseTotalEpisodes(AbsJson.AbsJsonVod jsonVod, String playFlag) {

@@ -7,7 +7,7 @@
         android:layout_width="@dimen/vs_50"
         android:layout_height="@dimen/vs_50"
         android:layout_gravity="center"
-        android:indeterminateBehavior="repeat"
-        android:indeterminateDrawable="@drawable/anim_loading"
+        android:indeterminateTintMode="src_atop"
+        android:indeterminateTint="?attr/color_theme_70"
         android:indeterminateOnly="true" />
 </FrameLayout>
