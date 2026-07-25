@@ -64,6 +64,9 @@ public class Movie implements Serializable {
         public String sourceKey;
         @XStreamAlias("tag")
         public String tag;
+        /** 卡片 action 字段，jar 内爬虫返回非空时点击卡片会调用 spider.action(action) */
+        @XStreamAlias("action")
+        public String action;
 
         @XStreamAlias("dl")
         public static class UrlBean implements Serializable {

@@ -10,11 +10,17 @@ import okhttp3.Dns;
 
 public class Spider {
 
+    /** 站点 key，由 JarLoader 在创建 Spider 实例时回填，便于 jar 内爬虫识别自身站点 */
+    public String siteKey;
+
     public void init(Context context) throws Exception {}
 
     public void init(Context context, String extend) throws Exception {
         init(context);
     }
+
+    /** 由 JarLoader 注入 SpiderApi，jar 内爬虫可重写以使用主进程提供的服务地址、并发请求等能力 */
+    public void initApi(SpiderApi api) {}
 
     /**
      * 首页数据内容
@@ -104,6 +110,15 @@ public class Spider {
     }
 
     public Object[] proxyLocal(Map < String, String > params) throws Exception {
+        return null;
+    }
+
+    /**
+     * 卡片 action 回调，jar 内爬虫可重写以实现配置中心等带分类菜单的数据源。
+     * 主进程在 SourceViewModel.action 中调用此方法，将结果通过 actionResult 回调到界面。
+     * 返回 JSON 字符串，包含 msg 字段时主进程会显示 Toast 并刷新列表。
+     */
+    public String action(String action) throws Exception {
         return null;
     }
 

@@ -217,7 +217,6 @@ public class GridFragment extends BaseLazyFragment {
 
     private void initView() {
         this.createView();
-        mGridView.setAdapter(gridAdapter);
         if (isFolederMode()) {
             mGridView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 1, false));
         } else {
@@ -231,6 +230,7 @@ public class GridFragment extends BaseLazyFragment {
                 mGridView.setLayoutManager(new V7GridLayoutManager(mContext, spanCount));
             }
         }
+        mGridView.setAdapter(gridAdapter);
 
         gridAdapter.setOnLoadMoreListener(new BaseQuickAdapter.RequestLoadMoreListener() {
             @Override
@@ -269,6 +269,11 @@ public class GridFragment extends BaseLazyFragment {
                 FastClickCheckUtil.check(view);
                 Movie.Video video = gridAdapter.getData().get(position);
                 if (video != null) {
+                    // 配置中心类卡片：action 字段非空时回调 jar 内 spider.action 并刷新列表
+                    if (video.action != null) {
+                        sourceViewModel.action(video.sourceKey, video.action);
+                        return;
+                    }
                     Bundle bundle = new Bundle();
                     bundle.putString("id", video.id);
                     bundle.putString("sourceKey", video.sourceKey);
@@ -316,11 +321,9 @@ public class GridFragment extends BaseLazyFragment {
     }
 
     private void initViewModel() {
-        if (sourceViewModel == null) {
-            sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
-        }
-        // 使用 ViewLifecycleOwner，View 销毁时自动移除观察者，避免 Fragment 重建后重复注册
-        sourceViewModel.listResult.observe(getViewLifecycleOwner(), new Observer<AbsXml>() {
+        if (sourceViewModel != null) return;
+        sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
+        sourceViewModel.listResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
                 // Fragment 重建过程中 gridAdapter 可能为 null，需要判空保护
@@ -356,6 +359,19 @@ public class GridFragment extends BaseLazyFragment {
                         gridAdapter.loadMoreComplete();
                     }
                     gridAdapter.setEnableLoadMore(false);
+                }
+            }
+        });
+
+        // 配置中心类卡片 action 回调：解析 jar 返回 JSON 中的 msg 字段并刷新列表
+        sourceViewModel.actionResult.observe(this, new Observer<JSONObject>() {
+            @Override
+            public void onChanged(JSONObject jsonObject) {
+                if (jsonObject == null) return;
+                String msg = jsonObject.optString("msg");
+                if (!msg.isEmpty()) {
+                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+                    forceRefresh();
                 }
             }
         });

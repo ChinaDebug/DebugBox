@@ -72,6 +72,8 @@ public class SourceViewModel extends ViewModel {
     public MutableLiveData<AbsXml> quickSearchResult;
     public MutableLiveData<AbsXml> detailResult;
     public MutableLiveData<JSONObject> playResult;
+    /** 卡片 action 回调结果，jar 内爬虫通过 spider.action 返回 JSON */
+    public MutableLiveData<JSONObject> actionResult;
     private ExecutorService searchExecutorService;
     public Gson gson;
 
@@ -107,6 +109,7 @@ public class SourceViewModel extends ViewModel {
         quickSearchResult = new MutableLiveData<>();
         detailResult = new MutableLiveData<>();
         playResult = new MutableLiveData<>();
+        actionResult = new MutableLiveData<>();
         gson=new Gson();
     }
 
@@ -780,6 +783,36 @@ public class SourceViewModel extends ViewModel {
     // playerContent
     //开销会不会太大了 参考 FongMi 写法优化 获取播放地址代码
     public ExecutorService threadPoolGetPlay = null;
+
+    /**
+     * 卡片 action 触发，调用 jar 内 spider.action(action) 获取 JSON 结果。
+     * 用于 jar 内自带的"配置中心"等带分类菜单的数据源卡片点击处理。
+     */
+    public void action(String sourceKey, String action) {
+        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        if (sourceBean == null || action == null) {
+            actionResult.postValue(null);
+            return;
+        }
+        // 仅 type==3 的 jar 爬虫支持 action 回调
+        if (sourceBean.getType() == 3) {
+            spThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Spider sp = ApiConfig.get().getCSP(sourceBean);
+                        String json = sp.action(action);
+                        actionResult.postValue(TextUtils.isEmpty(json) ? null : new JSONObject(json));
+                    } catch (Throwable th) {
+                        LOG.e("SourceViewModel", "action error", th);
+                        actionResult.postValue(null);
+                    }
+                }
+            });
+        } else {
+            actionResult.postValue(null);
+        }
+    }
 
     public void getPlay(String sourceKey, String playFlag, String progressKey, String url, String subtitleKey) {
         if (threadPoolGetPlay != null) threadPoolGetPlay.shutdownNow();

@@ -38,6 +38,11 @@ import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.ToastHelper;
+import com.github.tvbox.osc.viewmodel.SourceViewModel;
+import org.json.JSONObject;
+import android.widget.Toast;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import com.github.tvbox.osc.util.UA;
 import com.github.tvbox.osc.util.ImgUtil;
 import com.github.tvbox.osc.util.UpdateCheckManager;
@@ -87,6 +92,8 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
     private static WeakReference<TvRecyclerView> tvHotListForLineRef;
     private static boolean isUserHomeVisible = true;
     private UpdateCheckManager.UpdateCheckListener updateCheckListener;
+    /** 用于回调 jar 内 spider.action 的 ViewModel */
+    private SourceViewModel sourceViewModel;
 
     public static UserFragment newInstance() {
         return new UserFragment();
@@ -198,6 +205,12 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
                 if (ApiConfig.get().getSourceBeanList().isEmpty())
                     return;
                 Movie.Video vod = ((Movie.Video) adapter.getItem(position));
+
+                // 配置中心类卡片：推荐位且 action 字段非空时回调 jar 内 spider.action
+                if (Hawk.get(HawkConfig.HOME_REC, 0) == 1 && homeSourceRec != null && vod.action != null) {
+                    sourceViewModel.action(vod.sourceKey, vod.action);
+                    return;
+                }
 
                 // takagen99: CHeck if in Delete Mode
                 if ((vod.id != null && !vod.id.isEmpty()) && (Hawk.get(HawkConfig.HOME_REC, 0) == 2) && HawkConfig.hotVodDelete) {
@@ -337,6 +350,19 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         }
 
         initHomeHotVod(homeHotVodAdapter);
+
+        // 初始化 sourceViewModel 并注册 action 回调观察者
+        if (sourceViewModel == null) {
+            sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
+        }
+        sourceViewModel.actionResult.observe(getViewLifecycleOwner(), new Observer<JSONObject>() {
+            @Override
+            public void onChanged(JSONObject jsonObject) {
+                if (jsonObject == null) return;
+                String msg = jsonObject.optString("msg");
+                if (!msg.isEmpty()) Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+        });
 
         // Swifly: Home Style
         if (Hawk.get(HawkConfig.HOME_REC_STYLE, false)) {

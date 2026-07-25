@@ -776,6 +776,51 @@ public class ApiConfig {
         }
     }
 
+    /** 已预热的搜索 Spider 标识集合，避免重复初始化 */
+    private final java.util.Set<String> warmedSearchSpiderKeys = new java.util.HashSet<>();
+
+    /**
+     * 后台预热搜索型 Spider（type==3），最多预热 10 个。
+     * 受保护 jar 内 Init 检测线程会在 Spider 首次加载时启动并校验主进程环境，
+     * 若搜索时才首次加载 Spider，可能因环境未初始化触发 killProcess 自杀。
+     * 在 App 启动配置加载完成后预热，可确保搜索时 Spider 已就绪。
+     */
+    public void warmSearchSpiders() {
+        final ArrayList<SourceBean> sources = new ArrayList<>(sourceBeanList.values());
+        final SourceBean home = getHomeSourceBean();
+        final java.util.Set<String> sharedSpiderApis = new java.util.HashSet<>();
+        java.util.Set<String> spiderApis = new java.util.HashSet<>();
+        for (SourceBean source : sources) {
+            if (source == null || source.getType() != 3) continue;
+            String spiderApiKey = source.getJar() + "|" + source.getApi();
+            if (!spiderApis.add(spiderApiKey)) sharedSpiderApis.add(spiderApiKey);
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int eligibleCount = 0;
+                for (SourceBean source : sources) {
+                    if (source == null || source.getType() != 3 || !source.isSearchable()) continue;
+                    if (home != null && TextUtils.equals(home.getKey(), source.getKey())) continue;
+                    // 同类 Spider 可能通过静态状态保存 ext，不能在后台预热时交替初始化。
+                    if (sharedSpiderApis.contains(source.getJar() + "|" + source.getApi())) continue;
+                    if (eligibleCount >= 10) break;
+                    eligibleCount++;
+                    String warmKey = source.getKey() + "|" + source.getApi() + "|" + source.getJar() + "|" + source.getExt();
+                    synchronized (warmedSearchSpiderKeys) {
+                        if (warmedSearchSpiderKeys.contains(warmKey)) continue;
+                        warmedSearchSpiderKeys.add(warmKey);
+                    }
+                    try {
+                        getCSP(source);
+                    } catch (Throwable th) {
+                        LOG.e("echo-warm-search-spider-error " + source.getKey() + ":" + th.getMessage());
+                    }
+                }
+            }
+        }, "warm-search-spider").start();
+    }
+
     public Spider getPyCSP(String url) {
         return pyLoader.getSpider(MD5.string2MD5(url), url, "");
     }

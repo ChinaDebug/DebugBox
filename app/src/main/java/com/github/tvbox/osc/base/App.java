@@ -68,9 +68,13 @@ public class App extends MultiDexApplication {
         super.onCreate();
         initParams();
         initLocale();
-        
-        // 关键修复：在主线程中初始化 ControlManager，确保 HomeActivity 启动时已经初始化完成
+
+        // 在主线程中初始化 ControlManager，确保 HomeActivity 启动时已经初始化完成
         ControlManager.init(App.this);
+
+        // 注入主进程 Context 到 com.github.catvod.Init 占位类
+        // jar 内爬虫通过 Path/Util 等工具类调用 Init.context() 获取 Context，未注入会触发空指针崩溃
+        com.github.catvod.Init.set(this);
 
         // 初始化投屏服务（接收端）
         initCastServer();

@@ -108,6 +108,8 @@ public class AbsJson implements Serializable {
         public String vod_weekday; //: ""
         public String vod_writer; //: "周炎青,刘恒,支雅雪,孙露军,李璐,王梦璇"
         public String vod_year; //: "2021"
+        /** 卡片 action 字段，由 jar 内爬虫返回，用于触发 spider.action(action) */
+        public String action;
 
         public Movie.Video toXmlVideo() {
             Movie.Video video = new Movie.Video();
@@ -153,6 +155,7 @@ public class AbsJson implements Serializable {
             video.urlBean = urlBean;
             video.des = vod_content;// <![CDATA[权来]
             video.tag = vod_tag;
+            video.action = action;
             return video;
         }
     }

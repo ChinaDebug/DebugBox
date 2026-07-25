@@ -172,6 +172,15 @@ public class HomeActivity extends BaseActivity {
     }
 
     boolean useCacheConfig = false;
+    /** 标记搜索 Spider 预热是否已启动，避免重复执行 */
+    private boolean searchSpiderWarmStarted = false;
+
+    /** 仅执行一次的搜索 Spider 预热入口 */
+    private void warmSearchSpidersOnce() {
+        if (searchSpiderWarmStarted) return;
+        searchSpiderWarmStarted = true;
+        ApiConfig.get().warmSearchSpiders();
+    }
 
     @Override
     protected void init() {
@@ -607,6 +616,10 @@ public class HomeActivity extends BaseActivity {
                 if (ApiConfig.get().getSpider().isEmpty()) {
                     jarInitOk = true;
                 }
+                // 仅首次加载时预热搜索 Spider，避免搜索时首次加载触发受保护 jar 自杀检测
+                if (!useCacheConfig) {
+                    warmSearchSpidersOnce();
+                }
                 mHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -684,26 +697,24 @@ public class HomeActivity extends BaseActivity {
 
     private void initViewPager(AbsSortXml absXml) {
         // 清空旧 Fragment 列表，避免 FragmentManager 状态混乱
-        if (pageAdapter != null) {
-            pageAdapter.clear();
-            pageAdapter = null;
-        }
-        if (!fragments.isEmpty()) {
-            fragments.clear();
-        }
+        pageAdapter = null;
+        fragments.clear();
         // 同步清理 FragmentManager 中已 attach 到 ViewPager 容器的旧 Fragment，
         // 避免新 Adapter 在 instantiateItem 时拿到类型不匹配的缓存 Fragment。
         if (!isDestroyed() && !getSupportFragmentManager().isDestroyed()) {
-            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-            boolean hasOld = false;
-            for (Fragment fragment : getSupportFragmentManager().getFragments()) {
-                if (fragment != null) {
-                    transaction.remove(fragment);
-                    hasOld = true;
+            try {
+                FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+                boolean hasOld = false;
+                for (Fragment fragment : getSupportFragmentManager().getFragments()) {
+                    if (fragment != null) {
+                        transaction.remove(fragment);
+                        hasOld = true;
+                    }
                 }
-            }
-            if (hasOld) {
-                transaction.commitNowAllowingStateLoss();
+                if (hasOld) {
+                    transaction.commitNowAllowingStateLoss();
+                }
+            } catch (Exception ignored) {
             }
         }
         if (sortAdapter.getData().size() > 0) {
@@ -849,6 +860,9 @@ public class HomeActivity extends BaseActivity {
                     })
                     .setNegativeButton("取消", null)
                     .show();
+        } else if (event.type == RefreshEvent.TYPE_HOME_REC_CHANGE) {
+            // 设置中切换推荐类型后返回首页，需要重新加载并重建推荐 Fragment
+            initData();
         } else if (event.type == RefreshEvent.TYPE_PY_LOADER_READY) {
             // pyLoader 初始化完成，如果当前首页是 py 源则重新加载
             SourceBean homeSource = ApiConfig.get().getHomeSourceBean();

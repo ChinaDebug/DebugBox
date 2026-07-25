@@ -208,6 +208,7 @@ dependencies {
     implementation 'commons-io:commons-io:2.22.0'
     implementation 'org.apache.commons:commons-lang3:3.17.0'
     implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
+    implementation 'org.brotli:dec:0.1.2'
     implementation 'org.conscrypt:conscrypt-android:2.6.1'
     implementation 'io.github.inflationx:viewpump:2.1.1'
     implementation 'io.github.inflationx:calligraphy3:3.1.1'

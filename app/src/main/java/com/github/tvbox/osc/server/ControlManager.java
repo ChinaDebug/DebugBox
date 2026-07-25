@@ -120,6 +120,8 @@ public class ControlManager {
             try {
                 mServer.start();
                 IjkMediaPlayer.setDotPort(Hawk.get(HawkConfig.DOH_URL, 0) > 0, RemoteServer.serverPort);
+                // 同步服务端口到主进程 Proxy 占位类，jar 内爬虫通过此类获取代理 URL
+                com.github.catvod.Proxy.set(RemoteServer.serverPort);
                 break;
             } catch (IOException ex) {
                 RemoteServer.serverPort++;
