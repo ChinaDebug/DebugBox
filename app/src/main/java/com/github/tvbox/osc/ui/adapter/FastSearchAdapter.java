@@ -17,7 +17,7 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
 
 public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHolder> {
     public FastSearchAdapter() {
-        super(R.layout.item_search, new ArrayList<>());
+        super(R.layout.item_fast_search, new ArrayList<>());
     }
 
     @Override

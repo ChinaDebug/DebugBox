@@ -113,6 +113,10 @@ public class SearchActivity extends BaseActivity {
 
     public String keyword;
 
+    private int searchViewType;
+    private static final float SEARCH_LIST_FOCUS_SCALE = 1.05f;
+    private static final float SEARCH_POSTER_FOCUS_SCALE = 1.15f;
+
     private TextView tHotSearchText;
     private static ArrayList<String> hots = new ArrayList<>();
     private HashMap<String, String> mCheckSources = null;
@@ -171,11 +175,45 @@ public class SearchActivity extends BaseActivity {
     }
 
     private List<Runnable> pauseRunnable = null;
+    private boolean isActive = false;
+    private boolean returnFromFastSearch = false;
+    private boolean isSearching = false;
 
     @Override
     protected void onResume() {
         super.onResume();
+        isActive = true;
+        if (returnFromFastSearch) {
+            returnFromFastSearch = false;
+            isSearching = false;
+            keyword = "";
+            if (etSearch != null) {
+                etSearch.setText("");
+            }
+            cancel();
+            if (wordAdapter != null && hots != null) {
+                wordAdapter.setNewData(hots);
+                mGridViewWord.smoothScrollToPosition(0);
+            }
+            if (tHotSearchText != null) {
+                tHotSearchText.setText("热门搜索");
+            }
+            if (searchTips != null) {
+                searchTips.setVisibility(View.VISIBLE);
+            }
+            if (tv_history != null) {
+                tv_history.setVisibility(View.VISIBLE);
+            }
+            if (llWord != null) {
+                llWord.setVisibility(View.VISIBLE);
+            }
+            if (mGridView != null) {
+                mGridView.setVisibility(View.GONE);
+            }
+            return;
+        }
         if (pauseRunnable != null && pauseRunnable.size() > 0) {
+            isSearching = true;
             allRunCount.set(pauseRunnable.size());
             if (sourceViewModel != null) {
                 sourceViewModel.initExecutor();
@@ -186,6 +224,12 @@ public class SearchActivity extends BaseActivity {
             pauseRunnable.clear();
             pauseRunnable = null;
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isActive = false;
     }
 
     private void initView() {
@@ -221,7 +265,8 @@ public class SearchActivity extends BaseActivity {
                 search(keyword);
             }
         });
-		//添加放大效果
+		searchViewType = Hawk.get(HawkConfig.SEARCH_VIEW, 0);
+        // 文字列表与缩略图模式使用不同焦点放大倍数，避免文字列表因宽度撑满被裁剪
         mGridView.setOnItemListener(new TvRecyclerView.OnItemListener() {
             @Override
             public void onItemPreSelected(TvRecyclerView parent, View itemView, int position) {
@@ -230,7 +275,8 @@ public class SearchActivity extends BaseActivity {
 
             @Override
             public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-                itemView.animate().scaleX(1.15f).scaleY(1.15f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+                float focusScale = searchViewType == 0 ? SEARCH_LIST_FOCUS_SCALE : SEARCH_POSTER_FOCUS_SCALE;
+                itemView.animate().scaleX(focusScale).scaleY(focusScale).setDuration(300).setInterpolator(new BounceInterpolator()).start();
             }
 
             @Override
@@ -240,7 +286,7 @@ public class SearchActivity extends BaseActivity {
         });
         mGridView.setHasFixedSize(true);
         // lite
-        if (Hawk.get(HawkConfig.SEARCH_VIEW, 0) == 0)
+        if (searchViewType == 0)
             mGridView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 1, false));
             // with preview
         else
@@ -262,6 +308,7 @@ public class SearchActivity extends BaseActivity {
                     } catch (Throwable th) {
                         LOG.e(th);
                     }
+                    returnFromFastSearch = false;
                     Bundle bundle = new Bundle();
                     bundle.putString("id", video.id);
                     bundle.putString("sourceKey", video.sourceKey);
@@ -589,6 +636,7 @@ public class SearchActivity extends BaseActivity {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
         if (event.type == RefreshEvent.TYPE_SEARCH_RESULT) {
+            if (!isActive || !isSearching) return;
             try {
                 searchData(event.obj == null ? null : (AbsXml) event.obj);
             } catch (Exception e) {
@@ -607,6 +655,8 @@ public class SearchActivity extends BaseActivity {
             return;
         }
         if (Hawk.get(HawkConfig.FAST_SEARCH_MODE, false)) {
+            cancel();
+            returnFromFastSearch = true;
             Bundle bundle = new Bundle();
             bundle.putString("title", title);
             refreshSearchHistory(title);
@@ -625,6 +675,7 @@ public class SearchActivity extends BaseActivity {
     private AtomicInteger allRunCount = new AtomicInteger(0);
 
     private void searchResult() {
+        isSearching = true;
         try {
             sourceViewModel.initExecutor();
         } catch (Throwable th) {
@@ -652,6 +703,7 @@ public class SearchActivity extends BaseActivity {
             allRunCount.incrementAndGet();
         }
         if (siteKey.size() <= 0) {
+            isSearching = false;
             ToastHelper.showToast(mContext, getString(R.string.search_site));
             showSuccess();
             return;
@@ -705,6 +757,7 @@ public class SearchActivity extends BaseActivity {
 
         int count = allRunCount.decrementAndGet();
         if (count <= 0) {
+            isSearching = false;
             if (searchAdapter.getData().size() <= 0) {
                 showEmpty();
             }
@@ -713,6 +766,7 @@ public class SearchActivity extends BaseActivity {
     }
 
     private void cancel() {
+        isSearching = false;
         OkGo.getInstance().cancelTag("search");
     }
 

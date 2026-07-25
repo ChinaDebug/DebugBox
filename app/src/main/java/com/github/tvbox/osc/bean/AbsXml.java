@@ -16,4 +16,7 @@ public class AbsXml implements Serializable {
 
     @XStreamAlias("msg")
     public String msg;
+
+    // 非序列化字段，用于标识该搜索结果对应的源 key
+    public transient String sourceKey;
 }

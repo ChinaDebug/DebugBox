@@ -538,15 +538,27 @@ public class SourceViewModel extends ViewModel {
         }
     }
 
+    private void postSearchResult(String sourceKey) {
+        AbsXml data = new AbsXml();
+        data.sourceKey = sourceKey;
+        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, data));
+    }
+
+    private void postQuickSearchResult(String sourceKey) {
+        AbsXml data = new AbsXml();
+        data.sourceKey = sourceKey;
+        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
+    }
+
     // searchContent
     public void getSearch(String sourceKey, String wd) {
         if (Thread.currentThread().isInterrupted()) {
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+            postSearchResult(sourceKey);
             return;
         }
         SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
         if (sourceBean == null) {
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+            postSearchResult(sourceKey);
             return;
         }
         int type = sourceBean.getType();
@@ -575,7 +587,7 @@ public class SourceViewModel extends ViewModel {
                 executor.shutdown();
             }
             if (Thread.currentThread().isInterrupted()) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                postSearchResult(finalSourceKey);
                 return;
             }
             if (!TextUtils.isEmpty(search)) {
@@ -618,7 +630,7 @@ public class SourceViewModel extends ViewModel {
                         public void onError(Response<String> response) {
                             super.onError(response);
                             if (!Thread.currentThread().isInterrupted()) {
-                                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                                postSearchResult(finalSourceKey);
                             }
                         }
                     });
@@ -652,12 +664,12 @@ public class SourceViewModel extends ViewModel {
                         public void onError(Response<String> response) {
                             super.onError(response);
                             if (!Thread.currentThread().isInterrupted()) {
-                                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                                postSearchResult(finalSourceKey);
                             }
                         }
                     });
         } else {
-            searchResult.postValue(null);
+            postSearchResult(sourceKey);
         }
     }
 
@@ -989,6 +1001,7 @@ public class SourceViewModel extends ViewModel {
     }
 
     private void absXml(AbsXml data, String sourceKey) {
+        data.sourceKey = sourceKey;
         if (data.movie != null && data.movie.videoList != null) {
             for (Movie.Video video : data.movie.videoList) {
                 if (video.urlBean != null && video.urlBean.infoList != null) {
@@ -1259,9 +1272,9 @@ public class SourceViewModel extends ViewModel {
             return data;
         } catch (Exception e) {
             if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                postSearchResult(sourceKey);
             } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
+                postQuickSearchResult(sourceKey);
             } else if (result != null) {
                 result.postValue(null);
             }
@@ -1307,9 +1320,9 @@ public class SourceViewModel extends ViewModel {
             return data;
         } catch (Exception e) {
             if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                postSearchResult(sourceKey);
             } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
+                postQuickSearchResult(sourceKey);
             } else if (result != null) {
                 result.postValue(null);
             }
