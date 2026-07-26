@@ -63,6 +63,7 @@ public class HawkConfig {
     public static final String SUBTITLE_TEXT_BOLD = "subtitle_text_bold";
     public static final String SUBTITLE_TIME_DELAY = "subtitle_time_delay";
     public static final String THEME_SELECT = "theme_select";
+    public static final String WALLPAPER_BLUR = "wallpaper_blur";       // 壁纸虚化开关，默认开启
     public static final String BACKGROUND_PLAY_TYPE = "background_play_type";
     public static final String FAST_SEARCH_MODE = "fast_search_mode";
     public static final String SCREEN_DISPLAY = "screen_display";

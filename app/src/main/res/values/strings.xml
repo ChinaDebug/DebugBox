@@ -70,9 +70,11 @@
     <string name="mn_icon">Button</string>
     <string name="mn_history_num">History</string>
     <string name="mn_live_boot">Autostart Live</string>
-    <string name="mn_wall_change">Wallpaper</string>
+    <string name="mn_wall_change">Change Wallpaper</string>
+    <string name="mn_wall_setting">Wallpaper Setting</string>
     <string name="mn_wall_load">Loading Wallpaper</string>
     <string name="mn_wall_reset">Reset</string>
+    <string name="mn_wall_blur">Wallpaper Blur</string>
     <string name="mn_play_type">Player</string>
     <string name="mn_play_decode">Decode</string>
     <string name="mn_search">Search Display</string>
@@ -108,6 +110,9 @@
     <string name="dia_dns">Select DNS</string>
     <string name="dia_locale">Select Language</string>
     <string name="dia_theme">Select Theme</string>
+    <string name="dia_wallpaper">Wallpaper Setting</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
     <string name="dia_confirm">Confirm to Clear All ?</string>
     <string name="dia_reset">Reset Clear Configuration</string>
     <string name="dia_media_setting_title">Media Setting</string>

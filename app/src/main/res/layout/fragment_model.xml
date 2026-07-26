@@ -1114,7 +1114,7 @@
                             </LinearLayout>
                         </LinearLayout>
 
-                        <!-- 换张壁纸 | 重置壁纸 -->
+                        <!-- 壁纸设置 | 重置壁纸 -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="@dimen/vs_50"
@@ -1139,7 +1139,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="@string/mn_wall_change"
+                                    android:text="@string/mn_wall_setting"
                                     android:textColor="@android:color/white"
                                     android:textSize="@dimen/ts_24" />
                                 <TextView

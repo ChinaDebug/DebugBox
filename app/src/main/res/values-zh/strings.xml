@@ -70,8 +70,10 @@
     <string name="mn_history_num">历史条数</string>
     <string name="mn_live_boot">启动时进直播</string>
     <string name="mn_wall_change">换张壁纸</string>
+    <string name="mn_wall_setting">壁纸设置</string>
     <string name="mn_wall_load">壁纸更换中</string>
     <string name="mn_wall_reset">重置壁纸</string>
+    <string name="mn_wall_blur">壁纸虚化</string>
     <string name="mn_play_type">播放器</string>
     <string name="mn_play_decode">IJK解码</string>
     <string name="mn_search">搜索展示</string>
@@ -111,6 +113,9 @@
     <string name="dia_dns">请选择安全DNS</string>
     <string name="dia_locale">请选择应用语言</string>
     <string name="dia_theme">请选择主题</string>
+    <string name="dia_wallpaper">壁纸设置</string>
+    <string name="state_on">开启</string>
+    <string name="state_off">关闭</string>
     <string name="dia_confirm">确定全部删除 ?</string>
     <string name="dia_reset">确定重置将清除配置</string>
     <string name="dia_media_setting_title">播放器设置</string>

@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
@@ -19,22 +17,20 @@ import android.view.WindowManager;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.PermissionChecker;
-import com.blankj.utilcode.util.ActivityUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
-import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.AppManager;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LocaleHelper;
+import com.github.tvbox.osc.util.WallpaperManager;
 import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -367,42 +363,26 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         return themeColor;
     }
 
-    protected static BitmapDrawable globalWp = null;
+    /**
+     * 使全局壁纸缓存失效，配置变更后强制重新加载
+     */
+    public static void invalidateWallpaper() {
+        WallpaperManager.getInstance().invalidate();
+    }
 
     public void changeWallpaper(boolean force) {
-        if (!force && globalWp != null) {
-            getWindow().setBackgroundDrawable(globalWp);
-            return;
-        }
-        try {
-            File wp = new File(getFilesDir().getAbsolutePath() + "/wp");
-            if (wp.exists()) {
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(wp.getAbsolutePath(), opts);
-                // 从Options中获取图片的分辨率
-                int imageHeight = opts.outHeight;
-                int imageWidth = opts.outWidth;
-                int picHeight = 720;
-                int picWidth = 1080;
-                int scaleX = imageWidth / picWidth;
-                int scaleY = imageHeight / picHeight;
-                int scale = Math.max(Math.max(scaleX, scaleY), 1);
-                opts.inJustDecodeBounds = false;
-                // 采样率
-                opts.inSampleSize = scale;
-                globalWp = new BitmapDrawable(getResources(), BitmapFactory.decodeFile(wp.getAbsolutePath(), opts));
-            } else {
-                globalWp = null;
+        WallpaperManager.getInstance().loadWallpaper(this, force, new WallpaperManager.LoadCallback() {
+            @Override
+            public void onLoaded(android.graphics.Bitmap bitmap) {
+                if (isFinishing()) {
+                    return;
+                }
+                if (bitmap != null && !bitmap.isRecycled()) {
+                    getWindow().setBackgroundDrawable(new android.graphics.drawable.BitmapDrawable(getResources(), bitmap));
+                } else {
+                    getWindow().setBackgroundDrawableResource(R.drawable.app_bg);
+                }
             }
-        } catch (Throwable throwable) {
-            LOG.e(throwable);
-            globalWp = null;
-        }
-        if (globalWp != null) {
-            getWindow().setBackgroundDrawable(globalWp);
-        } else {
-            getWindow().setBackgroundDrawableResource(R.drawable.app_bg);
-        }
+        });
     }
 }

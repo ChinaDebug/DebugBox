@@ -39,6 +39,7 @@ import com.github.tvbox.osc.ui.dialog.HomeIconDialog;
 import com.github.tvbox.osc.ui.dialog.MediaSettingDialog;
 import com.github.tvbox.osc.ui.dialog.CleanResetDialog;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
+import com.github.tvbox.osc.ui.dialog.WallpaperDialog;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
@@ -620,29 +621,36 @@ public class ModelSettingFragment extends BaseLazyFragment {
                 dialog.show();
             }
         });
-        // Load Wallpaper from URL -------------------------------------
+        // Wallpaper Setting Dialog ------------------------------------
         findViewById(R.id.llWp).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                if (!ApiConfig.get().wallpaper.isEmpty())
-                    ToastHelper.showToast(mContext, getString(R.string.mn_wall_load));
-                OkGo.<File>get(ApiConfig.get().wallpaper).execute(new FileCallback(requireActivity().getFilesDir().getAbsolutePath(), "wp") {
+                WallpaperDialog dialog = new WallpaperDialog(mActivity);
+                dialog.setOnWallpaperChangeListener(new WallpaperDialog.OnWallpaperChangeListener() {
                     @Override
-                    public void onSuccess(Response<File> response) {
-                        ((BaseActivity) requireActivity()).changeWallpaper(true);
-                    }
+                    public void onChangeWallpaper() {
+                        if (!ApiConfig.get().wallpaper.isEmpty())
+                            ToastHelper.showToast(mContext, getString(R.string.mn_wall_load));
+                        OkGo.<File>get(ApiConfig.get().wallpaper).execute(new FileCallback(requireActivity().getFilesDir().getAbsolutePath(), "wp") {
+                            @Override
+                            public void onSuccess(Response<File> response) {
+                                ((BaseActivity) requireActivity()).changeWallpaper(true);
+                            }
 
-                    @Override
-                    public void onError(Response<File> response) {
-                        super.onError(response);
-                    }
+                            @Override
+                            public void onError(Response<File> response) {
+                                super.onError(response);
+                            }
 
-                    @Override
-                    public void downloadProgress(Progress progress) {
-                        super.downloadProgress(progress);
+                            @Override
+                            public void downloadProgress(Progress progress) {
+                                super.downloadProgress(progress);
+                            }
+                        });
                     }
                 });
+                dialog.show();
             }
         });
         // Restore Default Wallpaper from system -------------------------
