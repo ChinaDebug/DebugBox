@@ -46,6 +46,8 @@ public class BaseDialog extends Dialog {
                 controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
                 controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
             }
+            // Android 11+ 必须关闭系统窗口适配，否则内容无法延伸到刘海/挖孔区域
+            getWindow().setDecorFitsSystemWindows(false);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
             uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;

@@ -887,8 +887,17 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
 
         //从当前FrameLayout中移除播放器视图
         this.removeView(mPlayerContainer);
-        //将播放器视图添加到DecorView中即实现了全屏
-        decorView.addView(mPlayerContainer);
+        try {
+            //将播放器视图添加到DecorView中即实现了全屏，必须指定 MATCH_PARENT 否则无法占满屏幕
+            decorView.addView(mPlayerContainer, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        } catch (Exception e) {
+            // 异常时回滚到原容器，避免播放器视图丢失
+            this.addView(mPlayerContainer);
+            mIsFullScreen = false;
+            return;
+        }
 
         setPlayerState(PLAYER_FULL_SCREEN);
     }
@@ -904,6 +913,8 @@ public class BaseVideoView<P extends AbstractPlayer> extends FrameLayout
                 activity.getWindow().setFlags(
                         WindowManager.LayoutParams.FLAG_FULLSCREEN,
                         WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                // Android 11+ 必须关闭系统窗口适配，否则全屏内容无法延伸到刘海/挖孔区域
+                activity.getWindow().setDecorFitsSystemWindows(false);
             }
         } else {
             int uiOptions = decorView.getSystemUiVisibility();
