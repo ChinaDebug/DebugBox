@@ -74,11 +74,11 @@ public class SubtitleViewModel extends ViewModel {
                 return;
             }
             if (page == 1) pagesTotal = -1;//第一页时 重置页大小
-            String searchApiUrl = "https://secure.assrt.net/sub/";
+            String searchApiUrl = "https://2.assrt.net/sub/";
             String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             OkGo.<String>get(searchApiUrl)
                     .headers("User-Agent", ua)
-                    .headers("Referer", "https://secure.assrt.net/")
+                    .headers("Referer", "https://2.assrt.net/")
                     .headers("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
                     .headers("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
                     .params("searchword", title)
@@ -99,7 +99,7 @@ public class SubtitleViewModel extends ViewModel {
                                     if (TextUtils.isEmpty(href)) continue;
                                     SubtitleBean one = new SubtitleBean();
                                     one.setName(title);
-                                    one.setUrl("https://assrt.net" + href);
+                                    one.setUrl("https://2.assrt.net" + href);
                                     one.setIsZip(true);
                                     data.add(one);
                                 }
@@ -142,7 +142,7 @@ public class SubtitleViewModel extends ViewModel {
             String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
             OkGo.<String>get(url)
                     .headers("User-Agent", ua)
-                    .headers("Referer", "https://secure.assrt.net/")
+                    .headers("Referer", "https://2.assrt.net/")
                     .headers("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
                     .execute(new AbsCallback<String>() {
                 @Override
@@ -158,7 +158,7 @@ public class SubtitleViewModel extends ViewModel {
                                 if (TextUtils.isEmpty(onclick)) continue;
                                 Matcher matcher = regexShooterFileOnclick.matcher(onclick);
                                 if (matcher.find()) {
-                                    String url = String.format("https://secure.assrt.net/download/%s/-/%s/%s", matcher.group(1), matcher.group(2), matcher.group(3));
+                                    String url = String.format("https://2.assrt.net/download/%s/-/%s/%s", matcher.group(1), matcher.group(2), matcher.group(3));
                                     SubtitleBean one = new SubtitleBean();
                                     Element name = item.selectFirst("#filelist-name");
                                     one.setName(name == null ? matcher.group(3) : name.text());
@@ -174,7 +174,7 @@ public class SubtitleViewModel extends ViewModel {
                             if (TextUtils.isEmpty(href)) setSearchListData(null, true, false);
                             String h2 = href.toLowerCase();
                             if (h2.endsWith("srt") || h2.endsWith("ass") || h2.endsWith("scc") || h2.endsWith("ttml")) {
-                                String url = "https://assrt.net" + href;
+                                String url = "https://2.assrt.net" + href;
                                 SubtitleBean one = new SubtitleBean();
                                 String title = href.substring(href.lastIndexOf("/") + 1);
                                 try {
@@ -218,7 +218,7 @@ public class SubtitleViewModel extends ViewModel {
         Request request = new Request.Builder()
                 .url(subtitle.getUrl())
                 .get()
-                .addHeader("Referer", "https://secure.assrt.net/")
+                .addHeader("Referer", "https://2.assrt.net/")
                 .addHeader("User-Agent", ua)
                 .addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
                 .addHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")

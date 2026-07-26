@@ -4,8 +4,9 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.util.Base64;
+import android.hardware.display.DisplayManager;
+import android.view.Display;
 import android.view.Surface;
-import android.view.WindowManager;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.server.ControlManager;
@@ -70,9 +71,12 @@ public class SpiderApi {
             Context context = App.getInstance();
             int orientation = context.getResources().getConfiguration().orientation;
             int rotation = Surface.ROTATION_0;
-            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-            if (windowManager != null && windowManager.getDefaultDisplay() != null) {
-                rotation = windowManager.getDefaultDisplay().getRotation();
+            DisplayManager displayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+            if (displayManager != null) {
+                Display display = displayManager.getDisplay(Display.DEFAULT_DISPLAY);
+                if (display != null) {
+                    rotation = display.getRotation();
+                }
             }
             if (orientation == Configuration.ORIENTATION_PORTRAIT) {
                 return ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
