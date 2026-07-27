@@ -68,7 +68,7 @@ import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.adapter.SortAdapter;
 import com.github.tvbox.osc.ui.dialog.SelectDialog;
 import com.github.tvbox.osc.ui.dialog.TipDialog;
-import com.github.tvbox.osc.ui.fragment.GridFragment;
+import com.github.tvbox.osc.ui.tv.fragment.GridFragment;
 import com.github.tvbox.osc.ui.fragment.UserFragment;
 import com.github.tvbox.osc.ui.tv.widget.DefaultTransformer;
 import com.github.tvbox.osc.ui.tv.widget.FixedSpeedScroller;
@@ -84,6 +84,7 @@ import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
+import com.hjq.permissions.permission.base.IPermission;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
@@ -856,7 +857,7 @@ public class HomeActivity extends BaseActivity {
                     .setTitle("权限提醒")
                     .setMessage("部分功能需要存储权限才能正常使用，是否前往设置开启权限？")
                     .setPositiveButton("去设置", (dialog, which) -> {
-                        XXPermissions.startPermissionActivity(this, DefaultConfig.StoragePermissionGroup());
+                        XXPermissions.startPermissionActivity(this, DefaultConfig.storagePermissionList());
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -1141,7 +1142,8 @@ public class HomeActivity extends BaseActivity {
                     .setTitle("权限提醒")
                     .setMessage("需要所有文件访问权限才能清理缓存。是否前往设置开启权限？")
                     .setPositiveButton("去设置", (dialog, which) -> {
-                        XXPermissions.startPermissionActivity(HomeActivity.this, DefaultConfig.StoragePermissionGroup());
+                        XXPermissions.startPermissionActivity(HomeActivity.this,
+                                XXPermissions.getDeniedPermissions(HomeActivity.this, DefaultConfig.storagePermissionList()));
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -1149,22 +1151,30 @@ public class HomeActivity extends BaseActivity {
         }
 
         // Android 10 及以下申请传统存储权限
-        XXPermissions.with(this)
-                .permission(DefaultConfig.StoragePermissionGroup())
+        DefaultConfig.withStoragePermission(XXPermissions.with(this))
                 .request(new OnPermissionCallback() {
                     @Override
-                    public void onGranted(List<String> permissions, boolean all) {
-                        onGranted.run();
-                    }
-
-                    @Override
-                    public void onDenied(List<String> permissions, boolean never) {
+                    public void onPermissionResult(List<IPermission> grantedList, List<IPermission> deniedList) {
+                        if (deniedList.isEmpty()) {
+                            onGranted.run();
+                            return;
+                        }
+                        // 区分普通拒绝与永久拒绝
+                        boolean neverAskAgain = false;
+                        for (IPermission permission : deniedList) {
+                            if (permission.isDoNotAskAgainPermission(HomeActivity.this)) {
+                                neverAskAgain = true;
+                                break;
+                            }
+                        }
+                        String message = neverAskAgain
+                                ? "存储权限已被永久拒绝，请前往应用设置手动开启，否则无法清理缓存。"
+                                : "存储权限被拒绝，无法清理缓存。是否前往设置开启权限？";
                         new AlertDialog.Builder(HomeActivity.this)
                                 .setTitle("权限提醒")
-                                .setMessage("存储权限被拒绝，无法清理缓存。是否前往设置开启权限？")
-                                .setPositiveButton("去设置", (dialog, which) -> {
-                                    XXPermissions.startPermissionActivity(HomeActivity.this, permissions);
-                                })
+                                .setMessage(message)
+                                .setPositiveButton("去设置", (dialog, which) ->
+                                        XXPermissions.startPermissionActivity(HomeActivity.this, deniedList))
                                 .setNegativeButton("取消", null)
                                 .show();
                     }

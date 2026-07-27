@@ -254,14 +254,21 @@
 -keep class com.lzy.okgo.** { *; }
 -dontwarn com.lzy.okgo.**
 
+# XXPermissions（28.3 版本 AAR 已自带 consumer ProGuard 规则，此处再做一层兜底保留）
+-keep class com.hjq.permissions.** { *; }
+-keep interface com.hjq.permissions.** { *; }
+-keepclassmembers class com.hjq.permissions.** { *; }
+-dontwarn com.hjq.permissions.**
+
 #############################################
 # TVBox 业务核心（必须保留）
 #############################################
 # Bean 包：涉及 Gson/XStream/Serializable 序列化，必须保留类名、字段名和方法名
 -keep class com.github.tvbox.osc.bean.** { *; }
 -keep class com.github.tvbox.osc.ui.fragment.homes.** { *; }
--keep class com.github.tvbox.osc.ui.tv.widget.card.** { *; }
--keep class com.github.tvbox.osc.ui.tv.widget.ViewObj { *; }
+-keep class com.github.tvbox.osc.ui.tv.activity.** { *; }
+-keep class com.github.tvbox.osc.ui.tv.adapter.** { *; }
+-keep class com.github.tvbox.osc.ui.tv.widget.** { *; }
 
 # 爬虫相关：动态加载的类不能被混淆
 -keep interface com.github.catvod.crawler.Spider { *; }
@@ -283,6 +290,7 @@
 
 # 其他核心业务包（Adapter/ViewModel/Server/Receiver/Cast/Subtitle/Player）
 -keep class com.github.tvbox.osc.ui.adapter.** { *; }
+-keep class com.github.tvbox.osc.ui.tv.adapter.** { *; }
 -keep class com.github.tvbox.osc.viewmodel.** { *; }
 -keep class com.github.tvbox.osc.server.** { *; }
 -keep class com.github.tvbox.osc.receiver.** { *; }

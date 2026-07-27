@@ -22,7 +22,9 @@ import com.github.tvbox.osc.ui.activity.HomeActivity;
 import com.github.tvbox.osc.util.LOG;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.hjq.permissions.Permission;
+import com.hjq.permissions.XXPermissions;
+import com.hjq.permissions.permission.PermissionLists;
+import com.hjq.permissions.permission.base.IPermission;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -317,14 +319,47 @@ public class DefaultConfig {
         Context context = App.getInstance();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
             return new String[] {
-                    Permission.MANAGE_EXTERNAL_STORAGE
+                    Manifest.permission.MANAGE_EXTERNAL_STORAGE
             };
         }
         // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
+        // 只需申请 WRITE_EXTERNAL_STORAGE，READ_EXTERNAL_STORAGE 会同步授予
         return new String[] {
-                Permission.READ_EXTERNAL_STORAGE,
-                Permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
         };
+    }
+
+    public static boolean isStoragePermissionGranted(Context context) {
+        // Android 11+ (API 30+) 使用 MANAGE_EXTERNAL_STORAGE 特殊权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        // Android 10 及以下使用传统存储权限
+        for (String permission : StoragePermissionGroup()) {
+            if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static List<IPermission> storagePermissionList() {
+        Context context = App.getInstance();
+        List<IPermission> list = new ArrayList<>();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
+            list.add(PermissionLists.getManageExternalStoragePermission());
+        } else {
+            // 只需申请 WRITE_EXTERNAL_STORAGE，READ_EXTERNAL_STORAGE 会同步授予
+            list.add(PermissionLists.getWriteExternalStoragePermission());
+        }
+        return list;
+    }
+
+    public static XXPermissions withStoragePermission(XXPermissions permissions) {
+        for (IPermission permission : storagePermissionList()) {
+            permissions.permission(permission);
+        }
+        return permissions;
     }
 
 }

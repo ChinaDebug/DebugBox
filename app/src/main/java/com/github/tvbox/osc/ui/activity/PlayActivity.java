@@ -95,7 +95,9 @@ import com.github.tvbox.osc.cast.model.CastData;
 import com.github.tvbox.osc.cast.model.CastDevice;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
+import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
+import com.hjq.permissions.permission.base.IPermission;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HawkUtils;
@@ -118,7 +120,7 @@ import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.AbsCallback;
 import com.lzy.okgo.model.HttpHeaders;
 import com.lzy.okgo.model.Response;
-import com.obsez.android.lib.filechooser.ChooserDialog;
+import com.github.tvbox.osc.ui.dialog.LocalFilePickerDialog;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
@@ -840,7 +842,8 @@ public class PlayActivity extends BaseActivity {
                                 .setTitle("权限提醒")
                                 .setMessage("需要所有文件访问权限才能选择本地字幕。是否前往设置开启权限？")
                                 .setPositiveButton("去设置", (dialog, which) -> {
-                                    XXPermissions.startPermissionActivity(PlayActivity.this, DefaultConfig.StoragePermissionGroup());
+                                    XXPermissions.startPermissionActivity(PlayActivity.this,
+                                            XXPermissions.getDeniedPermissions(PlayActivity.this, DefaultConfig.storagePermissionList()));
                                 })
                                 .setNegativeButton("取消", null)
                                 .show();
@@ -849,34 +852,56 @@ public class PlayActivity extends BaseActivity {
                 }
 
                 // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
-                if (XXPermissions.isGranted(PlayActivity.this, DefaultConfig.StoragePermissionGroup())) {
+                if (DefaultConfig.isStoragePermissionGranted(PlayActivity.this)) {
                     openSubtitleFileChooser();
                 } else {
-                    XXPermissions.with(PlayActivity.this)
-                        .permission(DefaultConfig.StoragePermissionGroup())
-                        .request((permissions, allGranted) -> {
-                            if (allGranted) {
-                                openSubtitleFileChooser();
-                            } else {
-                                ToastHelper.showToast(mContext, getString(R.string.vod_sub_no_permission));
+                    DefaultConfig.withStoragePermission(XXPermissions.with(PlayActivity.this))
+                        .request(new OnPermissionCallback() {
+                            @Override
+                            public void onPermissionResult(List<IPermission> grantedList, List<IPermission> deniedList) {
+                                // 回调触发时 Activity 可能已销毁，避免空指针或非法状态
+                                if (isFinishing() || isDestroyed()) return;
+                                if (deniedList.isEmpty()) {
+                                    openSubtitleFileChooser();
+                                    return;
+                                }
+                                // 区分普通拒绝与永久拒绝
+                                boolean neverAskAgain = false;
+                                for (IPermission permission : deniedList) {
+                                    if (permission.isDoNotAskAgainPermission(PlayActivity.this)) {
+                                        neverAskAgain = true;
+                                        break;
+                                    }
+                                }
+                                if (neverAskAgain) {
+                                    new AlertDialog.Builder(PlayActivity.this)
+                                            .setTitle("权限提醒")
+                                            .setMessage("存储权限已被永久拒绝，请前往应用设置手动开启，否则无法选择本地字幕。")
+                                            .setPositiveButton("去设置", (dialog, which) ->
+                                                    XXPermissions.startPermissionActivity(PlayActivity.this, deniedList))
+                                            .setNegativeButton("取消", null)
+                                            .show();
+                                } else {
+                                    ToastHelper.showToast(mContext, getString(R.string.vod_sub_no_permission));
+                                }
                             }
                         });
                 }
             }
 
             private void openSubtitleFileChooser() {
-                new ChooserDialog(PlayActivity.this)
-                        .withFilter(false, false, "srt", "ass", "scc", "stl", "ttml")
-                        .withStartFile("/storage/emulated/0/Download")
-                        .withChosenListener(new ChooserDialog.Result() {
-                            @Override
-                            public void onChoosePath(String path, File pathFile) {
-                                LOG.i("Local SubtitleBean Path: " + path);
-                                setSubtitle(path);//设置字幕
-                            }
-                        })
-                        .build()
-                        .show();
+                LocalFilePickerDialog dialog = new LocalFilePickerDialog(PlayActivity.this);
+                dialog.setMode(LocalFilePickerDialog.PickMode.FILE);
+                dialog.setStartPath("/storage/emulated/0/Download");
+                dialog.setExtensions(Arrays.asList("srt", "ass", "scc", "stl", "ttml"));
+                dialog.setOnPathSelectedListener(new LocalFilePickerDialog.OnPathSelectedListener() {
+                    @Override
+                    public void onPathSelected(String path) {
+                        LOG.i("Local SubtitleBean Path: " + path);
+                        setSubtitle(path);
+                    }
+                });
+                dialog.show();
             }
         });
         subtitleDialog.setCloseSubtitleListener(new SubtitleDialog.CloseSubtitleListener() {

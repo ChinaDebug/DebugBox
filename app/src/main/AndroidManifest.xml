@@ -65,7 +65,7 @@
             android:launchMode="singleTask"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" />
         <activity
-            android:name=".ui.activity.HistoryActivity"
+            android:name=".ui.tv.activity.HistoryActivity"
             android:screenOrientation="sensorLandscape" />
         <activity
             android:name=".ui.activity.LivePlayActivity"
@@ -79,7 +79,7 @@
             android:name=".ui.activity.PushActivity"
             android:screenOrientation="sensorLandscape" />
         <activity
-            android:name=".ui.activity.DriveActivity"
+            android:name=".ui.tv.activity.DriveActivity"
             android:screenOrientation="sensorLandscape" />
         <activity
             android:name=".ui.activity.SearchActivity"

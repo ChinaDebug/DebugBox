@@ -11,7 +11,7 @@ import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.os.HandlerCompat;
-import androidx.multidex.MultiDexApplication;
+import android.app.Application;
 
 import com.github.catvod.crawler.JsLoader;
 import com.github.tvbox.osc.R;
@@ -49,7 +49,7 @@ import me.jessyan.autosize.unit.Subunits;
  * @date :2020/12/17
  * @description:
  */
-public class App extends MultiDexApplication {
+public class App extends Application {
     private static App instance;
     private static P2PClass p;
     public static String burl;

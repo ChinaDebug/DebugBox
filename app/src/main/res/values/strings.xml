@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">TVBox</string>
     <string name="app_home">Home</string>
+    <string name="local_file_picker_title">选择一个文件夹</string>
+    <string name="local_file_picker_select_current">选择当前文件夹</string>
+    <string name="local_file_picker_parent">返回上一级</string>
     <string name="app_source"></string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_confirm">OK</string>

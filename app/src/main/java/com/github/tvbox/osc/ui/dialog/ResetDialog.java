@@ -15,6 +15,7 @@ import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.ToastHelper;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
+import com.hjq.permissions.permission.base.IPermission;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -74,7 +75,8 @@ public class ResetDialog extends BaseDialog {
                         .setTitle("权限提醒")
                         .setMessage("需要所有文件访问权限才能重置应用。是否前往设置开启权限？")
                         .setPositiveButton("去设置", (dialog, which) -> {
-                            XXPermissions.startPermissionActivity(finalActivity, DefaultConfig.StoragePermissionGroup());
+                            XXPermissions.startPermissionActivity(finalActivity,
+                                    XXPermissions.getDeniedPermissions(finalActivity, DefaultConfig.storagePermissionList()));
                         })
                         .setNegativeButton("取消", null)
                         .show();
@@ -83,28 +85,36 @@ public class ResetDialog extends BaseDialog {
         }
 
         // Android 10 及以下，或者 targetSdkVersion < 30 的应用使用传统存储权限
-        if (XXPermissions.isGranted(finalActivity, DefaultConfig.StoragePermissionGroup())) {
+        if (DefaultConfig.isStoragePermissionGranted(finalActivity)) {
             DefaultConfig.resetApp(context);
             return;
         }
 
         // 申请权限
-        XXPermissions.with(finalActivity)
-                .permission(DefaultConfig.StoragePermissionGroup())
+        DefaultConfig.withStoragePermission(XXPermissions.with(finalActivity))
                 .request(new OnPermissionCallback() {
                     @Override
-                    public void onGranted(List<String> permissions, boolean all) {
-                        DefaultConfig.resetApp(context);
-                    }
-
-                    @Override
-                    public void onDenied(List<String> permissions, boolean never) {
+                    public void onPermissionResult(List<IPermission> grantedList, List<IPermission> deniedList) {
+                        if (deniedList.isEmpty()) {
+                            DefaultConfig.resetApp(context);
+                            return;
+                        }
+                        // 区分普通拒绝与永久拒绝
+                        boolean neverAskAgain = false;
+                        for (IPermission permission : deniedList) {
+                            if (permission.isDoNotAskAgainPermission(finalActivity)) {
+                                neverAskAgain = true;
+                                break;
+                            }
+                        }
+                        String message = neverAskAgain
+                                ? "存储权限已被永久拒绝，请前往应用设置手动开启，否则无法重置应用。"
+                                : "存储权限被拒绝，无法重置应用。是否前往设置开启权限？";
                         new AlertDialog.Builder(finalActivity)
                                 .setTitle("权限提醒")
-                                .setMessage("存储权限被拒绝，无法重置应用。是否前往设置开启权限？")
-                                .setPositiveButton("去设置", (dialog, which) -> {
-                                    XXPermissions.startPermissionActivity(finalActivity, permissions);
-                                })
+                                .setMessage(message)
+                                .setPositiveButton("去设置", (dialog, which) ->
+                                        XXPermissions.startPermissionActivity(finalActivity, deniedList))
                                 .setNegativeButton("取消", null)
                                 .show();
                     }

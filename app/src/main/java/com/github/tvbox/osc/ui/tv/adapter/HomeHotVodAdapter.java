@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.adapter;
+package com.github.tvbox.osc.ui.tv.adapter;
 
 import android.text.TextUtils;
 import android.view.View;
@@ -13,7 +13,6 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.ImgUtil;
 import com.github.tvbox.osc.util.UpdateCheckManager;
@@ -21,7 +20,12 @@ import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 
 import java.util.ArrayList;
+
 import me.jessyan.autosize.utils.AutoSizeUtils;
+
+/**
+ * 首页热门/历史推荐适配器（TV 焦点版本）
+ */
 public class HomeHotVodAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHolder> {
     // 监听 item 焦点变化，仅当卡片获取焦点时才让集名跑马灯滚动
     private static final View.OnFocusChangeListener mNoteFocusListener = new View.OnFocusChangeListener() {

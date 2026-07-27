@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.adapter;
+package com.github.tvbox.osc.ui.tv.adapter;
 
 import android.view.View;
 import android.widget.ImageView;

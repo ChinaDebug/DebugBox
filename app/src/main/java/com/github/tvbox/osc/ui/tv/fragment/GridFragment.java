@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.fragment;
+package com.github.tvbox.osc.ui.tv.fragment;
 import android.content.res.TypedArray;
 import android.content.Context;
 import android.os.Bundle;

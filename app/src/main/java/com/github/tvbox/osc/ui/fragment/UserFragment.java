@@ -26,14 +26,14 @@ import com.github.tvbox.osc.cache.RoomDataManger;
 import com.github.tvbox.osc.event.ServerEvent;
 import com.github.tvbox.osc.ui.activity.CollectActivity;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
-import com.github.tvbox.osc.ui.activity.DriveActivity;
+import com.github.tvbox.osc.ui.tv.activity.DriveActivity;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
-import com.github.tvbox.osc.ui.activity.HistoryActivity;
+import com.github.tvbox.osc.ui.tv.activity.HistoryActivity;
 import com.github.tvbox.osc.ui.activity.LivePlayActivity;
 import com.github.tvbox.osc.ui.activity.PushActivity;
 import com.github.tvbox.osc.ui.activity.SearchActivity;
 import com.github.tvbox.osc.ui.activity.SettingActivity;
-import com.github.tvbox.osc.ui.adapter.HomeHotVodAdapter;
+import com.github.tvbox.osc.ui.tv.adapter.HomeHotVodAdapter;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
@@ -44,6 +44,7 @@ import android.widget.Toast;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import com.github.tvbox.osc.util.UA;
+import com.github.tvbox.osc.util.AppNavigator;
 import com.github.tvbox.osc.util.ImgUtil;
 import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.github.tvbox.osc.event.RefreshEvent;
@@ -511,19 +512,19 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
 
         FastClickCheckUtil.check(v);
         if (v.getId() == R.id.tvLive) {
-            jumpActivity(LivePlayActivity.class);
+            AppNavigator.startLive(UserFragment.this);
         } else if (v.getId() == R.id.tvSearch) {
-            jumpActivity(SearchActivity.class);
+            AppNavigator.startSearch(UserFragment.this);
         } else if (v.getId() == R.id.tvSetting) {
-            jumpActivity(SettingActivity.class);
+            AppNavigator.startSetting(UserFragment.this);
         } else if (v.getId() == R.id.tvHistory) {
-            jumpActivity(HistoryActivity.class);
+            AppNavigator.startHistory(UserFragment.this);
         } else if (v.getId() == R.id.tvPush) {
-            jumpActivity(PushActivity.class);
+            AppNavigator.startPush(UserFragment.this);
         } else if (v.getId() == R.id.tvFavorite) {
-            jumpActivity(CollectActivity.class);
+            AppNavigator.startCollect(UserFragment.this);
         } else if (v.getId() == R.id.tvDrive) {
-            jumpActivity(DriveActivity.class);
+            AppNavigator.startDrive(UserFragment.this);
         }
     }
 
