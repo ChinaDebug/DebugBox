@@ -103,7 +103,8 @@ public class PlayService extends Service {
         return PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
     public static PendingIntent getPendingIntent(int actionCode) {
-        return PendingIntent.getBroadcast(App.getInstance(), actionCode, new Intent(DetailActivity.BROADCAST_ACTION).putExtra("action", actionCode).setPackage(App.getInstance().getPackageName()),PendingIntent.FLAG_UPDATE_CURRENT);
+        // targetSdk 31+ 要求 PendingIntent 必须指定可变性标志
+        return PendingIntent.getBroadcast(App.getInstance(), actionCode, new Intent(DetailActivity.BROADCAST_ACTION).putExtra("action", actionCode).setPackage(App.getInstance().getPackageName()), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     @Override

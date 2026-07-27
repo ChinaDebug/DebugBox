@@ -1915,11 +1915,12 @@ public class PlayActivity extends BaseActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private android.app.RemoteAction generateRemoteAction(int iconResId, int actionCode, String title, String desc) {
+        // targetSdk 31+ 要求 PendingIntent 必须指定可变性标志
         final PendingIntent intent = PendingIntent.getBroadcast(
                         PlayActivity.this,
                         actionCode,
                         new Intent(BROADCAST_ACTION).putExtra("action", actionCode),
-                        0);
+                        PendingIntent.FLAG_IMMUTABLE);
         final Icon icon = Icon.createWithResource(PlayActivity.this, iconResId);
         return (new android.app.RemoteAction(icon, title, desc, intent));
     }

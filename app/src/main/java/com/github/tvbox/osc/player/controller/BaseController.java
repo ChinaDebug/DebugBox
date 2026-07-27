@@ -2,6 +2,7 @@ package com.github.tvbox.osc.player.controller;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -40,6 +41,7 @@ public abstract class BaseController extends BaseVideoController implements Gest
     private boolean mChangePosition;
     private boolean mChangeBrightness;
     private boolean mChangeVolume;
+    private boolean mChangeEpisode;
     private boolean mCanChangePosition = true;
     private boolean mEnableInNormal;
     private boolean mCanSlide;
@@ -306,6 +308,7 @@ public abstract class BaseController extends BaseVideoController implements Gest
         mChangePosition = false;
         mChangeBrightness = false;
         mChangeVolume = false;
+        mChangeEpisode = false;
         return true;
     }
 
@@ -330,6 +333,24 @@ public abstract class BaseController extends BaseVideoController implements Gest
     }
 
     /**
+     * 判断当前是否为竖屏播放模式
+     */
+    protected boolean isPortraitMode() {
+        Activity activity = PlayerUtils.scanForActivity(getContext());
+        if (activity == null) return false;
+        int orientation = activity.getRequestedOrientation();
+        return orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                || orientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                || orientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+    }
+
+    /**
+     * 竖屏模式下上下滑动回调，子类可覆盖实现换集等操作
+     */
+    protected void onVerticalSlide(float deltaY) {
+    }
+
+    /**
      * 在屏幕上滑动
      */
     @Override
@@ -344,13 +365,19 @@ public abstract class BaseController extends BaseVideoController implements Gest
         float deltaY = e1.getY() - e2.getY();
         if (mFirstTouch) {
             mChangePosition = Math.abs(distanceX) >= Math.abs(distanceY);
+            mChangeEpisode = false;
             if (!mChangePosition) {
-                //半屏宽度
-                int halfScreen = PlayerUtils.getScreenWidth(getContext(), true) / 2;
-                if (e2.getX() > halfScreen) {
-                    mChangeVolume = true;
+                if (isPortraitMode()) {
+                    // 竖屏模式下垂直滑动用于换集，禁用亮度/音量调节
+                    mChangeEpisode = true;
                 } else {
-                    mChangeBrightness = true;
+                    //半屏宽度
+                    int halfScreen = PlayerUtils.getScreenWidth(getContext(), true) / 2;
+                    if (e2.getX() > halfScreen) {
+                        mChangeVolume = true;
+                    } else {
+                        mChangeBrightness = true;
+                    }
                 }
             }
 
@@ -359,7 +386,7 @@ public abstract class BaseController extends BaseVideoController implements Gest
                 mChangePosition = mCanChangePosition;
             }
 
-            if (mChangePosition || mChangeBrightness || mChangeVolume) {
+            if (mChangePosition || mChangeBrightness || mChangeVolume || mChangeEpisode) {
                 for (Map.Entry<IControlComponent, Boolean> next : mControlComponents.entrySet()) {
                     IControlComponent component = next.getKey();
                     if (component instanceof IGestureComponent) {
@@ -371,6 +398,8 @@ public abstract class BaseController extends BaseVideoController implements Gest
         }
         if (mChangePosition) {
             slideToChangePosition(deltaX);
+        } else if (mChangeEpisode) {
+            onVerticalSlide(deltaY);
         } else if (mChangeBrightness) {
             slideToChangeBrightness(deltaY);
         } else if (mChangeVolume) {

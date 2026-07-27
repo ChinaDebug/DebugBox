@@ -149,11 +149,8 @@ public class VodController extends BaseController {
                         mBottomRoot.requestFocus();
                         mHandler.postDelayed(mUpdateLayout, 255);   // Workaround Fix : SurfaceView
 
-                        // takagen99: Check if Touch Screen, show back button
-                        if (((BaseActivity) mActivity).supportsTouch()) {
-                            mBack.setVisibility(VISIBLE);
-                        }
                         updateDanmuBtn();
+                        updateBottomButtonsForOrientation();
                         showLockView();
 
                         if (isKeyUp) {
@@ -204,7 +201,8 @@ public class VodController extends BaseController {
                                     @Override
                                     public void onAnimationEnd(Animator animation) {
                                         super.onAnimationEnd(animation);
-                                        mTopRoot.setVisibility(View.GONE);
+                                        // 竖屏模式下使用 INVISIBLE 保持 TextView 挂载，避免跑马灯从头开始
+                                        mTopRoot.setVisibility(isPortraitMode() ? View.INVISIBLE : View.GONE);
                                         mTopRoot.clearAnimation();
                                     }
                                 });
@@ -223,7 +221,6 @@ public class VodController extends BaseController {
                                     }
                                 });
                         mDanmuSetting.setVisibility(GONE);
-                        mBack.setVisibility(GONE);
                         mLockView.setVisibility(GONE);
                         break;
                     }
@@ -264,9 +261,6 @@ public class VodController extends BaseController {
     ProgressBar mDialogVideoProgressBar;
     ProgressBar mDialogVideoPauseBar;
 
-    // center BACK button
-    LinearLayout mBack;
-
     LinearLayout mDanmuSetting;
 
     private boolean hasDanmu = false;
@@ -294,6 +288,17 @@ public class VodController extends BaseController {
 
     // 当前正在显示的 PopupWindow 引用，避免重复弹出
     private PlayerPopupMenu mCurrentPopup;
+
+    // 竖屏模式下上下滑动换集状态
+    private float mEpisodeSlideDistance;
+    private boolean mEpisodeChanged;
+
+    /**
+     * 获取竖屏换集滑动阈值，约为屏幕高度的 1/4
+     */
+    private int getEpisodeSlideThreshold() {
+        return PlayerUtils.getScreenHeight(getContext(), true) / 4;
+    }
 
     // 播放倍速统一档位：上下键导航与 PopupWindow 菜单共用同一套档位
     // 参考 B 站 / 爱奇艺 / 腾讯视频 + 3.0
@@ -445,8 +450,6 @@ public class VodController extends BaseController {
         mDialogVideoProgressBar = findViewWithTag("progressbar_video");
         mDialogVideoPauseBar = findViewWithTag("pausebar_video");
 
-        // center back button
-        mBack = findViewById(R.id.tvBackButton);
         mDanmuSetting = findViewById(R.id.ll_danmu_setting);
 
         // center lock button
@@ -502,7 +505,6 @@ public class VodController extends BaseController {
         // initialize view
         mTopRoot.setVisibility(INVISIBLE);
         mBottomRoot.setVisibility(INVISIBLE);
-        mBack.setVisibility(INVISIBLE);
         mDanmuSetting.setVisibility(INVISIBLE);
 
         // initialize subtitle
@@ -1096,34 +1098,6 @@ public class VodController extends BaseController {
                 hideBottom();
             }
         });
-        // Button: BACK click to go back to previous page -------------------
-        mBack.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                boolean showPreview = Hawk.get(HawkConfig.SHOW_PREVIEW, true);
-                if (showPreview) {
-                    mTopRoot.setVisibility(GONE);
-                    mBottomRoot.setVisibility(GONE);
-                    mBack.setVisibility(GONE);
-                    mLockView.setVisibility(GONE);
-                    mProgressTop.setVisibility(GONE);
-                    mDanmuSetting.setVisibility(GONE);
-                    mHandler.removeCallbacks(mHideBottomRunnable);
-                    if (mActivity != null) {
-                        if (mActivity.getClass().getSimpleName().equals("DetailActivity")) {
-                            ((DetailActivity) mActivity).toggleFullPreview();
-                        } else {
-                            mActivity.finish();
-                        }
-                    }
-                } else {
-                    if (mActivity != null) {
-                        mActivity.finish();
-                    }
-                }
-            }
-        });
-
         //屏显开关：在按钮位置向上弹出 PopupWindow 风格的多选菜单
         // mTopRoot2 可见性已由 applyScreenDisplay() 统一控制，此处不再覆盖
         mScreendisplay.setOnClickListener(new OnClickListener() {
@@ -1141,6 +1115,48 @@ public class VodController extends BaseController {
         if (pendingCastMode) {
             applyCastMode(isCastMode);
             pendingCastMode = false;
+        }
+
+        // 根据当前横竖屏方向初始化底部按钮显隐
+        updateBottomButtonsForOrientation();
+    }
+
+    /**
+     * 根据横竖屏方向更新底部控制栏按钮显隐
+     * 竖屏时隐藏缩放、字幕、音轨、片头片尾等不常用按钮，避免控制栏过长需要滑动
+     */
+    private void updateBottomButtonsForOrientation() {
+        updateBottomButtonsForOrientation(isPortraitMode());
+    }
+
+    private void updateBottomButtonsForOrientation(boolean portrait) {
+        if (portrait) {
+            // 竖屏时隐藏播放控制、切换、片头片尾等按钮，仅保留倍速、重播、播放器、投屏、屏显、横竖屏切换
+            int visibility = GONE;
+            if (mPreBtn != null) mPreBtn.setVisibility(visibility);
+            if (mPauseBtn != null) mPauseBtn.setVisibility(visibility);
+            if (mNextBtn != null) mNextBtn.setVisibility(visibility);
+            if (mPlayerScaleBtn != null) mPlayerScaleBtn.setVisibility(visibility);
+            if (mSubtitleBtn != null) mSubtitleBtn.setVisibility(visibility);
+            if (mAudioTrackBtn != null) mAudioTrackBtn.setVisibility(visibility);
+            if (mPlayerTimeStartBtn != null) mPlayerTimeStartBtn.setVisibility(visibility);
+            if (mPlayerTimeSkipBtn != null) mPlayerTimeSkipBtn.setVisibility(visibility);
+            if (mPlayerTimeResetBtn != null) mPlayerTimeResetBtn.setVisibility(visibility);
+            if (mPlayerTimeDividerBtn != null) mPlayerTimeDividerBtn.setVisibility(visibility);
+        } else {
+            // 横屏时恢复显示；投屏模式下不干预 applyCastMode 已隐藏的按钮
+            if (isCastMode) return;
+            int visibility = VISIBLE;
+            if (mPreBtn != null) mPreBtn.setVisibility(visibility);
+            if (mPauseBtn != null) mPauseBtn.setVisibility(visibility);
+            if (mNextBtn != null) mNextBtn.setVisibility(visibility);
+            if (mPlayerScaleBtn != null) mPlayerScaleBtn.setVisibility(visibility);
+            if (mSubtitleBtn != null) mSubtitleBtn.setVisibility(visibility);
+            if (mAudioTrackBtn != null) mAudioTrackBtn.setVisibility(visibility);
+            if (mPlayerTimeStartBtn != null) mPlayerTimeStartBtn.setVisibility(visibility);
+            if (mPlayerTimeSkipBtn != null) mPlayerTimeSkipBtn.setVisibility(visibility);
+            if (mPlayerTimeResetBtn != null) mPlayerTimeResetBtn.setVisibility(visibility);
+            if (mPlayerTimeDividerBtn != null) mPlayerTimeDividerBtn.setVisibility(visibility);
         }
     }
 
@@ -1263,6 +1279,8 @@ public class VodController extends BaseController {
                 int height = videoSize[1];
                 if (width > 0 && height > 0) {
                     mPlayerResolution.setText(width + " x " + height);
+                    // 启动跑马灯，竖屏模式下超长集数/分辨率信息可滚动显示
+                    mPlayerResolution.setSelected(true);
                     initLandscapePortraitBtnInfo();
                 }
             }
@@ -1271,12 +1289,21 @@ public class VodController extends BaseController {
 
     void setLandscapePortrait() {
         int requestedOrientation = mActivity.getRequestedOrientation();
+        boolean toPortrait = false;
+        boolean switched = false;
         if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE) {
             mLvPortraitBtn.setImageResource(R.drawable.vtoh);
             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            toPortrait = true;
+            switched = true;
         } else if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT) {
             mLvPortraitBtn.setImageResource(R.drawable.htov);
             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            toPortrait = false;
+            switched = true;
+        }
+        if (switched) {
+            updateBottomButtonsForOrientation(toPortrait);
         }
     }
 
@@ -1360,6 +1387,8 @@ public class VodController extends BaseController {
 
     public void setTitle(String playTitleInfo) {
         mPlayTitle.setText(playTitleInfo);
+        // 启动跑马灯，竖屏模式下超长片名可滚动显示
+        mPlayTitle.setSelected(true);
     }
 
     public void resetSpeed() {
@@ -1951,6 +1980,30 @@ public class VodController extends BaseController {
             }
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+        mEpisodeSlideDistance = 0;
+        mEpisodeChanged = false;
+        return super.onDown(e);
+    }
+
+    @Override
+    protected void onVerticalSlide(float deltaY) {
+        if (listener == null) return;
+        mEpisodeSlideDistance += deltaY;
+        if (Math.abs(mEpisodeSlideDistance) >= getEpisodeSlideThreshold() && !mEpisodeChanged) {
+            if (mEpisodeSlideDistance > 0) {
+                // 向上滑动切换下一集
+                listener.playNext(false);
+            } else {
+                // 向下滑动切换上一集
+                listener.playPre();
+            }
+            mEpisodeChanged = true;
+            hideBottom();
+        }
     }
 
     @Override

@@ -2864,7 +2864,9 @@ public class PlayFragment extends BaseLazyFragment {
         settings.setBuiltInZoomControls(true);
         settings.setSupportZoom(false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            //settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            // 使用兼容性模式平衡安全风险与视频源加载需求，避免无条件允许所有混合内容
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         }
 //        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);

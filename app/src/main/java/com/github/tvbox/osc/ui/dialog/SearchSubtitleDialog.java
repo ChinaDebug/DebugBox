@@ -8,6 +8,8 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -135,6 +137,23 @@ public class SearchSubtitleDialog extends BaseDialog {
 
         // takagen99 : Fix on Key Enter
         subtitleSearchEt.setOnKeyListener(onSoftKeyPress);
+        // 软键盘搜索/完成按钮直接触发搜索
+        subtitleSearchEt.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || actionId == EditorInfo.IME_ACTION_GO) {
+                String wd = subtitleSearchEt.getText().toString().trim();
+                search(wd);
+                return true;
+            }
+            return false;
+        });
+        // 编辑框获取焦点时主动弹出软键盘
+        subtitleSearchEt.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                showSoftInput(subtitleSearchEt);
+            }
+        });
 
         subtitleSearchBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -147,14 +166,14 @@ public class SearchSubtitleDialog extends BaseDialog {
         searchAdapter.setNewData(new ArrayList<>());
     }
 
-    // 搜索框按键处理：参照首页SearchActivity模式，实现TV端方向键焦点切换
+    // 搜索框按键处理：TV端方向键焦点切换，回车/确认键直接执行搜索
     private final View.OnKeyListener onSoftKeyPress = new View.OnKeyListener() {
         public boolean onKey(View v, int keyCode, KeyEvent event) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
-                    // 回车/确认键：焦点移到搜索按钮
-                    subtitleSearchEt.clearFocus();
-                    subtitleSearchBtn.requestFocus();
+                    // 回车/确认键：直接执行搜索，不再把焦点移到搜索按钮
+                    String wd = subtitleSearchEt.getText().toString().trim();
+                    search(wd);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     // 下键：焦点移到搜索结果列表
@@ -178,6 +197,18 @@ public class SearchSubtitleDialog extends BaseDialog {
             return false;
         }
     };
+
+    /**
+     * 主动显示软键盘
+     */
+    private void showSoftInput(View view) {
+        view.post(() -> {
+            InputMethodManager imm = (InputMethodManager) mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
+    }
 
     public void setSearchWord(String wd) {
         if (wd == null) {
