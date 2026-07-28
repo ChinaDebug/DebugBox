@@ -114,8 +114,8 @@ public class SearchActivity extends BaseActivity {
     public String keyword;
 
     private int searchViewType;
-    private static final float SEARCH_LIST_FOCUS_SCALE = 1.05f;
-    private static final float SEARCH_POSTER_FOCUS_SCALE = 1.15f;
+    private static final float SEARCH_LIST_FOCUS_SCALE = 1.1f;
+    private static final float SEARCH_POSTER_FOCUS_SCALE = 1.1f;
 
     private TextView tHotSearchText;
     private static ArrayList<String> hots = new ArrayList<>();

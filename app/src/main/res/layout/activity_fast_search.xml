@@ -107,12 +107,12 @@
                 android:layout_weight="1"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:paddingTop="@dimen/vs_10"
-                android:paddingBottom="@dimen/vs_10"
+                android:paddingTop="@dimen/vs_20"
+                android:paddingBottom="@dimen/vs_20"
                 android:visibility="invisible"
-                app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_20"
                 app:tv_selectedItemIsCentered="true"
-                app:tv_verticalSpacingWithMargins="@dimen/vs_15" />
+                app:tv_verticalSpacingWithMargins="@dimen/vs_20" />
 
             <com.owen.tvrecyclerview.widget.TvRecyclerView
                 android:id="@+id/mGridViewFilter"
@@ -124,9 +124,9 @@
                 android:paddingTop="@dimen/vs_10"
                 android:paddingBottom="@dimen/vs_10"
                 android:visibility="invisible"
-                app:tv_horizontalSpacingWithMargins="@dimen/vs_5"
+                app:tv_horizontalSpacingWithMargins="@dimen/vs_20"
                 app:tv_selectedItemIsCentered="true"
-                app:tv_verticalSpacingWithMargins="@dimen/vs_10" />
+                app:tv_verticalSpacingWithMargins="@dimen/vs_20" />
 
         </LinearLayout>
     </LinearLayout>

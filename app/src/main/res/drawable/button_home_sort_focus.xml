@@ -4,11 +4,19 @@
         <shape>
             <corners android:radius="20mm"/>
             <solid android:color="?attr/color_theme_50"/>
-	    <!--添加选中外边框-->
-	    <stroke android:width="2mm" android:color="@android:color/white" />
+            <!--添加选中外边框-->
+            <stroke android:width="2mm" android:color="@android:color/white" />
         </shape>
     </item>
-    <item android:state_focused="false">
+    <!-- 焦点移到内容区后，当前激活分类保持主题背景与边框高亮 -->
+    <item android:state_activated="true">
+        <shape>
+            <corners android:radius="20mm"/>
+            <solid android:color="?attr/color_theme_50"/>
+            <stroke android:width="2mm" android:color="@android:color/white" />
+        </shape>
+    </item>
+    <item>
         <shape>
             <corners android:radius="20mm"/>
             <solid android:color="@android:color/transparent"/>

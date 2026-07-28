@@ -27,6 +27,8 @@ import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
@@ -130,6 +132,7 @@ public class HomeActivity extends BaseActivity {
     private int currentSelected = 0;
     private int sortFocused = 0;
     public View sortFocusView = null;
+    private ViewTreeObserver.OnGlobalFocusChangeListener mFocusChangeListener;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private long mExitTime = 0;
     private long lastLogoClickTime = 0;
@@ -219,7 +222,12 @@ public class HomeActivity extends BaseActivity {
                     if (grid.restoreView()) {
                         return;
                     }
-                    // 如果 sortFocusView 存在且没有获取焦点，则请求焦点
+                    // 内容区未滚动到顶部时，优先滚动到顶部，而不是直接跳回分类菜单
+                    if (!grid.isTop()) {
+                        grid.scrollTop();
+                        return;
+                    }
+                    // 内容已在顶部，焦点回到分类菜单
                     if (sortFocusView != null && !sortFocusView.isFocused()) {
                         sortFocusView.requestFocus();
                     }
@@ -277,6 +285,25 @@ public class HomeActivity extends BaseActivity {
         this.mGridView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 0, false));
         this.mGridView.setSpacingWithMargins(0, AutoSizeUtils.dp2px(this.mContext, 10.0f));
         this.mGridView.setAdapter(this.sortAdapter);
+        // 全局焦点监听：焦点在分类菜单、内容区、顶部栏之间切换时，动态控制 activated 高亮与 focused 动效
+        mFocusChangeListener = (oldFocus, newFocus) -> {
+            if (newFocus != null && isChildOfTopLayout(newFocus)) {
+                // 焦点进入顶部栏时，取消分类菜单 activated 高亮，避免 logo/设置与分类项同时高亮
+                sortAdapter.setActivatedPosition(-1);
+            } else if (currentSelected >= 0 && currentSelected < sortAdapter.getData().size()) {
+                // 焦点回到分类菜单或内容区时，恢复当前 ViewPager 对应分类的 activated 高亮
+                sortAdapter.setActivatedPosition(currentSelected);
+            }
+            if (oldFocus != null && isChildOfGridView(oldFocus)) {
+                // 非激活分类项失去焦点时恢复 1.0 缩放；激活项保持放大高亮
+                if (!oldFocus.isActivated()) {
+                    oldFocus.animate().scaleX(1.0f).scaleY(1.0f).setDuration(125).start();
+                }
+                // 若仍处于 activated 状态则保持白色加粗文字
+                updateSortItemTextStyle(oldFocus, oldFocus.isActivated());
+            }
+        };
+        this.contentLayout.getViewTreeObserver().addOnGlobalFocusChangeListener(mFocusChangeListener);
         sortAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onChanged() {
@@ -292,13 +319,12 @@ public class HomeActivity extends BaseActivity {
         this.mGridView.setOnItemListener(new TvRecyclerView.OnItemListener() {
             public void onItemPreSelected(TvRecyclerView tvRecyclerView, View view, int position) {
                 if (view != null && !HomeActivity.this.isDownOrUp) {
-                    view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(250).start();
-                    TextView textView = view.findViewById(R.id.tvTitle);
-                    if (textView != null) {
-                        textView.getPaint().setFakeBoldText(false);
-                        textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF_70));
-                        textView.invalidate();
+                    // 非激活分类项失去焦点时恢复 1.0 缩放；激活项保持放大高亮
+                    if (!view.isActivated()) {
+                        view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(125).start();
                     }
+                    // 焦点移出后，若当前分类仍对应当前 ViewPager 页面则保持白色加粗文字
+                    updateSortItemTextStyle(view, view.isActivated());
                     View filterView = view.findViewById(R.id.tvFilter);
                     if (filterView != null) {
                         filterView.setVisibility(View.GONE);
@@ -312,12 +338,7 @@ public class HomeActivity extends BaseActivity {
                     HomeActivity.this.isDownOrUp = false;
                     HomeActivity.this.sortChange = true;
                     view.animate().scaleX(1.1f).scaleY(1.1f).setInterpolator(new BounceInterpolator()).setDuration(250).start();
-                    TextView textView = view.findViewById(R.id.tvTitle);
-                    if (textView != null) {
-                        textView.getPaint().setFakeBoldText(true);
-                        textView.setTextColor(ContextCompat.getColor(HomeActivity.this, R.color.color_FFFFFF));
-                        textView.invalidate();
-                    }
+                    updateSortItemTextStyle(view, true);
 //                    if (!sortAdapter.getItem(position).filters.isEmpty())
 //                        view.findViewById(R.id.tvFilter).setVisibility(View.VISIBLE);
                     if (position == -1) {
@@ -917,6 +938,13 @@ public class HomeActivity extends BaseActivity {
                     currentSelected = sortFocused;
                     mViewPager.setCurrentItem(sortFocused, false);
                     changeTop(sortFocused != 0);
+                    // 切换分类后同步当前 ViewPager 对应的 activated 高亮位置
+                    sortAdapter.setActivatedPosition(currentSelected);
+                    // 切换分类后将目标内容区滚动到顶部，确保再切回来时光标落在第一位
+                    BaseLazyFragment targetFragment = fragments.get(sortFocused);
+                    if (targetFragment instanceof GridFragment) {
+                        ((GridFragment) targetFragment).scrollTop();
+                    }
                 }
             }
         }
@@ -1018,6 +1046,10 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // 移除全局焦点监听，防止 Activity 销毁后持有引用造成内存泄漏
+        if (mFocusChangeListener != null && contentLayout != null) {
+            contentLayout.getViewTreeObserver().removeOnGlobalFocusChangeListener(mFocusChangeListener);
+        }
         // 取消顶部栏动画，防止内存泄漏及销毁后对 View 的操作异常
         if (topAnimatorSet != null && topAnimatorSet.isRunning()) {
             topAnimatorSet.cancel();
@@ -1224,5 +1256,42 @@ public class HomeActivity extends BaseActivity {
         } else {
             isClearingCache = false;
         }
+    }
+
+    // 统一更新分类项文字样式：高亮时为白色加粗，否则恢复默认灰色
+    private void updateSortItemTextStyle(View view, boolean highlight) {
+        if (view == null) {
+            return;
+        }
+        TextView textView = view.findViewById(R.id.tvTitle);
+        if (textView != null) {
+            textView.getPaint().setFakeBoldText(highlight);
+            textView.setTextColor(ContextCompat.getColor(this, highlight ? R.color.color_FFFFFF : R.color.color_FFFFFF_70));
+            textView.invalidate();
+        }
+    }
+
+    // 判断指定 view 是否为分类菜单 mGridView 的直接或间接子项
+    private boolean isChildOfGridView(View view) {
+        return isChildOf(view, mGridView);
+    }
+
+    // 判断指定 view 是否为顶部栏 topLayout 的直接或间接子项
+    private boolean isChildOfTopLayout(View view) {
+        return isChildOf(view, topLayout);
+    }
+
+    private boolean isChildOf(View view, ViewGroup parent) {
+        if (view == null || parent == null) {
+            return false;
+        }
+        ViewParent current = view.getParent();
+        while (current != null) {
+            if (current == parent) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 }

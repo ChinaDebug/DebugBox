@@ -75,7 +75,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class FastSearchActivity extends BaseActivity {
     private static final long POSTER_FOCUS_ANIM_DURATION = 300L;
-    private static final float POSTER_FOCUS_SCALE = 1.15f;
+    private static final float POSTER_FOCUS_SCALE = 1.1f;
     private static final int SEARCH_SITE_TIMEOUT_SECONDS = 10;
 
     private LinearLayout llLayout;

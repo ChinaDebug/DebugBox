@@ -275,7 +275,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
 
                 @Override
                 public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-                    itemView.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+                    itemView.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
 
                     // 根据焦点所在行统一控制 tvUserHome 显示/隐藏
                     // 方向键与鼠标/触摸点击都会回调 onItemSelected，避免仅依赖 onScrolled 导致鼠标点击时未隐藏
@@ -339,7 +339,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
 
                 @Override
                 public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-                    itemView.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+                    itemView.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
                 }
 
                 @Override
@@ -494,7 +494,7 @@ public class UserFragment extends BaseLazyFragment implements View.OnClickListen
         @Override
         public void onFocusChange(View v, boolean hasFocus) {
             if (hasFocus)
-                v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+                v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
             else
                 v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
         }

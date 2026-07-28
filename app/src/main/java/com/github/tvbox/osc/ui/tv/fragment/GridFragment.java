@@ -17,6 +17,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import com.blankj.utilcode.util.GsonUtils;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -42,6 +43,7 @@ import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
+import me.jessyan.autosize.utils.AutoSizeUtils;
 
 import java.util.ArrayList;
 import android.widget.LinearLayout;
@@ -194,7 +196,8 @@ public class GridFragment extends BaseLazyFragment {
             ViewParent parent = mGridView.getParent();
             if (parent instanceof ViewGroup) {
                 TvRecyclerView v3 = new TvRecyclerView(this.mContext);
-                v3.setSpacingWithMargins(10, 10);
+                int spacing = AutoSizeUtils.mm2px(this.mContext, 20);
+                v3.setSpacingWithMargins(spacing, spacing);
                 v3.setLayoutParams(mGridView.getLayoutParams());
                 v3.setPadding(mGridView.getPaddingLeft(), mGridView.getPaddingTop(), mGridView.getPaddingRight(), mGridView.getPaddingBottom());
                 v3.setClipToPadding(mGridView.getClipToPadding());
@@ -231,6 +234,13 @@ public class GridFragment extends BaseLazyFragment {
             }
         }
         mGridView.setAdapter(gridAdapter);
+        mGridView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                // 实时更新顶部状态，用于返回键判断是先回顶还是返回分类菜单
+                isTop = !recyclerView.canScrollVertically(-1);
+            }
+        });
 
         gridAdapter.setOnLoadMoreListener(new BaseQuickAdapter.RequestLoadMoreListener() {
             @Override
@@ -247,7 +257,7 @@ public class GridFragment extends BaseLazyFragment {
 
             @Override
             public void onItemSelected(TvRecyclerView parent, View itemView, int position) {
-                itemView.animate().scaleX(1.2f).scaleY(1.2f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
+                itemView.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).setInterpolator(new BounceInterpolator()).start();
             }
 
             @Override

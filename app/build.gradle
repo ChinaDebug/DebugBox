@@ -131,10 +131,10 @@ android {
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
-            def flavorPart = variant.flavorName ?: ""
-            def fileName = flavorPart.isEmpty()
-                    ? "TVBox_${variant.buildType}.apk"
-                    : "TVBox_${variant.buildType}-${flavorPart}.apk"
+            def abi = variant.flavorName?.toLowerCase()?.replace("generic", "") ?: ""
+            def fileName = abi.isEmpty()
+                    ? "TVBox_CloudDebug-${buildTime()}.apk"
+                    : "TVBox_CloudDebug-${buildTime()}-${abi}.apk"
             output.outputFileName.set(fileName)
         }
     }
