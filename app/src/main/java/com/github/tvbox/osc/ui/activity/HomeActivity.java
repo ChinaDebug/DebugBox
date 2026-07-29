@@ -83,6 +83,7 @@ import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
+import com.github.tvbox.osc.util.parser.SuperParse;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
@@ -1215,6 +1216,9 @@ public class HomeActivity extends BaseActivity {
 
     private void clearCacheAndReload() {
         isClearingCache = true;
+
+        // 清理超级解析全局静态缓存与线程池，避免旧配置 flag 映射残留
+        SuperParse.release();
 
         File dir = getCacheDir();
         FileUtils.recursiveDelete(dir);

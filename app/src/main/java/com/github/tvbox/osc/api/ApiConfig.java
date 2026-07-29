@@ -32,6 +32,7 @@ import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.UpdateCheckManager;
 import com.github.tvbox.osc.util.VideoParseRuler;
+import com.github.tvbox.osc.util.parser.SuperParse;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -353,6 +354,8 @@ public class ApiConfig {
     private static  String jarCache ="true";
     private void parseJson(String apiUrl, String jsonStr) {
 //        pyLoader.setConfig(jsonStr);
+        // 加载新配置前清空超级解析的静态缓存，避免旧 flag 映射干扰新配置
+        SuperParse.clear();
         JsonObject infoJson = new Gson().fromJson(jsonStr, JsonObject.class);
         jarCache = DefaultConfig.safeJsonString(infoJson, "jarCache", "true");
         // spider
@@ -1005,6 +1008,8 @@ public class ApiConfig {
 
     public void clearAllCache() {
         try {
+            // 释放超级解析占用的线程池与静态缓存
+            SuperParse.release();
             clearLoader();
 
             File cspDir = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp");

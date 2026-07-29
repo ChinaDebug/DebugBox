@@ -4,7 +4,7 @@ plugins {
 }
 
 def static buildTime() {
-    return new Date().format("yyyyMMdd_HHmm", TimeZone.getTimeZone("GMT+08:00"))
+    return new Date().format("yyyyMMdd-HHmm", TimeZone.getTimeZone("GMT+08:00"))
 }
 
 def getSigningConfig() {
@@ -59,6 +59,7 @@ android {
         targetSdkVersion = 36
         versionCode = 1
         versionName = "1.0.".concat(buildTime())
+        buildConfigField "String", "BUILD_TIME", "\"${buildTime()}\""
         minSdkVersion = 24
     }
 

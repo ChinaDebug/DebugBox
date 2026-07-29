@@ -28,6 +28,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.SslErrorHandler;
@@ -2292,6 +2293,8 @@ public class PlayActivity extends BaseActivity {
         loadFoundCount.set(0);
         loadFoundVideoUrls = new LinkedList<String>();
         loadFoundVideoUrlsHeader = new HashMap<String, HashMap<String, String>>();
+        // 每次开始新解析前重置超级解析标记，避免上一轮状态污染下一轮
+        isSuperParse = false;
     }
 
     public void play(boolean reset) {
@@ -2492,6 +2495,8 @@ public class PlayActivity extends BaseActivity {
         }
         stopLoadWebView(false);
         OkGo.getInstance().cancelTag("json_jx");
+        // 取消超级解析中并行的 JSON 接口请求
+        SuperParse.stopJsonJx();
         if (parseThreadPool != null) {
             try {
                 parseThreadPool.shutdown();
@@ -2752,6 +2757,8 @@ public class PlayActivity extends BaseActivity {
 
     private void parseMix(ParseBean pb,boolean isSuper){
         setTip("正在解析播放地址", true, false);
+        // 记录当前是否为超级解析，控制 WebView 嗅探来源提示
+        isSuperParse = isSuper;
         parseThreadPool = Executors.newSingleThreadExecutor();
         LinkedHashMap<String, HashMap<String, String>> jxs = new LinkedHashMap<>();
         String extendName = "";
@@ -2816,8 +2823,12 @@ public class PlayActivity extends BaseActivity {
                                 activity.mHandler.sendEmptyMessageDelayed(100, 20 * 1000);
                             }
                             activity.loadWebView(mixParseUrl);
+                            // 停止解析会关闭线程池，重新初始化后再提交 JSON 并行任务，避免 RejectedExecutionException
+                            if (activity.parseThreadPool == null || activity.parseThreadPool.isShutdown()) {
+                                activity.parseThreadPool = Executors.newSingleThreadExecutor();
+                            }
+                            activity.parseThreadPool.execute(new SuperJsonJxRunnable(activity, webUrl));
                         });
-                        activity.parseThreadPool.execute(new SuperJsonJxRunnable(activity, webUrl));
                     } else {
                         activity.rsJsonJx(rs, false);
                     }
@@ -2907,6 +2918,8 @@ public class PlayActivity extends BaseActivity {
     private LinkedList<String> loadFoundVideoUrls = new LinkedList<>();
     private HashMap<String, HashMap<String, String>> loadFoundVideoUrlsHeader = new HashMap<>();
     private final AtomicInteger loadFoundCount = new AtomicInteger(0);
+    // 标记当前是否为超级解析，用于控制 WebView 嗅探来源提示
+    private boolean isSuperParse = false;
 
     void loadWebView(String url) {
         if (mSysWebView == null) {
@@ -2947,6 +2960,11 @@ public class PlayActivity extends BaseActivity {
             @Override
             public void run() {
                 if (mSysWebView != null) {
+                    try {
+                        // 通知 JS 层停止 iframe 错峰加载，避免继续浪费资源
+                        mSysWebView.evaluateJavascript("window.stopSuperParse=true;", null);
+                    } catch (Throwable ignored) {
+                    }
                     mSysWebView.stopLoading();
                     mSysWebView.loadUrl("about:blank");
                     mSysWebView.clearHistory();
@@ -2993,6 +3011,19 @@ public class PlayActivity extends BaseActivity {
         @Override
         public boolean dispatchKeyEvent(KeyEvent event) {
             return false;
+        }
+    }
+
+    /**
+     * 超级解析 WebView 与原生层的 JS 桥接
+     * 页面主文档加载完成后主动通知，解决 iframe 子资源过多导致 onPageFinished 延迟的问题
+     */
+    public class SuperParseJsBridge {
+        @JavascriptInterface
+        public void onPageReady() {
+            if (isSuperParse && mHandler != null) {
+                mHandler.sendEmptyMessage(200);
+            }
         }
     }
 
@@ -3044,6 +3075,9 @@ public class PlayActivity extends BaseActivity {
         String pcUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
         settings.setUserAgentString(pcUserAgent);
 
+        // 注册 JS 桥接，超级解析页面加载完成后主动通知原生层，避免 onPageFinished 被 iframe 延迟
+        webView.addJavascriptInterface(new SuperParseJsBridge(), "SuperParseAndroid");
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
@@ -3091,7 +3125,6 @@ public class PlayActivity extends BaseActivity {
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view,url);
             if (isFinishing() || isDestroyed()) return;
-            LOG.i("echo-onPageFinished url:" + url);
             if(!url.equals("about:blank")){
                 mController.evaluateScript(sourceBean,url,view);
             }
@@ -3111,7 +3144,6 @@ public class PlayActivity extends BaseActivity {
 
             boolean isFilter = VideoParseRuler.isFilter(webUrl, url);
             if (isFilter) {
-                LOG.i("shouldInterceptLoadRequest filter:" + url);
                 return null;
             }
 
@@ -3124,10 +3156,10 @@ public class PlayActivity extends BaseActivity {
             }
 
             if (!ad) {
-                if (checkVideoFormat(url)) {
+                boolean isVideo = checkVideoFormat(url);
+                if (isVideo) {
                     loadFoundVideoUrls.add(url);
                     loadFoundVideoUrlsHeader.put(url, headers);
-                    LOG.i("loadFoundVideoUrl:" + url);
                     if (loadFoundCount.incrementAndGet() == 1) {
                         url = loadFoundVideoUrls.poll();
                         if (mHandler != null) {
@@ -3136,6 +3168,25 @@ public class PlayActivity extends BaseActivity {
                         String cookie = CookieManager.getInstance().getCookie(url);
                         if (!TextUtils.isEmpty(cookie))
                             headers.put("Cookie", " " + cookie);//携带cookie
+                        // 超级解析 WebView 嗅探成功时，根据 Referer/Origin 或 URL 反查解析来源
+                        if (isSuperParse && !isFinishing() && !isDestroyed()) {
+                            String jxName = null;
+                            if (headers != null) {
+                                for (String k : headers.keySet()) {
+                                    if (k.equalsIgnoreCase("referer") || k.equalsIgnoreCase("origin")) {
+                                        jxName = SuperParse.findJxNameByUrl(headers.get(k));
+                                        if (jxName != null) break;
+                                    }
+                                }
+                            }
+                            if (jxName == null) {
+                                jxName = SuperParse.findJxNameByUrl(url);
+                            }
+                            if (jxName != null && !jxName.isEmpty()) {
+                                final String toastJxName = jxName;
+                                runOnUiThread(() -> ToastHelper.showToast("解析来自:" + toastJxName));
+                            }
+                        }
                         playUrl(url, headers);
                         SuperParse.stopJsonJx();
                         stopLoadWebView(false);
@@ -3156,7 +3207,6 @@ public class PlayActivity extends BaseActivity {
             if (AdBlocker.isAd(url) || VideoParseRuler.isAd(webUrl, url)) {
                 return AdBlocker.createEmptyResource();
             }
-            LOG.i("shouldInterceptRequest url:" + url);
             HashMap<String, String> webHeaders = new HashMap<>();
             Map<String, String> hds = request.getRequestHeaders();
             if (hds != null && hds.keySet().size() > 0) {
@@ -3204,7 +3254,12 @@ public class PlayActivity extends BaseActivity {
             } else if (msg.what == 200) {
                 if (hasMessages(100)) {
                     try {
-                        activity.setTip("加载完成，嗅探视频中", true, false);
+                        // 页面主文档已加载完成，重置嗅探超时，避免快加载页面被原 20 秒总超时误杀
+                        removeMessages(100);
+                        sendEmptyMessageDelayed(100, 15000);
+                        if (!activity.isSuperParse) {
+                            activity.setTip("加载完成，嗅探视频中", true, false);
+                        }
                     } catch (Exception e) {
                     }
                 }
