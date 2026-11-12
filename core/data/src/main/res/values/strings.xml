@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 视频更新检测错误提示 -->
+    <string name="update_check_failed">Update check failed: %1$s</string>
+    <string name="unknown_error_fallback">Unknown error</string>
+</resources>

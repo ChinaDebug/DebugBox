@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    推屏页：仅展示局域网服务地址二维码与地址文本。
+-->
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <FrameLayout
+        android:id="@+id/rootLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/ivQRCode"
+                android:layout_width="@dimen/vs_300"
+                android:layout_height="@dimen/vs_300"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:id="@+id/tvAddress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/vs_20"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.5"
+                android:textAlignment="gravity"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_24"
+                tools:text="1111111111111111111111111111111111111111111111111111" />
+
+        </LinearLayout>
+    </FrameLayout>
+</layout>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 选集弹窗剧集条目：单集名称，选中态高亮主题色 -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvEpisode"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/vs_60"
+    android:background="@drawable/button_dialog_vod"
+    android:ellipsize="end"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center"
+    android:maxLines="1"
+    android:paddingLeft="@dimen/vs_10"
+    android:paddingRight="@dimen/vs_10"
+    android:textColor="@android:color/white"
+    android:textSize="@dimen/ts_18" />

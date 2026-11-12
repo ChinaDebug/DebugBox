@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 首页历史记录条数显示 -->
+    <string name="his_count_fmt">%1$d条</string>
+</resources>

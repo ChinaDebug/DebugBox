@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 分类页加载中状态：背景保持透明（LoadSir LoadLayout 亦为透明），避免切换时出现黑块闪屏；
+     转圈包深灰圆角卡片，与首页 loading 风格统一 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:layout_width="@dimen/vs_100"
+        android:layout_height="@dimen/vs_100"
+        android:layout_gravity="center"
+        android:background="@drawable/shape_loading_card"
+        android:gravity="center">
+
+        <ProgressBar
+            android:layout_width="@dimen/vs_50"
+            android:layout_height="@dimen/vs_50"
+            android:layout_gravity="center"
+            android:indeterminateOnly="true"
+            android:indeterminateTint="?attr/color_theme_70"
+            android:indeterminateTintMode="src_atop" />
+    </FrameLayout>
+</FrameLayout>

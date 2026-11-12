@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:state_pressed="true">
+        <shape>
+            <corners android:radius="@dimen/vs_5" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke android:width="2mm" android:color="@android:color/white" />
+        </shape>
+    </item>
+    <item android:state_focused="false" android:state_pressed="true">
+        <shape>
+            <corners android:radius="@dimen/vs_5" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke android:width="2mm" android:color="@android:color/white" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape>
+            <corners android:radius="@dimen/vs_5" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke android:width="2mm" android:color="@android:color/white" />
+        </shape>
+    </item>
+    <!-- 选中项：默认态也填充主题色，焦点移出仍保持选中高亮，便于区分当前分类 -->
+    <item android:state_focused="false" android:state_pressed="false">
+        <shape>
+            <corners android:radius="@dimen/vs_5" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke android:width="1mm" android:color="@color/color_FFFFFF" />
+        </shape>
+    </item>
+</selector>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <FrameLayout xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black">
+
+        <com.tvbox.kotlin.core.player.MyVideoView
+            android:id="@+id/mVideoView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <master.flame.danmaku.ui.widget.DanmakuView
+            android:id="@+id/danmaku"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/play_loading"
+            android:layout_width="@dimen/vs_50"
+            android:layout_height="@dimen/vs_50"
+            android:layout_gravity="center"
+            android:indeterminateBehavior="repeat"
+            android:indeterminateTintMode="src_atop"
+            android:indeterminateTint="?attr/color_theme_70"
+            android:indeterminateOnly="true" />
+
+        <ImageView
+            android:id="@+id/play_load_error"
+            android:layout_width="@dimen/vs_50"
+            android:layout_height="@dimen/vs_50"
+            android:layout_gravity="center"
+            android:alpha="0.75"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:src="@drawable/icon_error"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+        android:id="@+id/play_load_tip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="@dimen/vs_50"
+        android:text="Now Loading"
+        android:textColor="@color/color_FFFFFF_80"
+        android:textSize="@dimen/ts_24" />
+
+    <!-- 纯音频模式面板：覆盖视频画面显示波形/歌名/歌词，歌词区按可用高度自适应（小窗/全屏均可读）。
+         由 PlayFragment 经 MyVideoView.setAudioPanel 注入播放器内部（渲染层与控制层之间） -->
+    <FrameLayout
+        android:id="@+id/audio_panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6000000"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <!-- 纯音频模式海报背景：加载当前歌曲封面，无图时保持黑色兜底 -->
+        <ImageView
+            android:id="@+id/audio_poster"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <!-- 海报上叠加半透明遮罩，保证前景标题/波形/歌词清晰可读 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#B3000000" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/audio_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:paddingLeft="@dimen/vs_40"
+                android:paddingRight="@dimen/vs_40"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <com.tvbox.kotlin.core.ui.widget.AudioWaveView
+                android:id="@+id/audio_wave"
+                android:layout_width="96dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="8dp" />
+
+            <com.tvbox.kotlin.feature.play.ui.widget.LrcView
+                android:id="@+id/lrc_view"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="20dp"
+                android:layout_weight="1" />
+
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>
+</layout>

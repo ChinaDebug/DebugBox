@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 图片加载请求标记：用于切换时取消视图上未完成的旧图片请求 -->
+    <item name="coil_request_tag" type="id" />
+    <!-- 图片当前显示内容标记：记录 ImageView 已显示的图片 URL，
+         onStart 时据此判断是"同一图重载"还是"item 复用残留旧图" -->
+    <item name="img_url_tag" type="id" />
+</resources>

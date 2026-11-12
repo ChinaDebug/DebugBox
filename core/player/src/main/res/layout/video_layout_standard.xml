@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    同名覆盖 GSY 库自带 video_layout_standard 布局（资源合并时本模块优先），
+    用于移除 GSY 标准布局左上角 back（< 返回）按钮与中央 start（播放/暂停）按钮等自带 UI。
+
+    仅保留播放内核硬依赖的容器控件（均被 GSY 基类 findViewById 且使用处判空）：
+    - surface_container：渲染 Surface 容器，缺失会导致 addTextureView 崩溃
+    - thumb：封面容器（GSY init 后置为 GONE，仅在设置缩略图时显示）
+    - loading：加载动画
+    - bottom_progressbar：底部细进度条
+    - small_close：小窗关闭按钮（默认 GONE）
+    控制栏 UI 完全由外部 PlayerVodControlView 接管。
+-->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <RelativeLayout
+        android:id="@+id/surface_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center" />
+
+    <RelativeLayout
+        android:id="@+id/thumb"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:scaleType="fitCenter" />
+
+    <ProgressBar
+        android:id="@+id/loading"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="invisible" />
+
+    <ProgressBar
+        android:id="@+id/bottom_progressbar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="1.5dp"
+        android:layout_alignParentBottom="true"
+        android:max="100"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/small_close"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:visibility="gone" />
+
+</RelativeLayout>

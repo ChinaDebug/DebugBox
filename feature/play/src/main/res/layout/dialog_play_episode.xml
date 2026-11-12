@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 选集弹窗：顶部线路列表 + 下方剧集网格 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="@dimen/vs_1200"
+    android:layout_height="@dimen/vs_700"
+    android:background="@drawable/shape_dialog_bg"
+    android:orientation="vertical"
+    android:padding="@dimen/vs_30">
+
+    <!-- 标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="@dimen/vs_15">
+
+        <View
+            android:layout_width="@dimen/vs_5"
+            android:layout_height="@dimen/vs_30"
+            android:layout_marginEnd="@dimen/vs_15"
+            android:background="?attr/color_theme" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/ts_28"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnReverse"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/vs_50"
+            android:background="@drawable/button_dialog_main"
+            android:paddingLeft="@dimen/vs_20"
+            android:paddingRight="@dimen/vs_20"
+            android:text="@string/det_sort_reverse"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/ts_20" />
+
+        <Button
+            android:id="@+id/btnClose"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/vs_50"
+            android:layout_marginStart="@dimen/vs_15"
+            android:background="@drawable/button_dialog_main"
+            android:paddingLeft="@dimen/vs_20"
+            android:paddingRight="@dimen/vs_20"
+            android:text="@string/vod_sub_close"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/ts_20" />
+    </LinearLayout>
+
+    <!-- 线路横排 -->
+    <com.owen.tvrecyclerview.widget.TvRecyclerView
+        android:id="@+id/rvFlag"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="horizontal"
+        android:paddingTop="@dimen/vs_5"
+        android:paddingBottom="@dimen/vs_15"
+        app:tv_horizontalSpacingWithMargins="@dimen/vs_10" />
+
+    <!-- 剧集网格 -->
+    <com.owen.tvrecyclerview.widget.TvRecyclerView
+        android:id="@+id/rvSeries"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingTop="@dimen/vs_5"
+        app:tv_horizontalSpacingWithMargins="@dimen/vs_10"
+        app:tv_verticalSpacingWithMargins="@dimen/vs_10" />
+</LinearLayout>

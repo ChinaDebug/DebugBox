@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 普通搜索顶部状态标签：深色半透明圆角标签，与聚搜状态块（bg_fast_search_status）风格统一 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/color_6C3D3D3D" />
+    <corners android:radius="10mm" />
+</shape>

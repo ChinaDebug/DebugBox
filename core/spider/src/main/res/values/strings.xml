@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 配置/接口加载错误提示 -->
+    <string name="config_err_empty_api">Source address is empty</string>
+    <string name="config_err_fetch">Failed to fetch config\n%1$s</string>
+    <string name="config_err_cache_jar">Failed to load jar from cache</string>
+    <string name="config_err_net_jar_empty">Network jar data is empty</string>
+    <string name="config_err_img_jar_empty">Img jar data is empty</string>
+    <string name="config_err_jar_write">Failed to load jar after writing to cache</string>
+    <string name="config_err_jar_net">Failed to load jar from network: %1$s</string>
+</resources>

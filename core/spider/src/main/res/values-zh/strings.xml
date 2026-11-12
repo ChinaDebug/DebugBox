@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 订阅加载错误提示 -->
+    <string name="config_err_empty_api">订阅地址为空</string>
+    <string name="config_err_fetch">拉取订阅失败\n%1$s</string>
+    <string name="config_err_cache_jar">从缓存加载jar失败</string>
+    <string name="config_err_net_jar_empty">从网络上加载jar地址字节数据为空</string>
+    <string name="config_err_img_jar_empty">img jar 数据为空</string>
+    <string name="config_err_jar_write">从网络上加载jar写入缓存后加载失败</string>
+    <string name="config_err_jar_net">从网络上加载jar失败：%1$s</string>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 直播图标：老式电视，两根天线向左上/右上分开 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 左天线（向左上分开） -->
+    <path
+        android:pathData="M3.5,8.5 L1.5,2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round" />
+    <!-- 右天线（向右上分开） -->
+    <path
+        android:pathData="M20.5,8.5 L22.5,2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round" />
+    <!-- 屏幕 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,9 h20 a1.6,1.6 0 0 1 1.6,1.6 v6.8 a1.6,1.6 0 0 1 -1.6,1.6 h-20 a1.6,1.6 0 0 1 -1.6,-1.6 v-6.8 a1.6,1.6 0 0 1 1.6,-1.6 z" />
+    <!-- 底座 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10,20 h4 l0.6,2 h-5.2 z" />
+</vector>

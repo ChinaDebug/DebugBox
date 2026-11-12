@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TVBox</string>
+    <string name="app_home">Home</string>
+    <string name="local_file_picker_title">选择一个文件夹</string>
+    <string name="local_file_picker_select_current">选择当前文件夹</string>
+    <string name="local_file_picker_parent">返回上一级</string>
+    <string name="app_source"></string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_confirm">OK</string>
+
+    // Home Page //
+    <string name="hm_ok">Load Complete</string>
+    <string name="hm_notok">Load Fail</string>
+    <string name="hm_retry">Retry</string>
+    <string name="hm_cancel">Cancel</string>
+    <string name="hm_exit">Press BACK again to EXIT</string>
+    <string name="hm_exit_live">Press BACK again to exit LiveTV</string>
+    <string name="hm_date1">dd MMM</string>
+    <string name="hm_date2">EE HH:mm</string>
+    <string name="hm_hist">History</string>
+    <string name="hm_live">LiveTV</string>
+    <string name="hm_search">Search</string>
+    <string name="hm_push">Push</string>
+    <string name="hm_file">Drives</string>
+    <string name="hm_fav">Favorite</string>
+    <string name="hm_setting">Menu</string>
+    <string name="hm_yes">Yes</string>
+    <string name="hm_no">No</string>
+    <string name="hm_hist_del">Removed from History</string>
+    <string name="hm_cache_del">System cache cleared</string>
+    <string name="hm_config_tip">Please go to Settings to configure the playback source address</string>
+
+    // History Page //
+    <string name="update_badge_text">Updated</string>
+    <string name="update_check_btn">Check Update</string>
+    <string name="update_checking">Checking Update (%1$d/%2$d)</string>
+    <string name="update_checking_start">Checking Update…</string>
+    <string name="update_check_enable">Enable Update Check</string>
+    <string name="update_check_interval">Background Auto Check Interval</string>
+    <string name="update_check_startup">Startup Check</string>
+    <string name="update_check_wifi_only">WiFi Only</string>
+    <string name="update_found">Found %d updates</string>
+    <string name="update_no_found">No updates found</string>
+
+    // Play Detail Page //
+    <string name="det_play">Play</string>
+    <string name="det_expand">Expand</string>
+    <string name="det_search">Search</string>
+    <string name="det_sort">Sort</string>
+    <string name="det_sort_normal">Normal</string>
+    <string name="det_sort_reverse">Reverse</string>
+    <string name="det_push">Push</string>
+    <string name="det_fav">Favorite</string>
+    <string name="det_fav_add">Added to Favorite</string>
+    <string name="det_fav_del">Removed from Favorite</string>
+    <string name="det_fav_star">★ Favorite</string>
+    <string name="det_fav_unstar">☆ Favorite</string>
+    <string name="det_url">Play URL Copied</string>
+    <string name="det_source"></string>
+    <string name="det_year">Year</string>
+    <string name="det_area">Area</string>
+    <string name="det_lang">Language</string>
+    <string name="det_type">Genre</string>
+    <string name="det_actor">Cast</string>
+    <string name="det_dir">Director</string>
+    <string name="det_des"></string>
+    <string name="det_desc">intro</string>
+    <string name="det_back">Back</string>
+
+    // Settings Menu Page //
+    <string name="mn_config">Subscription</string>
+    <string name="mn_home">Site</string>
+    <string name="mn_home_show">Show Site</string>
+    <string name="mn_home_type">Type</string>
+    <string name="mn_home_rec_style">Home Lines</string>
+    <string name="mn_icon">Button</string>
+    <string name="mn_history_num">History</string>
+    <string name="mn_live_boot">Autostart Live</string>
+    <string name="mn_wall_change">Random Wallpaper</string>
+    <string name="mn_wall_setting">Wallpaper Setting</string>
+    <string name="mn_wall_load">Loading Wallpaper</string>
+    <string name="mn_wall_reset">Reset Wallpaper</string>
+    <string name="mn_wall_blur">Wallpaper Blur</string>
+    <string name="mn_wall_local">Local File</string>
+    <string name="mn_cast_setting">Cast Setting</string>
+    <string name="cast_enable">Allow Cast Receive</string>
+    <string name="cast_device_name">Cast Device Name</string>
+    <string name="toast_cast_name_saved">Device name saved</string>
+    <string name="mn_play_type">Player</string>
+    <string name="mn_search">Search Display</string>
+    <string name="mn_ratio">Screen Ratio</string>
+    <string name="mn_bgplay">Bgplay</string>
+    <string name="mn_preview">Detail Page</string>
+    <string name="mn_render">Render</string>
+    <string name="mn_backup">Backup/Restore</string>
+    <string name="mn_dns">DNS</string>
+    <string name="mn_locale">Language</string>
+    <string name="mn_theme">Theme</string>
+    <string name="mn_about">About</string>
+    <string name="mn_purify">Skip Ad</string>
+    <string name="mn_reset">resetApp</string>
+    <string name="mn_fastsearch">FastSearch</string>
+
+    // Settings Dialog Pop-Up //
+    <string name="dia_source">Select Site</string>
+    <string name="dia_api_line">Select API Line</string>
+    <string name="toast_api_line_removed">Multi-source config deleted, its line list was cleared</string>
+    <string name="toast_cannot_delete_current_source">The subscription in use cannot be deleted</string>
+    <string name="confirm_delete_api_line">This is a multi-source subscription. Deleting it will also clear its line list. Delete anyway?</string>
+    <string name="btn_api_line">Multi</string>
+    <string name="dia_hm_type">Select Display Type</string>
+    <string name="dia_hm_icon">Home Icon Placement</string>
+    <string name="dia_history">Select History to Keep</string>
+    <string name="dia_history_list">Subscription History List</string>
+    <string name="dia_history_live">Live History List</string>
+    <string name="dia_history_epg">EPG History List</string>
+    <string name="dia_player">Select Default Kernel</string>
+    <string name="dia_search">Select Search Mode</string>
+    <string name="dia_ratio">Select Screen Ratio</string>
+    <string name="dia_render">Select Render Mode</string>
+    <string name="dia_bkres">Backup / Restore</string>
+    <string name="dia_bkpkg">Select Backup Package</string>
+    <string name="dia_dns">Select DNS</string>
+    <string name="dia_locale">Select Language</string>
+    <string name="dia_theme">Select Theme</string>
+    <string name="dia_wallpaper">Wallpaper Setting</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+    <string name="dia_confirm">Confirm to Clear All ?</string>
+    <string name="dia_reset">Reset Clear Configuration</string>
+    <string name="dia_media_setting_title">Media Setting</string>
+    <string name="dia_detail_page">Select Detail Page Mode</string>
+    <string name="detail_page_preview">Preview Mode</string>
+    <string name="detail_page_poster">Poster Mode</string>
+
+    // Language / Display Values //
+    <string name="lang_zh">Chinese</string>
+    <string name="lang_en">English</string>
+    <string name="search_view_text">Text List</string>
+    <string name="search_view_thumb">Thumbnails</string>
+    <string name="scale_default">Default</string>
+    <string name="scale_16_9">16:9</string>
+    <string name="scale_4_3">4:3</string>
+    <string name="scale_fill">Fill</string>
+    <string name="scale_original">Original</string>
+    <string name="scale_crop">Crop</string>
+    <string name="bgplay_off">Off</string>
+    <string name="bgplay_on">On</string>
+    <string name="bgplay_pip">PiP</string>
+    <string name="theme_0">Netflix</string>
+    <string name="theme_1">Doraemon</string>
+    <string name="theme_2">Pepsi</string>
+    <string name="theme_3">Naruto</string>
+    <string name="theme_4">Minion</string>
+    <string name="theme_5">Yagami</string>
+    <string name="theme_6">Sakura</string>
+    <string name="rec_douban">Douban Hot</string>
+    <string name="rec_site">Site Recommend</string>
+    <string name="rec_history">Watch History</string>
+    <string name="interval_off">Off</string>
+    <string name="interval_30">30 min</string>
+    <string name="interval_1h">1 hour</string>
+    <string name="interval_2h">2 hours</string>
+    <string name="fast_search_on">Enabled</string>
+    <string name="fast_search_off">Disabled</string>
+    <string name="doh_system">System</string>
+    <string name="doh_tencent">Tencent</string>
+    <string name="doh_ali">Ali</string>
+    <string name="doh_360">360</string>
+    <string name="doh_google">Google</string>
+    <string name="doh_adguard">AdGuard</string>
+    <string name="doh_quad9">Quad9</string>
+    <string name="dia_select">Select</string>
+    <string name="toast_no_api_history">No subscription history</string>
+    <string name="toast_no_api_line">No API lines yet, please load a multi-line subscription first</string>
+    <string name="toast_cache_cleared">Cache cleared</string>
+    <string name="toast_local_config_unsupported">Only files under the primary storage are supported</string>
+    <string name="toast_no_available_source">No available site</string>
+    <string name="toast_wallpaper_changing">Changing wallpaper</string>
+    <string name="toast_wallpaper_ok">Wallpaper changed</string>
+    <string name="toast_wallpaper_fail">Wallpaper change failed</string>
+    <string name="toast_wallpaper_not_configured">Current site has no wallpaper configured</string>
+    <string name="toast_group_need_password">This group requires a password</string>
+
+
+    // Settings Backup Restore Page //
+    <string name="set_bkup_ok">Backup Success</string>
+    <string name="set_bkup_del">Backup Deleted</string>
+    <string name="set_bkup_fail">Backup Fail</string>
+    <string name="set_bkup_fail_hk">Backup Fail (Hawk)</string>
+    <string name="set_bkup_fail_db">Backup Fail (DB)</string>
+    <string name="set_rest_ok">Restore Success, Automatic Restart</string>
+    <string name="set_rest_fail_hk">Restore Fail (Hawk)</string>
+    <string name="set_rest_fail_db">Restore Fail (DB)</string>
+    <string name="set_permission_ok">Write Permission Granted</string>
+    <string name="set_permission_fail1">Failed to get Permission</string>
+    <string name="set_permission_fail2">Failed to get Permission, please grant in Settings</string>
+
+    // Activity Page //
+    <string name="act_fav">Favorite</string>
+    <string name="act_fav_sel">Select to Remove</string>
+    <string name="act_fav_rm">Remove</string>
+    <string name="act_drive">Drives</string>
+    <string name="act_hist">History</string>
+    <string name="act_hist_sel">Select to Remove</string>
+    <string name="act_hist_rm">Remove</string>
+    <string name="act_live_play_empty_live_url">The live url is not configured, please go to the settings page to configure it</string>
+    <string name="act_live_play_empty_channel">The channel list is empty</string>
+    <string name="act_live_play_network_error">The network request for the live-streaming address failed</string>
+    <string name="act_search">Search</string>
+    <string name="act_search_clr">Clear</string>
+    <string name="act_search_del">Backspace</string>
+    <string name="act_search_rem">Remote</string>
+    <string name="act_search_trend">Trending</string>
+    <string name="act_search_txt">Enter Search Title</string>
+    <string name="act_settings">Settings</string>
+    <string name="act_home">Home</string>
+    <string name="act_player">Play</string>
+    <string name="act_system">System</string>
+
+    // Search Page //
+    <string name="search_input">Input cannot be blank</string>
+    <string name="search_site">No source site selected</string>
+    <string name="search_checkAll">Select All</string>
+    <string name="search_clearAll">Select None</string>
+    <string name="search_filter">Search Filter</string>
+    <string name="search_current_mode">Search Mode:</string>
+    <string name="search_mode_normal">Normal Search</string>
+    <string name="search_mode_fast">Fast Search</string>
+    <string name="search_select_home">Home Source Only</string>
+    <string name="search_home_not_searchable">Home source does not support search</string>
+    <string name="search_selected_home">Selected home source: %s</string>
+
+    // Fast Search Page //
+    <string name="fs_show_all">All</string>
+    <string name="fs_results">Search Results</string>
+    <string name="global_search">global search</string>
+    <string name="search">search</string>
+    <string name="Select_source">Select source</string>
+
+    // VOD //
+    <string name="vod_audio">Select Audio Track</string>
+    <string name="vod_no_audio">No Audio Track</string>
+    <string name="vod_video">Select Video Track</string>
+    <string name="vod_no_video">No Video Track</string>
+    <string name="vod_sub_option">Subtitle Options</string>
+    <string name="vod_sub_sel">Select Subtitle</string>
+    <string name="vod_sub_na">No Internal Subtitle</string>
+    <string name="vod_sub_int">Internal</string>
+    <string name="vod_sub_ext">External</string>
+    <string name="vod_sub_remote">Search</string>
+    <string name="vod_sub_close">Close</string>
+    <string name="vod_sub_size">Size</string>
+    <string name="vod_sub_delay">Delay</string>
+    <string name="vod_sub_search">Search</string>
+    <string name="vod_sub_off">Subtitle Off</string>
+    <string name="vod_sub_on">Subtitle On</string>
+    <string name="vod_sub_no_permission">No storage permission</string>
+    <string name="vod_remaining_time">Remaining Time</string>
+    <string name="vod_ends_at">Ends at</string>
+
+    <string name="subtitle_search_hint">Enter subtitle name</string>
+    <string name="subtitle_search_loading">Loading subtitles...</string>
+    <string name="subtitle_search_loading_list">Loading subtitle list…</string>
+    <string name="subtitle_search_searching">Searching subtitles…</string>
+    <string name="subtitle_search_empty_input">Input cannot be blank</string>
+    <string name="subtitle_search_error">Search error, please retry</string>
+    <string name="subtitle_search_no_result">No matching subtitles</string>
+    <string name="subtitle_get_url_fail">Failed to get subtitle download address, please retry</string>
+    <string name="subtitle_no_url">No subtitle download address obtained</string>
+    <string name="subtitle_invalid_url">Invalid subtitle address</string>
+    <string name="subtitle_load_success">Subtitle loaded successfully</string>
+    <string name="subtitle_load_fail">Subtitle load failed: %1$s</string>
+    <string name="subtitle_no_internal">No internal subtitles</string>
+
+    <string name="screen_display_net_speed">Network Speed</string>
+    <string name="screen_display_seek_time">Seek Time</string>
+    <string name="screen_display_sys_time">System Time</string>
+    <string name="screen_display_battery">Battery</string>
+
+    // EXO Player
+    <string name="exo_track_selection_title_video">Video</string>
+    <string name="exo_track_selection_title_audio">Audio</string>
+    <string name="exo_track_selection_title_text">Text</string>
+    <string name="exo_track_selection_none">None</string>
+    <string name="exo_track_selection_auto">Auto</string>
+    <string name="exo_track_unknown">Unknown</string>
+    <string name="exo_track_resolution">%1$d × %2$d</string>
+    <string name="exo_track_mono">Mono</string>
+    <string name="exo_track_stereo">Stereo</string>
+    <string name="exo_track_surround">Surround Sound</string>
+    <string name="exo_track_surround_5_point_1">5.1 Surround Sound</string>
+    <string name="exo_track_surround_7_point_1">7.1 Surround Sound</string>
+    <string name="exo_track_role_alternate">Alternate</string>
+    <string name="exo_track_role_supplementary">Supplementary</string>
+    <string name="exo_track_role_commentary">Commentary</string>
+    <string name="exo_track_role_closed_captions">CC</string>
+    <string name="exo_track_bitrate">%1$.2f Mbps</string>
+    <string name="exo_item_list">%1$s，%2$s</string>
+    <string name="sub_size">Size</string>
+    <string name="sub_delay">Delay</string>
+    <string name="sub_style">Style</string>
+    <string name="sub_style_text">ABC.</string>
+
+    // Cast Screen //
+    <string name="cast_title">Cast to Device</string>
+    <string name="cast_scanning">Scanning for devices...</string>
+    <string name="cast_no_devices">No devices found</string>
+    <string name="cast_scan_error">Scan failed, please check network</string>
+    <string name="cast_refresh">Refresh</string>
+    <string name="cast_cancel">Cancel</string>
+    <string name="cast_success">Cast successful</string>
+    <string name="cast_failed">Cast failed</string>
+    <string name="cast_connecting">Connecting...</string>
+    <string name="cast_disconnect">Disconnect</string>
+
+    // Push to Device //
+    <string name="push_title">Push to Device</string>
+    <string name="push_scanning">Scanning for devices...</string>
+    <string name="push_no_devices">No devices found</string>
+    <string name="push_scan_error">Scan failed, please check network</string>
+    <string name="push_refresh">Refresh</string>
+    <string name="push_cancel">Cancel</string>
+    <string name="push_success">Push successful</string>
+    <string name="push_failed">Push failed</string>
+    <string name="push_history">Push History</string>
+    <string name="push_history_empty">No push history</string>
+    <string name="push_cast_btn">Cast</string>
+    <string name="push_received">Received push: %1$s</string>
+    <string name="push_clear_history">Clear History</string>
+
+    // General UI (migrated from hardcoded) //
+    <string name="btn_backup_now">Backup Now</string>
+    <string name="btn_reset">Reset</string>
+    <string name="clean_reset_hint">(Tap the logo at the top-left of the home page to quickly clear the cache)</string>
+    <string name="clean_data">Clean Data</string>
+    <string name="reset_warning">Reset will restore all settings and clear data!</string>
+    <string name="empty_no_data">No data found</string>
+    <string name="hint_api_url">1. Enter subscription URL</string>
+    <string name="hint_live_url">2. Enter Live URL (optional)</string>
+    <string name="hint_epg_url">3. Enter EPG URL (optional)</string>
+    <string name="about_disclaimer">1. This software only provides aggregation and display of online resources. All content is fetched, imported or configured by the user. The software itself does not participate in the creation, upload, storage, downloading, transcoding or distribution of any content.\n\n2. This software is for personal learning, technical research and reference only. Please delete it within 24 hours after download or installation. Do not use this software for any commercial purpose or in any scenario that violates local laws and regulations.\n\n3. Users are solely responsible for their usage behavior and all consequences arising therefrom. Any copyright, privacy, security or other legal disputes caused by the use of this software are unrelated to the developer.</string>
+    <string name="about_credits">When repackaging, redistributing or re-releasing, please keep the original source:\nhttps://github.com/CatVodTVOfficial/TVBoxOSC\nhttps://github.com/ChinaDebug/DebugBox</string>
+    <string name="danmu_setting">Danmaku Settings</string>
+    <string name="danmu_enable">Danmaku Toggle</string>
+    <string name="danmu_mode">Danmaku Style</string>
+    <string name="danmu_speed">Danmaku Speed</string>
+    <string name="danmu_size">Danmaku Size</string>
+    <string name="danmu_lines">Danmaku Lines</string>
+    <string name="danmu_alpha">Danmaku Opacity</string>
+
+    // Live UI //
+    <string name="live_more">More</string>
+    <string name="live_program">Program</string>
+    <string name="live_info">Info</string>
+    <string name="live_no_program">No program info</string>
+    <string name="live_no_program_ellipsis">No program info…</string>
+    <string name="live_source_count">Source 1/1</string>
+    <string name="live_epg_back">Replay</string>
+    <string name="live_password_hint">Enter password</string>
+
+    // Search UI //
+    <string name="search_current_word">Current keyword:</string>
+    <string name="search_recommend_words">Suggested keywords:</string>
+    <string name="search_history">Search History</string>
+    <string name="subtitle_name_hint">Enter subtitle name</string>
+    <string name="subtitle_loading">Loading subtitles...</string>
+    <string name="subtitle_result">Subtitle Search Results</string>
+    <string name="subtitle_archive">Archive</string>
+
+    // Drive UI //
+    <string name="drive_space_name">Drive Name</string>
+    <string name="drive_alist_addr">Alist Address</string>
+    <string name="drive_alist_addr_hint">Alist website address</string>
+    <string name="drive_init_path">Initial Path</string>
+    <string name="drive_password">Password</string>
+    <string name="drive_webdav_addr">WebDAV Address</string>
+    <string name="drive_username">Username</string>
+    <string name="drive_add">Add Drive</string>
+    <string name="drive_name_hint">Name</string>
+    <string name="drive_addr_hint">Address</string>
+    <string name="drive_username_webdav">Username (WebDAV)</string>
+    <string name="drive_password_webdav">Password (WebDAV)</string>
+
+    // Subtitle / Player UI //
+    <string name="subtitle_font_color">Font Color</string>
+    <string name="subtitle_white">White</string>
+    <string name="subtitle_stroke_color">Outline Color</string>
+    <string name="subtitle_black_edge">Black Outline</string>
+    <string name="subtitle_font_weight">Font Weight</string>
+    <string name="subtitle_normal">Normal</string>
+    <string name="subtitle_preview">Preview</string>
+    <string name="subtitle_preview_effect">Subtitle Preview</string>
+    <string name="subtitle_offset">Advance/Delay</string>
+    <string name="subtitle_zero_sec">0s</string>
+    <string name="subtitle_restore">Restore Defaults</string>
+    <string name="play_parse">Parse</string>
+    <string name="notification_episode_name">Title</string>
+
+    // Detail UI //
+    <string name="detail_no_play_data">No playable data</string>
+    <string name="detail_loading">Loading...</string>
+    <string name="detail_load_failed">Load Failed</string>
+    <string name="quick_search_hint">No results in other sites, try different keywords</string>
+
+    // Code UI (migrated from hardcoded) //
+    <string name="unknown_error">Unknown error</string>
+    <string name="confirm_clear_all_data">Clear all data?</string>
+    <string name="perm_title">Permission Reminder</string>
+    <string name="perm_tv_msg">TV devices need all-file access for backup/restore and local subtitles. Please enable it in Settings with the remote.</string>
+    <string name="perm_tv_msg2">Need all-file access for backup/restore and local subtitles. Go to settings to enable it?</string>
+    <string name="perm_go_settings">Go to Settings</string>
+    <string name="perm_skip">Skip</string>
+    <string name="perm_denied_msg">Storage permission denied. TVBox needs it for backup/restore and local subtitles. Apply again?</string>
+    <string name="perm_reapply">Reapply</string>
+    <string name="perm_permanent_denied_msg">Storage permission was permanently denied. Please enable it manually in app settings, otherwise backup/restore and local subtitles will not work.</string>
+    <string name="perm_ask_msg">Storage permission denied. Go to settings to enable it?</string>
+    <string name="toast_no_live_history">No live history</string>
+    <string name="toast_no_epg_history">No EPG history</string>
+    <string name="api_scan_hint">Scan the QR code with your phone/PC or open the address in a browser:\n%1$s</string>
+    <string name="confirm_reset_app">Reset the app?</string>
+    <string name="toast_all_cleared">All data cleared</string>
+    <string name="toast_backup_ok">Backup successful, restarting the app...</string>
+    <string name="toast_backup_fail">Backup failed</string>
+    <string name="toast_restore_ok">Restore successful, restarting the app...</string>
+    <string name="toast_restore_fail">Restore failed</string>
+    <string name="toast_restore_version_mismatch">Backup version is incompatible with the current app. Restore aborted.</string>
+
+    // Live code UI //
+    <string name="toast_live_switched">Live source switched</string>
+    <string name="toast_live_load_failed">Failed to load live source</string>
+    <string name="toast_channel_not_found">Channel not found: %1$s</string>
+    <string name="toast_fav_added">Added to favorites</string>
+    <string name="live_menu_line">Line Selection</string>
+    <string name="live_menu_ratio">Aspect Ratio</string>
+    <string name="live_menu_timeout">Timeout Switch</string>
+    <string name="live_menu_pref">Preferences</string>
+    <string name="live_menu_addr">Live Address</string>
+    <string name="live_menu_exit">Exit Live</string>
+    <string name="live_scale_default">Default</string>
+    <string name="live_scale_fill">Fill</string>
+    <string name="live_scale_original">Original</string>
+    <string name="live_scale_crop">Crop</string>
+    <string name="live_timeout_off">Off</string>
+    <string name="live_pref_show_time">Show Time</string>
+    <string name="live_pref_show_speed">Show Speed</string>
+    <string name="live_pref_reverse_zap">Reverse Channel</string>
+    <string name="live_pref_cross_select">Cross Category</string>
+    <string name="live_pref_disable_pwd">Disable Password</string>
+    <string name="live_pref_fav_channel">Favorite Channel</string>
+    <string name="live_addr_history">History</string>
+    <string name="toast_no_live_addr">No live address history. Add a live address in Settings first.</string>
+    <string name="live_today">Today</string>
+    <string name="live_tomorrow">Tomorrow</string>
+    <string name="toast_no_live_channel">No live channel</string>
+    <string name="toast_live_all_sources_failed">All lines of this channel failed to play. Please switch to another channel.</string>
+    <string name="live_line_fmt">Line %1$d/%2$d</string>
+    <string name="live_now">Live</string>
+    <string name="live_reserve">Reserve</string>
+    <string name="live_current_no_program">No program currently</string>
+
+    // Collect / History / Push / Drive code UI //
+    <string name="toast_collect_cleared">Favorites cleared</string>
+    <string name="confirm_clear_all_collect">Clear all favorites?</string>
+    <string name="toast_checking">Checking, please wait</string>
+    <string name="toast_history_cleared">History cleared</string>
+    <string name="history_watched_prefix">Watched</string>
+    <string name="toast_no_history">No history</string>
+    <string name="confirm_clear_all_history">Clear all history?</string>
+    <string name="cast_video">Cast Video</string>
+    <string name="toast_cast_received">Received cast: %1$s</string>
+    <string name="toast_no_result">No results</string>
+    <string name="fast_search_ready">Ready to search</string>
+    <string name="fast_search_result_zero">Results 0</string>
+    <string name="fast_search_searching">Searching %1$d/%2$d</string>
+    <string name="fast_search_results">Results %1$d</string>
+    <string name="fast_search_done">Search complete %1$d</string>
+    <string name="fast_search_sorting">Sorting…</string>
+    <string name="fast_search_sources">%1$d sources · Done</string>
+    <string name="search_all">All</string>
+    <string name="push_addr_failed">Failed to get service address, return to home and re-enter</string>
+    <string name="toast_drive_name_required">Please provide a drive name</string>
+    <string name="toast_webdav_addr_required">Please fill in the WebDAV address</string>
+
+    // Media Setting Dialog //
+    <string name="media_category_general">General</string>
+    <string name="media_vod_player_preferred">Vod Kernel Preferred</string>
+    <string name="media_select_player">Select Kernel</string>
+    <string name="media_render_mode">Render Mode</string>
+    <string name="media_select_render">Select Render Mode</string>
+    <string name="media_decode_mode">Decode Mode</string>
+    <string name="media_decode_hard">Hardware First</string>
+    <string name="media_decode_soft">Software First</string>
+    <string name="media_decode_hard_only">Hardware Only</string>
+    <string name="media_decode_soft_only">Software Only</string>
+    <string name="media_select_decode">Select Decode Mode</string>
+
+    // Play code UI //
+    <string name="play_err_no_video_addr">No video source address</string>
+    <string name="play_err_no_play_addr">No play address</string>
+    <string name="play_err_addr_expired">Play address expired</string>
+    <string name="play_err_video_error">Video playback error</string>
+    <string name="play_err_fetch_info">Failed to get play info</string>
+    <string name="play_err_parse_failed">Parse failed</string>
+    <string name="play_err_save_record">Failed to save watch history: %1$s</string>
+    <string name="play_err_no_content_cast">No playable content to cast</string>
+    <string name="play_err_jianpian">Jianpian parse failed</string>
+    <string name="play_err_video_addr">Invalid video source address</string>
+    <string name="play_err_thunder">Magnet parse exception</string>
+    <string name="play_err_parser_no_url">Parser has no parse URL configured</string>
+    <string name="play_err_parse_no_response">Parse error: server no response</string>
+    <string name="play_err_sniff_timeout">Sniff timeout, no playable address obtained</string>
+    <string name="play_err_no_parse_site">No available parse site configured</string>
+    <string name="play_err_all_parse_failed">All parse sites failed, switch parser or line</string>
+    <string name="play_err_parse_site_no_response">Parse site no response</string>
+    <string name="play_err_missing_play_addr">Parse result missing play address</string>
+    <string name="play_err_invalid_play_addr">Parse result is not a valid play address</string>
+    <string name="play_err_no_addr_parsed">Parse site returned no play address</string>
+    <string name="play_err_server_error">Server responded but parse error</string>
+
+    // Download protocol (magnet / thunder) UI //
+    <string name="thunder_download_error">Download error</string>
+    <string name="thunder_parse_timeout">Parse download timeout</string>
+    <string name="thunder_invalid_link">Invalid link</string>
+    <string name="bt_no_video_file">No playable video file found in this torrent</string>
+    <string name="bt_ftp_unsupported">FTP direct link not supported, please switch to another source</string>
+
+    // Drive code UI //
+    <string name="toast_no_drive">No drive</string>
+    <string name="toast_drive_deleted">Deleted %1$s</string>
+    <string name="toast_preview_unsupported">Preview not supported for this file type</string>
+    <string name="toast_file_addr_failed">Failed to get file address</string>
+    <string name="drive_select_type">Select Storage Type</string>
+    <string name="toast_added_local_dir">Local directory added</string>
+    <string name="toast_added_drive">%1$s added</string>
+    <string name="drive_sort_name_asc">Name Ascending</string>
+    <string name="drive_sort_name_desc">Name Descending</string>
+    <string name="drive_sort_time_asc">Modified Time Ascending</string>
+    <string name="drive_sort_time_desc">Modified Time Descending</string>
+    <string name="drive_select_sort">Select Sort Order</string>
+    <string name="toast_alist_addr_required">Please fill in the Alist website address</string>
+
+    // Search / Subtitle code UI //
+    <string name="guess_you_want">Guess You Want</string>
+    <string name="toast_input_keyword">Please enter a search keyword</string>
+    <string name="toast_no_searchable_site">No searchable site</string>
+    <string name="subtitle_file">File</string>
+    <string name="subtitle_perm_msg">All-file access needed to select local subtitles. Go to settings to enable it?</string>
+    <string name="subtitle_perm_denied_msg">Storage permission permanently denied. Please enable it manually in app settings, otherwise local subtitle selection is unavailable.</string>
+    <string name="subtitle_dl_addr_failed">Failed to get subtitle download address, please retry</string>
+    <string name="subtitle_no_dl_addr">No subtitle download address obtained</string>
+
+    // Danmaku / episode boundary UI //
+    <string name="ep_bound_reverse_first">Already at the first episode (reverse)</string>
+    <string name="ep_bound_reverse_last">Already at the latest episode (reverse)</string>
+    <string name="ep_bound_asc_first">Already at the first episode</string>
+    <string name="ep_bound_asc_last">Already at the latest episode</string>
+    <string name="play_parse_from_fmt">Parse from: %1$s</string>
+    <string name="danmu_loading_hint">Danmaku loading may take a moment, please wait</string>
+    <string name="danmu_init_failed">Danmaku service init failed, please restart the app</string>
+    <string name="danmu_load_failed">Danmaku load failed, check the danmaku source</string>
+    <string name="danmu_random_color">Random Color</string>
+    <string name="danmu_fancy">Fancy Danmaku</string>
+    <string name="danmu_speed_very_slow">Very Slow</string>
+    <string name="danmu_speed_slow">Slow</string>
+    <string name="danmu_speed_normal">Normal</string>
+    <string name="danmu_speed_fast">Fast</string>
+    <string name="danmu_size_fmt">%1$d×</string>
+    <string name="danmu_lines_fmt">%1$d lines</string>
+</resources>

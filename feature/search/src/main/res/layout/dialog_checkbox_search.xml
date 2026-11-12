@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/root"
+        android:layout_width="@dimen/vs_340"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="@dimen/vs_30"
+        android:background="@drawable/shape_dialog_bg_main"
+        android:orientation="vertical"
+        android:padding="@dimen/vs_20">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingBottom="@dimen/vs_10"
+            android:text="@string/search_filter"
+            android:textColor="@color/color_FFFFFF"
+            android:textSize="@dimen/ts_22"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/vs_10">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/search_current_mode"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_18" />
+
+            <LinearLayout
+                android:id="@+id/checkModeNormal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/vs_8"
+                android:background="@drawable/shape_user_focus"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/vs_5">
+
+                <ImageView
+                    android:id="@+id/ivModeNormal"
+                    android:layout_width="@dimen/vs_20"
+                    android:layout_height="@dimen/vs_20"
+                    android:src="@drawable/shape_search_clearall" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/vs_5"
+                    android:text="@string/search_mode_normal"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_16" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/checkModeFast"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/vs_8"
+                android:background="@drawable/shape_user_focus"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/vs_5">
+
+                <ImageView
+                    android:id="@+id/ivModeFast"
+                    android:layout_width="@dimen/vs_20"
+                    android:layout_height="@dimen/vs_20"
+                    android:src="@drawable/shape_search_clearall" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/vs_5"
+                    android:text="@string/search_mode_fast"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_16" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/vs_15"
+            android:weightSum="3">
+
+            <LinearLayout
+                android:id="@+id/checkAll"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/vs_40"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_3"
+                android:layout_marginLeft="@dimen/vs_3"
+                android:layout_marginEnd="@dimen/vs_3"
+                android:layout_marginRight="@dimen/vs_3"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="@dimen/vs_8">
+
+                <ImageView
+                    android:id="@+id/ivCheckAll"
+                    android:layout_width="@dimen/vs_20"
+                    android:layout_height="@dimen/vs_20"
+                    android:src="@drawable/shape_search_clearall" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_5"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:gravity="center"
+                    android:text="@string/search_checkAll"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_16" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/selectHome"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/vs_40"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_3"
+                android:layout_marginLeft="@dimen/vs_3"
+                android:layout_marginEnd="@dimen/vs_3"
+                android:layout_marginRight="@dimen/vs_3"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="@dimen/vs_8">
+
+                <ImageView
+                    android:id="@+id/ivSelectHome"
+                    android:layout_width="@dimen/vs_20"
+                    android:layout_height="@dimen/vs_20"
+                    android:src="@drawable/shape_search_clearall" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_5"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:gravity="center"
+                    android:text="@string/search_select_home"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_16" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/clearAll"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/vs_40"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_3"
+                android:layout_marginLeft="@dimen/vs_3"
+                android:layout_marginEnd="@dimen/vs_3"
+                android:layout_marginRight="@dimen/vs_3"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="@dimen/vs_8">
+
+                <ImageView
+                    android:layout_width="@dimen/vs_20"
+                    android:layout_height="@dimen/vs_20"
+                    android:src="@drawable/shape_search_clearall" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_5"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:gravity="center"
+                    android:text="@string/search_clearAll"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_16" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.owen.tvrecyclerview.widget.TvRecyclerView
+            android:id="@+id/mGridView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="@dimen/vs_400"
+            android:orientation="vertical" />
+
+    </LinearLayout>
+
+</FrameLayout>

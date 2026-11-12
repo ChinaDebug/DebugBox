@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="@dimen/vs_420"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/shape_dialog_bg_main"
+        android:orientation="vertical">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:lineSpacingExtra="@dimen/ts_20"
+                    android:padding="@dimen/vs_10"
+                    android:shadowColor="@color/color_FF000000"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:singleLine="true"
+                    android:text="@string/vod_sub_option"
+                    android:textColor="@color/color_FFFFFF"
+                    android:textSize="@dimen/ts_26"
+                    android:textStyle="bold" />
+
+                <!-- 字幕来源选择 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/selectInternal"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_4"
+                        android:layout_marginEnd="@dimen/vs_4"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:text="@string/vod_sub_int"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/selectLocal"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_4"
+                        android:layout_marginEnd="@dimen/vs_4"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:text="@string/vod_sub_ext"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/selectRemote"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_4"
+                        android:layout_marginEnd="@dimen/vs_4"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:text="@string/vod_sub_remote"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/selectClose"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_4"
+                        android:layout_marginEnd="@dimen/vs_4"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:text="@string/vod_sub_close"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+                </LinearLayout>
+
+                <!-- 字幕大小 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginTop="@dimen/vs_5"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/sub_size"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleSizeMinus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="-"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleSizeText"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_10"
+                        android:layout_marginEnd="@dimen/vs_10"
+                        android:gravity="center"
+                        android:text="16"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/subtitleSizePlus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 字体颜色选择 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_text_color"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/subtitle_font_color"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleTextColorMinus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="-"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleTextColorText"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_10"
+                        android:layout_marginEnd="@dimen/vs_10"
+                        android:gravity="center"
+                        android:text="@string/subtitle_white"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/subtitleTextColorPlus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 描边颜色选择 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_stroke_color"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/subtitle_stroke_color"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleStrokeColorMinus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="-"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleStrokeColorText"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_10"
+                        android:layout_marginEnd="@dimen/vs_10"
+                        android:gravity="center"
+                        android:text="@string/subtitle_black_edge"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/subtitleStrokeColorPlus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 字体粗细 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_bold"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/subtitle_font_weight"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleBoldMinus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="-"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleBoldText"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_10"
+                        android:layout_marginEnd="@dimen/vs_10"
+                        android:gravity="center"
+                        android:text="@string/subtitle_normal"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/subtitleBoldPlus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 样式预览 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginTop="@dimen/vs_5"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/subtitle_preview"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <com.tvbox.kotlin.core.player.subtitle.widget.SimpleSubtitleView
+                        android:id="@+id/subtitleStyleText"
+                        android:layout_width="@dimen/vs_180"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:text="@string/subtitle_preview_effect"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+                </LinearLayout>
+
+                <!-- 时间调整 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_delay"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_45"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="@dimen/vs_100"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_5"
+                        android:shadowColor="@color/color_FF000000"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="2"
+                        android:text="@string/subtitle_offset"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleTimeMinus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="-"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subtitleTimeText"
+                        android:layout_width="@dimen/vs_80"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/vs_10"
+                        android:layout_marginEnd="@dimen/vs_10"
+                        android:gravity="center"
+                        android:text="@string/subtitle_zero_sec"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+
+                    <TextView
+                        android:id="@+id/subtitleTimePlus"
+                        android:layout_width="@dimen/vs_40"
+                        android:layout_height="@dimen/vs_40"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_24"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 重置按钮 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_reset"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginTop="@dimen/vs_5"
+                    android:layout_marginEnd="@dimen/vs_15"
+                    android:layout_marginBottom="@dimen/vs_10"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/subtitleReset"
+                        android:layout_width="@dimen/vs_160"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:background="@drawable/button_dialog_main"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:padding="@dimen/vs_8"
+                        android:text="@string/subtitle_restore"
+                        android:textColor="@color/color_FFFFFF"
+                        android:textSize="@dimen/ts_20" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </ScrollView>
+    </LinearLayout>
+</FrameLayout>

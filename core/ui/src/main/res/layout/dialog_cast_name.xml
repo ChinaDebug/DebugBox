@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="@dimen/vs_460"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/shape_dialog_bg_main"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingLeft="@dimen/vs_30"
+        android:paddingTop="@dimen/vs_20"
+        android:paddingRight="@dimen/vs_30"
+        android:paddingBottom="@dimen/vs_30">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0"
+            android:shadowColor="@color/color_FF000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="5"
+            android:singleLine="true"
+            android:text="@string/cast_device_name"
+            android:textColor="@color/color_FFFFFF"
+            android:textSize="@dimen/ts_26"
+            android:textStyle="bold"
+            tools:text="@string/cast_device_name" />
+
+        <com.tvbox.kotlin.core.ui.widget.CustomEditText
+            android:id="@+id/input_cast_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/vs_20"
+            android:background="@drawable/input_dialog_api_input"
+            android:hint="@string/cast_device_name"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingLeft="@dimen/vs_8"
+            android:paddingTop="@dimen/vs_10"
+            android:paddingRight="@dimen/vs_8"
+            android:paddingBottom="@dimen/vs_10"
+            android:shadowColor="@color/color_000000_60"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="3"
+            android:textColor="@color/color_FFFFFF"
+            android:textColorHint="@color/color_FFFFFF_50"
+            android:textSize="@dimen/ts_22" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/vs_20"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_cast_name_ok"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="@dimen/vs_45"
+                android:padding="@dimen/vs_10"
+                android:text="@string/dialog_confirm"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_22" />
+
+            <View
+                android:layout_width="@dimen/vs_20"
+                android:layout_height="0dp" />
+
+            <TextView
+                android:id="@+id/btn_cast_name_cancel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="@dimen/vs_45"
+                android:padding="@dimen/vs_10"
+                android:text="@string/dialog_cancel"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_22" />
+        </LinearLayout>
+
+    </LinearLayout>
+</FrameLayout>

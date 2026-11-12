@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 略缩图加载占位图 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <corners android:radius="14px" />
+        </shape>
+    </item>
+    <item
+        android:antialias="true"
+        android:gravity="center"
+        android:drawable="@drawable/icon_img_placeholder" />
+</layer-list>

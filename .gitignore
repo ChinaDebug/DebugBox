@@ -1,0 +1,31 @@
+# 操作系统
+Thumbs.db
+.DS_Store
+*.hprof
+
+# 构建产物与缓存
+build/
+.gradle/
+.kotlin/
+captures/
+*.apk
+*.aab
+*.aar
+*.ap_
+*.dex
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 本地环境配置
+local.properties
+
+# 签名文件
+keystore.properties
+*.jks
+*.keystore
+*.p12
