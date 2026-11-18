@@ -570,6 +570,10 @@ object DanmuLoader {
             }
             return fetchRemoteContent(source)
         }
+        // 结构化文本（XML/JSON）直接返回：Base64 解码会跳过非法字符，
+        // 将 XML/JSON 中的字母数字误解码为无效字节，导致弹幕解析为空并被错误缓存
+        val head = source.trimStart()
+        if (head.startsWith("<") || head.startsWith("{") || head.startsWith("[")) return source
         // base64 编码数据（B 站弹幕常见格式）
         val decoded = try {
             android.util.Base64.decode(source, android.util.Base64.DEFAULT)

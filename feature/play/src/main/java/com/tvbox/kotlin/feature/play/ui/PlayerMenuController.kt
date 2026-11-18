@@ -1,5 +1,6 @@
 package com.tvbox.kotlin.feature.play.ui
 
+import androidx.media3.common.C
 import com.tvbox.kotlin.core.player.PlayerConstants
 import com.tvbox.kotlin.core.player.PlayerHelper
 import com.tvbox.kotlin.core.player.thirdparty.Kodi
@@ -7,7 +8,6 @@ import com.tvbox.kotlin.core.player.thirdparty.MXPlayer
 import com.tvbox.kotlin.core.player.thirdparty.ReexPlayer
 import com.tvbox.kotlin.core.ui.R as CoreUiR
 import com.tvbox.kotlin.core.ui.dialog.SelectDialog
-import tv.danmaku.ijk.media.exo2.IjkExo2MediaPlayer
 
 /**
  * 控制栏菜单与投屏控制器，屏蔽 PlayFragment/PlayActivity 的宿主差异。
@@ -23,26 +23,11 @@ class PlayerMenuController(private val host: PlayHost) {
     /** 切换播放器内核后重新装配并播放的回调（宿主装配时绑定 session.startPlayUrl） */
     var onRestartPlay: (() -> Unit)? = null
 
-    /** 显示倍速选择锚点菜单 */
-    fun showPlaySpeedMenu() {
-        if (currentPopup?.isShowing() == true) {
-            currentPopup?.dismiss()
-            currentPopup = null
-            return
-        }
-        currentPopup = PlayerMenuHelper.showPlaySpeedMenu(host.context, host.controller, host.viewModel)
-        currentPopup?.setOnDismissListener {
-            currentPopup = null
-            // 菜单关闭后重启 8 秒自动隐藏倒计时
-            host.controller.resumeAutoHide()
-        }
-    }
-
     /** 显示播放器选择对话框，选择内核后重新装配并播放 */
     fun showPlayerSelectDialog() {
-        // Exo 恒可用；MX/Reex/Kodi 检测到安装后动态加入选项
+        // Media3 恒可用；MX/Reex/Kodi 检测到安装后动态加入选项
         val players = buildList {
-            add(PlayerConstants.PLAYER_TYPE_EXO)
+            add(PlayerConstants.PLAYER_TYPE_MEDIA3)
             if (MXPlayer.isInstalled(host.context)) add(PlayerConstants.PLAYER_TYPE_MX)
             if (ReexPlayer.isInstalled(host.context)) add(PlayerConstants.PLAYER_TYPE_REEX)
             if (Kodi.isInstalled(host.context)) add(PlayerConstants.PLAYER_TYPE_KODI)
@@ -80,17 +65,9 @@ class PlayerMenuController(private val host: PlayHost) {
      * 杜比双层 MKV 的增强层被合并后视轨数为 1，不会意外显示视轨图标。
      */
     fun refreshTrackIcons() {
-        val player = PlayerMenuHelper.getIjkPlayer(host.videoView)
-        val audioCount = if (player is IjkExo2MediaPlayer) {
-            PlayerMenuHelper.buildExoAudioTracks(player).size
-        } else {
-            0
-        }
-        val videoCount = if (player is IjkExo2MediaPlayer) {
-            PlayerMenuHelper.buildExoVideoTracks(player).size
-        } else {
-            0
-        }
+        val hasPlayer = PlayerMenuHelper.getExoPlayer(host.videoView) != null
+        val audioCount = if (hasPlayer) PlayerMenuHelper.buildExoAudioTracks(host.videoView).size else 0
+        val videoCount = if (hasPlayer) PlayerMenuHelper.buildExoVideoTracks(host.videoView).size else 0
         host.controller.setAudioTrackVisible(audioCount > 1)
         host.controller.setVideoTrackVisible(videoCount > 1)
     }
@@ -115,13 +92,39 @@ class PlayerMenuController(private val host: PlayHost) {
         PlayerMenuHelper.switchOrientation(activity, host.controller)
     }
 
-    /** 更新左上角分辨率显示与横竖屏切换按钮（尺寸未就绪时忽略） */
+    /** 分辨率补刷次数：真实尺寸常在 PREPARED/首帧后才就绪，有限次重试避免轮询 */
+    private var resolutionRetry = 0
+
+    /** 更新左上角分辨率显示与横竖屏切换按钮；videoSize 未就绪时用轨道信息兜底并有限重试 */
     fun updateResolution() {
-        val size = host.videoView.videoSize ?: return
-        if (size.size >= 2 && size[0] > 0 && size[1] > 0) {
+        val size = host.videoView.videoSize ?: readFormatSize()
+        if (size != null && size[0] > 0 && size[1] > 0) {
+            resolutionRetry = 0
             host.controller.setResolution("${size[0]} x ${size[1]}")
             host.controller.updateOrientationButton(size[0], size[1])
+        } else if (resolutionRetry < 3) {
+            resolutionRetry++
+            host.controller.postDelayed({ updateResolution() }, 500)
         }
+    }
+
+    /** 从轨道信息读取首个视频 Format 的宽高，videoSize 未就绪时兜底 */
+    private fun readFormatSize(): IntArray? {
+        val mapped = host.videoView.trackSelector?.currentMappedTrackInfo ?: return null
+        for (renderIndex in 0 until mapped.rendererCount) {
+            if (mapped.getRendererType(renderIndex) != C.TRACK_TYPE_VIDEO) continue
+            val groups = mapped.getTrackGroups(renderIndex)
+            for (groupIndex in 0 until groups.length) {
+                val group = groups.get(groupIndex)
+                for (trackIndex in 0 until group.length) {
+                    val format = group.getFormat(trackIndex)
+                    if (format.width > 0 && format.height > 0) {
+                        return intArrayOf(format.width, format.height)
+                    }
+                }
+            }
+        }
+        return null
     }
 
     /** 从偏好读取屏显配置并应用到控制器右上角容器 */

@@ -5,9 +5,9 @@ import android.view.Surface
 /**
  * 统一播放器抽象接口。
  *
- * Exo 与 System 两套实现均实现本接口，向控制层屏蔽底层差异。
+ * Media3 与 System 两套实现均实现本接口，向控制层屏蔽底层差异。
  * 接口方法仅描述业务层关心的能力，底层生命周期由 [MyVideoView]
- * （GSYVideoPlayer 封装）统一驱动，实现类需保证空安全与线程安全。
+ * （Media3 直控内核）统一驱动，实现类需保证空安全与线程安全。
  */
 interface IPlayer {
 

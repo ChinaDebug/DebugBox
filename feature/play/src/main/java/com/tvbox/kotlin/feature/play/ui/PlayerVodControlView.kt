@@ -21,6 +21,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
@@ -44,6 +45,7 @@ import com.tvbox.kotlin.feature.play.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * 播放控制视图。
@@ -94,6 +96,8 @@ class PlayerVodControlView @JvmOverloads constructor(
         private const val SLIDE_TICK_INTERVAL = 100L
         /** 倍速长按判定延迟（毫秒） */
         private const val SPEED_LONG_PRESS_DELAY = 500L
+        /** 画面右侧长按倍速判定延迟（毫秒） */
+        private const val SCREEN_LONG_PRESS_DELAY = 300L
         /** 片头/片尾跳过时间上限（秒），超过回绕为 0（600 = 10 分钟） */
         private const val MAX_SKIP_SECONDS = 600
 
@@ -131,6 +135,10 @@ class PlayerVodControlView @JvmOverloads constructor(
         fun onSpeedLongPress(): Boolean
         /** 倍速按钮长按松手：恢复原速 */
         fun onSpeedLongPressRelease()
+        /** 画面右侧长按：以固定倍速临时播放，返回 true 表示已进入（松手恢复原速） */
+        fun onScreenLongPressSpeed(): Boolean
+        /** 画面右侧长按松手：恢复原速 */
+        fun onScreenLongPressSpeedRelease()
         /** 点击缩放按钮 */
         fun onScaleClick()
         /** 点击解码器按钮 */
@@ -139,6 +147,10 @@ class PlayerVodControlView @JvmOverloads constructor(
         fun onSubtitleClick()
         /** 点击弹幕按钮 */
         fun onDanmuClick()
+        /** 点击画质增强按钮 */
+        fun onQualityClick()
+        /** 点击设置按钮（打开右侧设置面板） */
+        fun onSettingsClick()
         /** 点击音轨按钮 */
         fun onAudioClick()
         /** 点击视轨按钮 */
@@ -179,6 +191,8 @@ class PlayerVodControlView @JvmOverloads constructor(
     private var lastNetSpeedKb = 0L
     private var lastNetSpeedTime = 0L
     private var tvResolution: TextView? = null
+    /** 标题下的信息行容器（分辨率独立于右上角屏显） */
+    private var tvTopLine2: View? = null
     private var tvTopRContainer: LinearLayout? = null
     private var tvSeekTime: TextView? = null
     private var tvSystemTime: TextView? = null
@@ -242,6 +256,9 @@ class PlayerVodControlView @JvmOverloads constructor(
     private var playPlayerTxt: TextView? = null
     private var playSubtitle: View? = null
     private var llDanmuSetting: View? = null
+    private var playQuality: View? = null
+    /** 设置入口按钮：打开右侧设置面板 */
+    private var playSettings: View? = null
     private var playAudio: View? = null
     private var playVideo: View? = null
     private var playCast: View? = null
@@ -381,6 +398,15 @@ class PlayerVodControlView @JvmOverloads constructor(
         speedLongPressActive = listener?.onSpeedLongPress() == true
     }
 
+    /** 画面右侧长按判定任务及按下坐标，用于区分长按与滑动 */
+    private var screenLongPressRunnable: Runnable? = null
+    private var screenLongPressActive = false
+    private var screenDownX = 0f
+    private var screenDownY = 0f
+
+    /** 长按倍速提示浮层 */
+    private var longPressSpeedTip: TextView? = null
+
     /** 锁屏按钮自动隐藏任务 */
     private val lockRunnable = Runnable {
         lockView?.isFocusable = false
@@ -518,13 +544,15 @@ class PlayerVodControlView @JvmOverloads constructor(
         listener = l
     }
 
+    /** 控制栏显示时的信息刷新回调（宿主用于补刷分辨率等尺寸信息） */
+    var onInfoRefresh: (() -> Unit)? = null
+
     /** 清空回调监听，宿主销毁时调用 */
     fun clearListener() {
         listener = null
     }
 
     init {
-        // 加载控制布局并完成视图绑定
         LayoutInflater.from(context).inflate(R.layout.player_vod_control_view, this, true)
         initView()
     }
@@ -537,6 +565,7 @@ class PlayerVodControlView @JvmOverloads constructor(
         tvMpbsTopHide = findViewById(R.id.tv_MPBS_top_hide)
         tvSpeedTopHide = findViewById(R.id.tv_speed_top_hide)
         tvResolution = findViewById(R.id.tv_resolution)
+        tvTopLine2 = findViewById(R.id.tv_top_line2)
         tvTopRContainer = findViewById(R.id.tv_top_r_container)
         tvSeekTime = findViewById(R.id.tv_seek_time)
         tvSystemTime = findViewById(R.id.tv_system_time)
@@ -559,6 +588,7 @@ class PlayerVodControlView @JvmOverloads constructor(
         volumeProgressbar = findViewWithTag("progressbar_volume")
         brightnessProgressbar = findViewWithTag("progressbar_brightness")
         slideInfoText = findViewWithTag("vod_control_slide_info")
+        longPressSpeedTip = findViewById(R.id.tv_long_press_speed_tip)
         progressContainer = findViewById(R.id.tv_progress_container)
         progressText = findViewById(R.id.tv_progress_text)
         videoProgressbar = findViewById(R.id.video_progressbar)
@@ -587,6 +617,8 @@ class PlayerVodControlView @JvmOverloads constructor(
         playPlayerTxt = findViewById(R.id.play_player_txt)
         playSubtitle = findViewById(R.id.play_subtitle)
         llDanmuSetting = findViewById(R.id.ll_danmu_setting)
+        playQuality = findViewById(R.id.play_quality)
+        playSettings = findViewById(R.id.play_settings)
         playAudio = findViewById(R.id.play_audio)
         playVideo = findViewById(R.id.play_video)
         playCast = findViewById(R.id.play_cast)
@@ -675,6 +707,8 @@ class PlayerVodControlView @JvmOverloads constructor(
                 }
                 true
             } else {
+                // 画面右侧长按倍速与手势检测同一入口，确保触摸事件必达
+                if (handleScreenLongPress(event)) return@setOnTouchListener true
                 val handled = dispatchGestureEvent(event)
                 // 松手时提交水平滑动 seek（滑动过程中只预览进度，松手才跳转）
                 if (event.action == MotionEvent.ACTION_UP) finishGesture()
@@ -707,6 +741,54 @@ class PlayerVodControlView @JvmOverloads constructor(
             return result
         }
         return handled
+    }
+
+    /**
+     * 画面右侧长按倍速：按住右侧 40% 区域超过 [SCREEN_LONG_PRESS_DELAY] 进入临时倍速并显示提示，
+     * 松手恢复；移动超过触摸阈值视为滑动手势，取消长按判定。
+     * 返回 true 表示事件已被长按消费。
+     */
+    private fun handleScreenLongPress(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                cancelScreenLongPress()
+                screenDownX = event.x
+                screenDownY = event.y
+                // 排除底部控制栏区域，避免长按按钮时误触发画面倍速
+                if (event.x < width * 0.6f || event.y > height * 0.85f) return false
+                val runnable = Runnable {
+                    screenLongPressRunnable = null
+                    screenLongPressActive = listener?.onScreenLongPressSpeed() == true
+                    if (screenLongPressActive) longPressSpeedTip?.visibility = VISIBLE
+                }
+                screenLongPressRunnable = runnable
+                controlHandler.postDelayed(runnable, SCREEN_LONG_PRESS_DELAY)
+                return false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!screenLongPressActive && screenLongPressRunnable != null) {
+                    val slop = ViewConfiguration.get(context).scaledTouchSlop * 3
+                    if (abs(event.x - screenDownX) > slop || abs(event.y - screenDownY) > slop) {
+                        cancelScreenLongPress()
+                    }
+                }
+                return screenLongPressActive
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                cancelScreenLongPress()
+                if (!screenLongPressActive) return false
+                screenLongPressActive = false
+                longPressSpeedTip?.visibility = GONE
+                listener?.onScreenLongPressSpeedRelease()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun cancelScreenLongPress() {
+        screenLongPressRunnable?.let { controlHandler.removeCallbacks(it) }
+        screenLongPressRunnable = null
     }
 
     /** 绑定按钮点击事件 */
@@ -783,6 +865,17 @@ class PlayerVodControlView @JvmOverloads constructor(
             if (!isLocked) {
                 listener?.onDanmuClick()
                 restartAutoHide()
+            }
+        }
+        playQuality?.setOnClickListener {
+            if (!isLocked) {
+                listener?.onQualityClick()
+                restartAutoHide()
+            }
+        }
+        playSettings?.setOnClickListener {
+            if (!isLocked) {
+                listener?.onSettingsClick()
             }
         }
         playAudio?.setOnClickListener {
@@ -979,6 +1072,8 @@ class PlayerVodControlView @JvmOverloads constructor(
             updateDanmuBtn()
             // 控制栏显示时按当前方向刷新底部按钮显隐（case 1002 中的调用）
             updateBottomButtonsForOrientation()
+            // 尺寸信息可能在控制栏隐藏期间才就绪，显示时补刷一次
+            onInfoRefresh?.invoke()
             // Workaround Fix : SurfaceView 布局刷新，避免部分设备画面闪烁
             bottom.post { bottom.requestLayout() }
             // 控制栏显示后初始化焦点（无条件聚焦）：
@@ -1082,9 +1177,6 @@ class PlayerVodControlView @JvmOverloads constructor(
 
     /** 屏显按钮，作为屏显菜单的锚点 */
     fun getScreenDisplayAnchor(): View? = screenDisplay
-
-    /** 倍速按钮，作为倍速菜单的锚点 */
-    fun getSpeedAnchor(): View? = playSpeed
 
     /** 切换锁屏状态，并切换锁定/解锁图标 */
     private fun toggleLock() {
@@ -1558,8 +1650,12 @@ class PlayerVodControlView @JvmOverloads constructor(
 
     /** 设置分辨率文本，并启动跑马灯让超长分辨率信息滚动显示（updateResolution） */
     fun setResolution(text: String?) {
-        tvResolution?.text = text ?: ""
+        val value = text?.takeIf { it.isNotBlank() }
+        tvResolution?.text = value ?: ""
         tvResolution?.isSelected = true
+        // 无尺寸信息时隐藏信息行，避免标题下留空行
+        tvResolution?.visibility = if (value == null) View.GONE else View.VISIBLE
+        tvTopLine2?.visibility = if (value == null) View.GONE else View.VISIBLE
     }
 
     /**
@@ -1584,12 +1680,10 @@ class PlayerVodControlView @JvmOverloads constructor(
         container.visibility = if (screenDisplayAnyOn) VISIBLE else GONE
     }
 
-    /** 视频尺寸变化后更新横竖屏切换按钮：竖屏画面（宽<高）显示，横屏隐藏 */
+    /** 视频尺寸变化后更新横竖屏切换按钮：仅竖屏画面显示，点击在横竖屏间切换 */
     fun updateOrientationButton(videoWidth: Int, videoHeight: Int) {
-        val btn = landscapePortraitBtn ?: return
-        // 竖屏画面时显示横竖屏按钮并启用上下滑动换集（详情页预览小窗同样显示）
         isPortraitVideo = videoWidth > 0 && videoHeight > 0 && videoWidth < videoHeight
-        btn.visibility = if (isPortraitVideo) VISIBLE else GONE
+        landscapePortraitBtn?.visibility = if (isPortraitVideo) VISIBLE else GONE
         lvPortraitImg?.setImageResource(CoreUiR.drawable.htov)
     }
 
@@ -1628,22 +1722,25 @@ class PlayerVodControlView @JvmOverloads constructor(
 
     /**
      * 根据横竖屏方向更新底部控制栏按钮显隐。
-     * 竖屏时隐藏播放控制、切换、片头片尾等不常用按钮，避免控制栏过长需要滑动；
-     * 仅保留倍速、重播、播放器、投屏、屏显、横竖屏切换；
-     * playScaleTxt 为叠加在缩放按钮上的独立浮层（负 margin 定位），需一并隐藏。
-     * 音轨/视轨按钮按轨道数量动态显隐，不由方向统一控制。
+     * 竖屏时隐藏播放控制、片头片尾、上下集与设置；横屏全部显示。
+     * 音轨/视轨/字幕/弹幕/画质/投屏/屏显/缩放/解码器已收纳进右侧设置面板，底栏恒隐藏。
+     * 横竖屏切换按钮由 [updateOrientationButton] 按视频比例控制，不在此处强制隐藏。
      */
     fun updateBottomButtonsForOrientation(portrait: Boolean) {
-        // 投屏模式下横屏恢复按钮时跳过，不干预 setCastMode 已隐藏的按钮
-        if (!portrait && isCastMode) return
-        val hiddenButtons = listOf(
-            playPrev, playPauseView, playNext, playScale, playScaleTxt, playSubtitle,
-            playTimeStart, playTimeEnd, playTimeReset, playTimeDivider
-        )
         val visibility = if (portrait) View.GONE else View.VISIBLE
-        hiddenButtons.forEach { it?.visibility = visibility }
-        // 音轨/视轨按钮不随方向统一显示，按轨道数量刷新（竖屏时隐藏）
-        refreshTrackButtonVisibility()
+        playPrev?.visibility = visibility
+        playPauseView?.visibility = visibility
+        playNext?.visibility = visibility
+        // 片头片尾保留在底栏，便于快速标记；竖屏时随播放控制一起隐藏
+        playTimeStart?.visibility = visibility
+        playTimeEnd?.visibility = visibility
+        playTimeReset?.visibility = visibility
+        playTimeDivider?.visibility = visibility
+        playSettings?.visibility = visibility
+        listOf(
+            playScale, playScaleTxt, playPlayer, playPlayerTxt, playSubtitle, llDanmuSetting,
+            playQuality, playAudio, playVideo, playCast, screenDisplay
+        ).forEach { it?.visibility = View.GONE }
     }
 
     /** 设置倍速显示（底部控制栏倍速按钮文本） */
@@ -1670,29 +1767,39 @@ class PlayerVodControlView @JvmOverloads constructor(
         updateDanmuBtn()
     }
 
-    /** 根据弹幕数据刷新弹幕按钮显隐 */
+    /** 根据弹幕数据刷新弹幕入口可用状态（入口在设置面板，底栏图标恒隐藏） */
     private fun updateDanmuBtn() {
-        llDanmuSetting?.visibility = if (hasDanmu) View.VISIBLE else View.GONE
+        llDanmuSetting?.visibility = View.GONE
     }
 
-    /** 投屏接收模式：隐藏投屏/上下集/播放器切换/解析栏/片头片尾/重播等按钮 */
+    /** 视频是否有弹幕数据，供设置面板决定弹幕入口显隐 */
+    fun isDanmuAvailable(): Boolean = hasDanmu
+
+    /** 音轨是否多于 1 条，供设置面板决定音轨入口显隐 */
+    fun isAudioTrackAvailable(): Boolean = audioTrackVisible
+
+    /** 视轨是否多于 1 条，供设置面板决定视轨入口显隐 */
+    fun isVideoTrackAvailable(): Boolean = videoTrackVisible
+
+    /** 当前视频是否为竖屏画面，供设置面板决定横竖屏切换入口显隐 */
+    fun isPortraitVideoAvailable(): Boolean = isPortraitVideo
+
+    /** 投屏接收模式：隐藏投屏/上下集/播放器切换/解析栏/重播等按钮（面板入口恒隐藏） */
     fun setCastMode(castMode: Boolean) {
         this.isCastMode = castMode
         val visibility = if (castMode) View.GONE else View.VISIBLE
         parseRoot?.visibility = visibility
-        playCast?.visibility = visibility
         playPrev?.visibility = visibility
         playNext?.visibility = visibility
-        playPlayer?.visibility = visibility
-        playPlayerTxt?.visibility = visibility
         playRetry?.visibility = visibility
         playTimeStart?.visibility = visibility
         playTimeEnd?.visibility = visibility
         playTimeReset?.visibility = visibility
-        playTimeStep?.visibility = visibility
         playTimeDivider?.visibility = visibility
-        // 投屏接收模式仅精简投屏/上下集/播放器切换等按钮，音轨/视轨按轨道数量刷新（接收端同样需要切换）
-        refreshTrackButtonVisibility()
+        listOf(
+            playPlayer, playPlayerTxt, playScale, playScaleTxt, playSubtitle, llDanmuSetting,
+            playQuality, playAudio, playVideo, playCast, screenDisplay, landscapePortraitBtn
+        ).forEach { it?.visibility = View.GONE }
     }
 
     /**
@@ -1713,11 +1820,10 @@ class PlayerVodControlView @JvmOverloads constructor(
         refreshTrackButtonVisibility()
     }
 
-    /** 按音轨/视轨数量与横竖屏状态刷新轨道按钮显隐（投屏接收模式同样按轨道数量显示，接收端切换音轨/视轨同样有效） */
+    /** 按音轨/视轨数量刷新入口可用状态（入口在设置面板，底栏图标恒隐藏） */
     private fun refreshTrackButtonVisibility() {
-        val hidden = isPortraitMode()
-        playAudio?.visibility = if (audioTrackVisible && !hidden) View.VISIBLE else View.GONE
-        playVideo?.visibility = if (videoTrackVisible && !hidden) View.VISIBLE else View.GONE
+        playAudio?.visibility = View.GONE
+        playVideo?.visibility = View.GONE
     }
 
     /**
@@ -1784,7 +1890,7 @@ class PlayerVodControlView @JvmOverloads constructor(
     /**
      * 更新网速显示，同步刷新屏显与迷你顶栏两处数值与单位。
      * 下载暂停的短瞬（小于 [NET_SPEED_HOLD_MS]）保持上次速率，避免数值闪动归 0。
-     * @param tcpKbPerSec 下载速率（KB/s），来自 GSY 内核的 TrafficStats 统计（Exo 内核为 KB/s）
+     * @param tcpKbPerSec 下载速率（KB/s），由播放内核统计
      */
     fun setNetSpeed(tcpKbPerSec: Long) {
         val now = System.currentTimeMillis()

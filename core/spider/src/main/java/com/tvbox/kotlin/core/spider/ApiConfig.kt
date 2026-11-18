@@ -25,6 +25,7 @@ import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.EventHub
 import com.tvbox.kotlin.core.common.LOG
 import com.tvbox.kotlin.core.common.TypedEvent
+import com.tvbox.kotlin.core.common.bean.LiveCatchup
 import com.tvbox.kotlin.core.common.bean.LiveChannelGroup
 import com.tvbox.kotlin.engine.quickjs.QuickJsEngine
 import com.tvbox.kotlin.core.common.bean.LiveChannelItem
@@ -314,7 +315,7 @@ class ApiConfig @Inject constructor(
         } else if (cleaned.startsWith("clan")) {
             configUrl = clanToAddress(cleaned)
         } else if (!cleaned.startsWith("http")) {
-            // 修正 configUrl 未赋值的缺陷，此处使用 apiUrl 拼接
+            // 未带协议头的地址补全为 http
             configUrl = "http://$cleaned"
         } else {
             configUrl = cleaned
@@ -662,6 +663,7 @@ class ApiConfig @Inject constructor(
                 val splitGroupName = groupName.split("_", limit = 2)
                 liveChannelGroup.groupName = splitGroupName[0]
                 liveChannelGroup.groupPassword = if (splitGroupName.size > 1) splitGroupName[1] else ""
+                liveChannelGroup.catchup = parseCatchup(groupObj)
                 var channelIndex = 0
                 // channels 缺失或非数组时跳过该分组，避免对 null 迭代
                 val channels = groupObj.get("channels")?.takeIf { it.isJsonArray }?.asJsonArray ?: continue
@@ -676,6 +678,7 @@ class ApiConfig @Inject constructor(
                     liveChannelItem.channelNum = ++channelNum
                     liveChannelItem.tvgLogo = obj.get("logo")?.takeIf { it.isJsonPrimitive }?.asString
                         ?.takeIf { it.isNotEmpty() }
+                    liveChannelItem.catchup = parseCatchup(obj)
                     val urls = DefaultConfig.safeJsonStringList(obj, "urls")
                     val sourceNames = ArrayList<String>()
                     val sourceUrls = ArrayList<String>()
@@ -1066,6 +1069,7 @@ class ApiConfig @Inject constructor(
                 val pwSplit = groupName.split("_", limit = 2)
                 group.groupName = pwSplit[0].trim().ifEmpty { "直播" }
                 group.groupPassword = pwSplit.getOrNull(1)
+                group.catchup = parseCatchup(groupObj)
                 group.setLiveChannels(ArrayList())
                 var channelIndex = 0
                 for (j in 0 until channelsArr.size()) {
@@ -1080,6 +1084,7 @@ class ApiConfig @Inject constructor(
                     item.channelNum = ++channelNum
                     item.tvgLogo = chObj.get("logo")?.takeIf { it.isJsonPrimitive }?.asString
                         ?.takeIf { it.isNotEmpty() }
+                    item.catchup = parseCatchup(chObj)
                     val sourceNames = ArrayList<String>()
                     val sourceUrls = ArrayList<String>()
                     var sourceIndex = 1
@@ -1100,6 +1105,16 @@ class ApiConfig @Inject constructor(
             LOG.e(e)
             null
         }
+    }
+
+    /** 解析 FongMi 直播源 catchup 配置对象，缺失或缺少 source 时返回 null */
+    private fun parseCatchup(obj: JsonObject): LiveCatchup? {
+        val catchupObj = obj.get("catchup")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+        val catchup = LiveCatchup()
+        catchup.type = catchupObj.get("type")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+        catchup.source = catchupObj.get("source")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+        catchup.replace = catchupObj.get("replace")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+        return catchup.takeIf { it.available }
     }
 
     /** 将 URL 列表按 `$源名` 拆分为源地址与源名，追加到频道的线路列表 */
@@ -1239,7 +1254,7 @@ class ApiConfig @Inject constructor(
                 try {
                     getCSP(source)
                 } catch (e: Throwable) {
-                    LOG.e("echo-warm-search-spider-error ${source.key}:${e.message}")
+                    LOG.e("warm-search-spider", "预热搜索源失败 ${source.key}: ${e.message}")
                 }
             }
         }
@@ -1369,6 +1384,13 @@ class ApiConfig @Inject constructor(
     // ------------------------------------------------------------------
     // 缓存与加载器清理
     // ------------------------------------------------------------------
+    /** 当前 jar 是否提供在线弹幕搜索界面 */
+    fun hasDanmuSearchUi(): Boolean = jarLoader.hasDanmuSearchUi()
+
+    /** 打开 jar 的在线弹幕搜索界面：name=剧名，episode=集名，longClick=长按入口 */
+    fun searchDanmuUi(name: String, episode: String, longClick: Boolean) =
+        jarLoader.searchDanmuUi(name, episode, longClick)
+
     fun clearJarLoader() {
         jarLoader.clear()
     }

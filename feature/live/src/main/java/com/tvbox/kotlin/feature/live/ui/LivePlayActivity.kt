@@ -265,13 +265,16 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
             // 缓冲时右上角显示网速，播放中隐藏
             updateTopRightNetSpeed(state)
         }
-        // 显式装配 Exo 播放内核，避免依赖全局 PlayerFactory 隐式状态导致首次进直播崩溃
+        // 显式装配 Media3 播放内核，避免依赖全局 PlayerFactory 隐式状态导致首次进直播崩溃
         updatePlayerCfg()
     }
 
-    /** 装配 Exo 内核与渲染；直播内核恒定 Exo（系统内核已移除，历史档位由 updateCfg 归一兜底） */
-    private fun updatePlayerCfg(forcePlayerType: Int = PlayerConstants.PLAYER_TYPE_EXO) {
-        playerHelper.updateCfg(binding.mVideoView, null, forcePlayerType)
+    /** 装配 Media3 内核与渲染；直播内核恒定 Media3（系统内核已移除，历史档位由 updateCfg 归一兜底） */
+    private fun updatePlayerCfg(forcePlayerType: Int = PlayerConstants.PLAYER_TYPE_MEDIA3) {
+        // 直播不启用画面增强：码流分辨率频繁变化，GL 效果链重建代价高
+        playerHelper.updateCfg(
+            binding.mVideoView, null, forcePlayerType, enableAnime4k = false
+        )
     }
 
     private fun handlePlayState(playState: Int) {
@@ -646,7 +649,7 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
 
     /**
      * 用当前播放器内核重新装配并播放当前频道。
-     * 直播内核已恒定 Exo（系统内核移除，playerType 仅兼容归一），方法保留供重播入口复用。
+     * 直播内核已恒定 Media3（系统内核移除，playerType 仅兼容归一），方法保留供重播入口复用。
      */
     private fun replayWithNewPlayer(playerType: Int) {
         binding.mVideoView.release()
@@ -724,10 +727,11 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
             }
         })
         // 手机/模拟器点击：选中节目项并保持频道列表常显，等待自动隐藏
-        epgAdapter.setOnItemClickListener { position, _ ->
+        epgAdapter.setOnItemClickListener { position, epg ->
             if (position !in 0 until epgAdapter.itemCount) return@setOnItemClickListener
             epgAdapter.setSelectedEpgIndex(position)
             binding.mEpgInfoGridView.setSelectedPosition(position)
+            viewModel.playEpg(epg)
             resetHideChannelList()
         }
         // 电视遥控器：焦点进入/离开与确认键点击
@@ -745,6 +749,7 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
                 if (position !in 0 until epgAdapter.itemCount) return
                 epgAdapter.setSelectedEpgIndex(position)
                 binding.mEpgInfoGridView.setSelectedPosition(position)
+                epgAdapter.getItem(position)?.let { viewModel.playEpg(it) }
                 resetHideChannelList()
             }
         })
@@ -1096,7 +1101,7 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
     /** 网速平滑保持时长（毫秒）：下载分片间隙的短瞬保持上次速率，避免常驻网速闪动归 0（保持实时性） */
     private val netSpeedHoldMs = 1000L
 
-    /** 获取平滑后的网速（KB/s，GSY TrafficStats 统计）：短瞬无下载流量时保持上次速率 */
+    /** 获取平滑后的网速（KB/s）：短瞬无下载流量时保持上次速率 */
     private fun currentNetSpeedKb(): Long {
         val now = System.currentTimeMillis()
         val speed = binding.mVideoView.tcpSpeed.coerceAtLeast(0)
@@ -1110,7 +1115,7 @@ class LivePlayActivity : BaseBindingActivity<ActivityLivePlayBinding>() {
 
     private val updateNetSpeedRun = object : Runnable {
         override fun run() {
-            // 右下角常驻网速：始终显示数值（MB/s），GSY 统计单位为 KB/s，除以 1024 换算
+            // 右下角常驻网速：统计单位为 KB/s，除以 1024 换算为 MB/s 显示
             val speed = currentNetSpeedKb()
             binding.tvNetSpeed.text = String.format(Locale.getDefault(), "%.2fMB/s", speed / 1024.0)
             handler.postDelayed(this, 1000)

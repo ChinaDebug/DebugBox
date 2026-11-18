@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -15,7 +16,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures {
         buildConfig = true
         dataBinding = true
@@ -37,4 +37,10 @@ dependencies {
     implementation(libs.androidx.fragment)
     // 二维码生成（zxing），用于展示推屏地址
     implementation(libs.zxing)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

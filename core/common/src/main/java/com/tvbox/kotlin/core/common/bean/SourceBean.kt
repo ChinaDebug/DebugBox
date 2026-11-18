@@ -33,7 +33,7 @@ class SourceBean {
     /** 分类与排序 */
     var categories: ArrayList<String>? = null
 
-    /** 0 system 2 exo 10 mxplayer -1 以参数设置页面为准 */
+    /** 0 system 2 media3 10 mxplayer -1 以参数设置页面为准 */
     var playerType: Int = 0
 
     /** 需要点击播放的嗅探站点 selector */

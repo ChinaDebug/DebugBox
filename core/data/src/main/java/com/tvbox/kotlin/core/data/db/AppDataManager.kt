@@ -2,11 +2,13 @@ package com.tvbox.kotlin.core.data.db
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteException
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.SQLiteException
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import com.tvbox.kotlin.core.common.LOG
 import com.tvbox.kotlin.core.common.util.FileUtils
 import com.tvbox.kotlin.core.data.dao.CacheDao
@@ -22,9 +24,11 @@ import java.io.IOException
  * 由 [com.tvbox.kotlin.core.data.di.DataModule] 通过 Hilt 提供单例。
  */
 class AppDataManager internal constructor(
-    private val context: Context,
-    private val appDataBase: AppDataBase
+    private val context: Context
 ) {
+
+    @Volatile
+    private var appDataBase: AppDataBase = build(context)
 
     fun getCacheDao(): CacheDao = appDataBase.cacheDao()
 
@@ -47,9 +51,7 @@ class AppDataManager internal constructor(
     @Throws(IOException::class)
     fun backup(path: File): Boolean {
         val dbFile = context.getDatabasePath(DB_PATH)
-        if (appDataBase.isOpen) {
-            appDataBase.close()
-        }
+        appDataBase.close()
         return try {
             if (dbFile.exists()) {
                 FileUtils.copyFile(dbFile, path)
@@ -73,9 +75,7 @@ class AppDataManager internal constructor(
             throw IllegalStateException("backup version incompatible")
         }
         val dbFile = context.getDatabasePath(DB_PATH)
-        if (appDataBase.isOpen) {
-            appDataBase.close()
-        }
+        appDataBase.close()
         return try {
             if (dbFile.exists()) {
                 dbFile.delete()
@@ -108,10 +108,10 @@ class AppDataManager internal constructor(
         }
     }
 
-    /** 重新打开数据库连接，失败仅记录日志（正常情况下由重启流程兜底） */
+    /** 重建数据库实例（Room3 关闭后不可复用），失败仅记录日志（正常情况下由重启流程兜底） */
     private fun reopenDatabase() {
         try {
-            appDataBase.openHelper.writableDatabase
+            appDataBase = build(context)
         } catch (t: Throwable) {
             LOG.e("reopenDatabase", t)
         }
@@ -124,9 +124,9 @@ class AppDataManager internal constructor(
 
         /** 迁移 1->2：创建网盘配置表 */
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
-            override fun migrate(db: SupportSQLiteDatabase) {
+            override suspend fun migrate(connection: SQLiteConnection) {
                 try {
-                    db.execSQL("CREATE TABLE IF NOT EXISTS `storageDrive` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` INTEGER NOT NULL, `configJson` TEXT)")
+                    connection.execSQL("CREATE TABLE IF NOT EXISTS `storageDrive` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` INTEGER NOT NULL, `configJson` TEXT)")
                 } catch (e: SQLiteException) {
                     LOG.e("MIGRATION_1_2", e)
                 }
@@ -135,10 +135,10 @@ class AppDataManager internal constructor(
 
         /** 迁移 2->3：创建搜索历史表与索引 */
         val MIGRATION_2_3: Migration = object : Migration(2, 3) {
-            override fun migrate(db: SupportSQLiteDatabase) {
+            override suspend fun migrate(connection: SQLiteConnection) {
                 try {
-                    db.execSQL("CREATE TABLE IF NOT EXISTS t_search (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)")
-                    db.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)")
+                    connection.execSQL("CREATE TABLE IF NOT EXISTS t_search (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)")
+                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)")
                 } catch (e: SQLiteException) {
                     LOG.e("MIGRATION_2_3", e)
                 }
@@ -147,10 +147,10 @@ class AppDataManager internal constructor(
 
         /** 迁移 3->4：观看记录与收藏表增加 apiUrl 列（订阅地址归属，旧数据为 null 兼容显示） */
         val MIGRATION_3_4: Migration = object : Migration(3, 4) {
-            override fun migrate(db: SupportSQLiteDatabase) {
+            override suspend fun migrate(connection: SQLiteConnection) {
                 try {
-                    db.execSQL("ALTER TABLE `vodRecord` ADD COLUMN `apiUrl` TEXT")
-                    db.execSQL("ALTER TABLE `vodCollect` ADD COLUMN `apiUrl` TEXT")
+                    connection.execSQL("ALTER TABLE `vodRecord` ADD COLUMN `apiUrl` TEXT")
+                    connection.execSQL("ALTER TABLE `vodCollect` ADD COLUMN `apiUrl` TEXT")
                 } catch (e: SQLiteException) {
                     LOG.e("MIGRATION_3_4", e)
                 }
@@ -160,6 +160,7 @@ class AppDataManager internal constructor(
         /** 构建 AppDataBase 实例，日志模式与主线程查询许可 */
         fun build(context: Context): AppDataBase =
             Room.databaseBuilder(context.applicationContext, AppDataBase::class.java, DB_PATH)
+                .setDriver(BundledSQLiteDriver())
                 .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .allowMainThreadQueries()

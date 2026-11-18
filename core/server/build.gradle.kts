@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -15,7 +16,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures { buildConfig = true }
 }
 
@@ -33,6 +33,16 @@ dependencies {
     // 投屏服务端与设备发现扫描依赖 OkHttp
     api(libs.okhttp)
 
+    // DLNA/UPnP 投屏：cling 负责 SSDP 发现与 AVTransport 控制
+    // 以 api 暴露：管理器继承 cling 监听器，上层编译期需要解析其父类型
+    api(libs.cling.core)
+    api(libs.cling.support)
+    // cling 依赖的 Java EE 注解仅编译期使用，不打包进 APK
+    compileOnly(libs.cdi.api)
+    compileOnly(libs.javax.inject)
+    compileOnly(libs.javax.annotation.api)
+    compileOnly(libs.javax.servlet.api)
+
     // 前台服务通知与权限检查依赖 androidx.core（common 模块 appcompat 为 implementation 不传递）
     implementation(libs.androidx.appcompat)
 
@@ -43,4 +53,10 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

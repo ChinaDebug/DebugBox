@@ -89,11 +89,11 @@ class BackupDialog(
             val dir = File(backupDir, time)
             val ok = withContext(Dispatchers.IO) {
                 try {
-                    // 先等待 DataStore 挂起写入落盘，确保偏好备份到最新数据
+                    // 先同步 MMKV 落盘，确保偏好备份到最新数据
                     appPreferences.flush()
                     dir.mkdirs()
                     val dbOk = appDataManager.backup(File(dir, "sqlite"))
-                    val hawkOk = backupPrefs(File(dir, "hawk"))
+                    val hawkOk = backupPrefs(File(dir, "prefs"))
                     if (!dbOk || !hawkOk) {
                         dir.deleteRecursively()
                     }
@@ -113,17 +113,15 @@ class BackupDialog(
         }
     }
 
-    /** 复制 DataStore 偏好文件到备份目录（保留原文件名，支持多个 DataStore 文件共存） */
+    /** 复制 MMKV 偏好文件到备份目录（保留原文件名，含 crc 校验文件） */
     private fun backupPrefs(targetDir: File): Boolean {
-        val prefsDir = File(context.filesDir, "datastore")
+        val prefsDir = File(context.filesDir, "mmkv")
         if (!prefsDir.exists()) return true
         var copied = false
         prefsDir.listFiles()?.forEach { file ->
-            if (file.name.endsWith(".preferences_pb")) {
-                targetDir.mkdirs()
-                FileUtils.copyFile(file, File(targetDir, file.name))
-                copied = true
-            }
+            targetDir.mkdirs()
+            FileUtils.copyFile(file, File(targetDir, file.name))
+            copied = true
         }
         return copied
     }
@@ -138,10 +136,10 @@ class BackupDialog(
                     return@withContext RESULT_VERSION_MISMATCH
                 }
                 try {
-                    val hawkDir = File(dir, "hawk")
+                    val prefsDir = File(dir, "prefs")
                     var ok = dbFile.exists() && appDataManager.restore(dbFile)
-                    if (hawkDir.exists()) {
-                        ok = ok && restorePrefs(hawkDir)
+                    if (prefsDir.exists()) {
+                        ok = ok && restorePrefs(prefsDir)
                     }
                     if (ok) RESULT_OK else RESULT_FAIL
                 } catch (t: Throwable) {
@@ -167,11 +165,11 @@ class BackupDialog(
         }
     }
 
-    /** 将备份目录下的偏好文件按原文件名写回 DataStore 目录（先写临时文件再原子替换，避免中途失败丢数据） */
+    /** 将备份目录下的偏好文件写回 MMKV 目录（先写临时文件再原子替换，避免中途失败丢数据） */
     private fun restorePrefs(sourceDir: File): Boolean {
-        val prefsDir = File(context.filesDir, "datastore")
+        val prefsDir = File(context.filesDir, "mmkv")
         prefsDir.mkdirs()
-        val files = sourceDir.listFiles()?.filter { it.name.endsWith(".preferences_pb") } ?: return true
+        val files = sourceDir.listFiles() ?: return true
         var restored = false
         files.forEach { src ->
             val target = File(prefsDir, src.name)

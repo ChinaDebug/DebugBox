@@ -21,6 +21,7 @@ import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.LOG
 import com.tvbox.kotlin.core.common.bean.ParseBean
 import com.tvbox.kotlin.core.common.util.DefaultConfig
+import com.tvbox.kotlin.core.common.util.HawkUtils
 import com.tvbox.kotlin.core.network.OkHttpHelper
 import com.tvbox.kotlin.core.spider.ApiConfig
 import com.tvbox.kotlin.core.spider.VideoParseRuler
@@ -40,11 +41,13 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.net.URL
 import java.net.URLDecoder
+import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -268,6 +271,160 @@ class PlayResolverImpl @Inject constructor(
             }.getOrNull()
         }
     }
+
+    override fun hasDanmuSearchUi(): Boolean =
+        runCatching { apiConfig.hasDanmuSearchUi() }.getOrDefault(false)
+
+    override fun searchDanmuUi(name: String, episode: String, longClick: Boolean) {
+        runCatching { apiConfig.searchDanmuUi(name, episode, longClick) }
+            .onFailure { LOG.e("PlayResolver", "searchDanmuUi failed", it) }
+    }
+
+    /**
+     * 内置在线弹幕搜索（logvardanmu 兼容接口）：
+     * 按番剧名查询候选剧集，返回「番剧 + 集名」列表供用户选择。
+     */
+    override suspend fun searchOnlineDanmu(keyword: String): List<PlayResolver.OnlineDanmuItem> =
+        withContext(Dispatchers.IO) {
+            val word = keyword.trim()
+            if (word.isEmpty()) return@withContext emptyList()
+            val tokens = splitDanmuKeyword(word)
+            val named = tokens.filter { token -> token.any { !it.isDigit() } }
+            // 接口按番剧名检索，"斗破苍穹219" 整体查询无结果；优先用剧名部分查询，再按全部关键词本地过滤
+            var items = requestDanmuSearch(named.joinToString(" ").ifEmpty { word })
+            if (items.isEmpty() && named.size > 1) {
+                // 多词剧名未命中时退回首词，扩大召回后再过滤
+                items = requestDanmuSearch(named.first())
+            }
+            if (items.isEmpty()) return@withContext items
+            items.filter { item -> tokens.all { matchDanmuToken(item.name, it) } }.ifEmpty { items }
+        }
+
+    /** 请求在线弹幕搜索接口，失败返回空列表 */
+    private suspend fun requestDanmuSearch(keyword: String): List<PlayResolver.OnlineDanmuItem> {
+        val url = onlineDanmuBase() + "/api/v2/search/episodes?anime=" +
+            URLEncoder.encode(keyword, "UTF-8")
+        val body = runCatchingResume { okHttpHelper.get(url) }.getOrNull() ?: return emptyList()
+        return parseOnlineDanmuSearch(body)
+    }
+
+    /** 拆分关键词：按空白与“文字+数字”边界切分，"斗破苍穹219" 拆为 ["斗破苍穹","219"] */
+    private fun splitDanmuKeyword(word: String): List<String> =
+        word.split(Regex("[\\s·]+"))
+            .flatMap { segment ->
+                val matched = Regex("^(\\D+)(\\d+)$").find(segment)
+                if (matched != null) {
+                    listOf(matched.groupValues[1], matched.groupValues[2])
+                } else {
+                    listOf(segment)
+                }
+            }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+
+    /** 结果名需包含全部关键词；纯数字按独立数字匹配，避免 219 命中 1219 */
+    private fun matchDanmuToken(name: String, token: String): Boolean =
+        if (token.all { it.isDigit() }) {
+            Regex("(?<!\\d)${Regex.escape(token)}(?!\\d)").containsMatchIn(name)
+        } else {
+            name.contains(token, ignoreCase = true)
+        }
+
+    /** 拉取在线弹幕 JSON 并转换为播放器弹幕解析器可识别的 XML */
+    override suspend fun loadOnlineDanmu(url: String): String? = withContext(Dispatchers.IO) {
+        if (!url.startsWith("http")) return@withContext null
+        val body = runCatchingResume { okHttpHelper.get(url) }.getOrNull()
+            ?: return@withContext null
+        onlineDanmuJsonToXml(body)
+    }
+
+    /** 在线弹幕接口根地址：优先读取用户配置，未配置使用内置库 */
+    private fun onlineDanmuBase(): String =
+        HawkUtils.getDanmuApi().trim().trimEnd('/')
+
+    /** 解析搜索结果：兼容 animes/episodes/bangumi 三种结构 */
+    private fun parseOnlineDanmuSearch(body: String): List<PlayResolver.OnlineDanmuItem> {
+        val result = LinkedHashMap<String, PlayResolver.OnlineDanmuItem>()
+        runCatching {
+            val root = JSONObject(body)
+            root.optJSONArray("animes")?.let { animes ->
+                for (i in 0 until animes.length()) {
+                    val anime = animes.optJSONObject(i) ?: continue
+                    val animeName = firstNonEmpty(
+                        anime.optString("animeTitle"), anime.optString("title"), anime.optString("name")
+                    )
+                    appendDanmuEpisodes(result, animeName, anime.optJSONArray("episodes"))
+                }
+            }
+            appendDanmuEpisodes(result, "", root.optJSONArray("episodes"))
+            root.optJSONObject("bangumi")?.let { bangumi ->
+                val animeName = firstNonEmpty(
+                    bangumi.optString("animeTitle"), bangumi.optString("title"), bangumi.optString("name")
+                )
+                appendDanmuEpisodes(result, animeName, bangumi.optJSONArray("episodes"))
+            }
+        }.onFailure { LOG.e("PlayResolver", "parseOnlineDanmuSearch failed", it) }
+        return result.values.toList()
+    }
+
+    private fun appendDanmuEpisodes(
+        out: MutableMap<String, PlayResolver.OnlineDanmuItem>,
+        animeName: String,
+        episodes: JSONArray?
+    ) {
+        if (episodes == null) return
+        for (i in 0 until episodes.length()) {
+            val ep = episodes.optJSONObject(i) ?: continue
+            val id = firstNonEmpty(ep.optString("episodeId"), ep.optString("id"))
+            if (id.isEmpty()) continue
+            val epName = firstNonEmpty(
+                ep.optString("episodeTitle"), ep.optString("title"), ep.optString("name")
+            )
+            val label = listOf(animeName, epName).filter { it.isNotEmpty() }.joinToString("  ")
+            val url = "${onlineDanmuBase()}/api/v2/comment/$id?format=json"
+            out[url] = PlayResolver.OnlineDanmuItem(label.ifEmpty { id }, url)
+        }
+    }
+
+    /** 在线弹幕 JSON（comments: p/m）转标准弹幕 XML；成功但无弹幕返回空串 */
+    private fun onlineDanmuJsonToXml(body: String): String? {
+        val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+        val comments = root.optJSONArray("comments") ?: root.optJSONArray("danmaku") ?: return null
+        if (comments.length() == 0) return ""
+        val sb = StringBuilder("<i>")
+        for (i in 0 until comments.length()) {
+            val item = comments.optJSONObject(i) ?: continue
+            val text = firstNonEmpty(item.optString("m"), item.optString("text"))
+            if (text.isEmpty()) continue
+            val param = biliDanmuParam(item.optString("p"))
+            sb.append("<d p=\"").append(escapeXml(param)).append("\">")
+                .append(escapeXml(text)).append("</d>")
+        }
+        sb.append("</i>")
+        return sb.toString()
+    }
+
+    /**
+     * 弹幕接口 p 字段为 `时间,模式,颜色,用户ID`（弹弹play 兼容格式），
+     * 播放器解析器使用 B 站格式 `时间,模式,字号,颜色`，此处做字段重排。
+     */
+    private fun biliDanmuParam(p: String): String {
+        val arr = p.split(",")
+        val time = arr.getOrNull(0)?.trim()?.toDoubleOrNull() ?: 0.0
+        val mode = arr.getOrNull(1)?.trim()?.toIntOrNull() ?: 1
+        val color = (arr.getOrNull(2)?.trim()?.toLongOrNull() ?: 0xFFFFFFL) and 0xFFFFFFL
+        return "$time,$mode,25,$color"
+    }
+
+    private fun escapeXml(value: String): String = value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+
+    private fun firstNonEmpty(vararg values: String): String =
+        values.firstOrNull { it.isNotEmpty() } ?: ""
 
     /** 是否为本地代理转发的 /proxy 端点（爬虫 proxyLocal 入口） */
     private fun isLocalProxyEndpoint(url: String): Boolean {

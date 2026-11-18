@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_user_pause"
+    android:orientation="vertical"
+    android:padding="@dimen/vs_30">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/player_speed"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/ts_26"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ps_speed_value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/vs_10"
+        android:gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/ts_30"
+        android:textStyle="bold" />
+
+    <SeekBar
+        android:id="@+id/ps_speed"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/vs_50"
+        android:layout_marginTop="@dimen/vs_6" />
+</LinearLayout>

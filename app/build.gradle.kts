@@ -4,6 +4,7 @@ import java.util.Properties
 val buildTime = rootProject.extra["buildTime"] as String
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -62,6 +63,8 @@ android {
     packaging {
         resources {
             excludes += "META-INF/DEPENDENCIES"
+            // cling-core/cling-support 均携带 CDI 描述文件，打包时合并会冲突
+            excludes += "META-INF/beans.xml"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -90,11 +93,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_21)
-        }
-    }
 
     buildFeatures {
         dataBinding = true
@@ -178,5 +176,11 @@ dependencies {
         exclude(group = "xpp3", module = "xpp3")
         exclude(group = "xmlpull", module = "xmlpull")
         exclude(group = "com.android.support")
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }

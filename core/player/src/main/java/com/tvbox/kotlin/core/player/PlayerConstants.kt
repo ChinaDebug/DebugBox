@@ -8,7 +8,7 @@ package com.tvbox.kotlin.core.player
 object PlayerConstants {
 
     // 播放器类型（设置点播首选映射统一：2 Exo/3 MX/4 Reex/5 Kodi；0/1 旧档位归一为 Exo）
-    const val PLAYER_TYPE_EXO = 2
+    const val PLAYER_TYPE_MEDIA3 = 2
     const val PLAYER_TYPE_MX = 3
     const val PLAYER_TYPE_REEX = 4
     const val PLAYER_TYPE_KODI = 5
@@ -17,7 +17,7 @@ object PlayerConstants {
      * 归一化历史播放器类型值：旧档位 0(系统)/1(历史 IJK) 已随系统内核移除，
      * 一律归一为 Exo，其余值原样返回。
      */
-    fun normalizePlayType(type: Int): Int = if (type in 0..1) PLAYER_TYPE_EXO else type
+    fun normalizePlayType(type: Int): Int = if (type in 0..1) PLAYER_TYPE_MEDIA3 else type
 
     // 渲染类型
     const val RENDER_TEXTURE = 0
@@ -35,7 +35,7 @@ object PlayerConstants {
     const val STATE_PLAYBACK_COMPLETED = 7
     const val STATE_START_ABORT = 8
 
-    // 画面缩放类型（数值与 GSYVideoType.SCREEN_TYPE_* 保持一致，可直接映射）
+    // 画面缩放类型
     const val SCREEN_SCALE_DEFAULT = 0
     const val SCREEN_SCALE_16_9 = 1
     const val SCREEN_SCALE_4_3 = 2

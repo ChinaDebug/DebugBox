@@ -1,6 +1,7 @@
 package com.tvbox.kotlin.feature.setting.ui
 
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -30,6 +31,7 @@ import com.tvbox.kotlin.feature.setting.ui.dialog.CastDialog
 import com.tvbox.kotlin.feature.setting.ui.dialog.CleanResetDialog
 import com.tvbox.kotlin.feature.setting.ui.dialog.MediaSettingDialog
 import com.tvbox.kotlin.core.ui.dialog.SelectDialog
+import com.tvbox.kotlin.core.ui.dialog.DanmuSettingDialog
 import com.tvbox.kotlin.feature.setting.ui.dialog.WallpaperDialog
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
@@ -37,8 +39,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * 设置页：
- * 左侧菜单隐藏，右侧 ScrollView 内两栏分组展示全部设置项。
+ * 设置页（平板双栏）：
+ * 左侧分类栏、右侧对应功能项，点击或焦点切换分类。
  * 返回时检测订阅设置是否变更，变更则重新进入启动页加载。
  */
 @AndroidEntryPoint
@@ -103,9 +105,19 @@ class SettingActivity : BaseBindingActivity<ActivitySettingBinding>() {
     private var dnsOpt: Int = 0
     private var cacheCleared = false
 
+    // 左侧分类与右侧内容页一一对应
+    private val categoryViews by lazy {
+        listOf(binding.catHome, binding.catPlay, binding.catData, binding.catSystem)
+    }
+    private val pageViews by lazy {
+        listOf(binding.pageHome, binding.pagePlay, binding.pageData, binding.pageSystem)
+    }
+
     override fun initView(savedInstanceState: Bundle?) {
         bindClickListeners()
-        binding.llHomeApi.requestFocus()
+        bindCategoryBar()
+        selectCategory(0)
+        binding.llApi.requestFocus()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -219,6 +231,25 @@ class SettingActivity : BaseBindingActivity<ActivitySettingBinding>() {
     }
 
     // ==================== 点击事件绑定 ====================
+
+    /** 左侧分类栏：点击或获得焦点时切换到对应设置页 */
+    private fun bindCategoryBar() {
+        categoryViews.forEachIndexed { index, view ->
+            view.setOnClickListener { selectCategory(index) }
+            view.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) selectCategory(index) }
+        }
+    }
+
+    /** 切换分类：选中项高亮，右侧仅显示对应内容页 */
+    private fun selectCategory(index: Int) {
+        categoryViews.forEachIndexed { i, view ->
+            view.isActivated = i == index
+            view.alpha = if (i == index) 1f else 0.6f
+        }
+        pageViews.forEachIndexed { i, view ->
+            view.visibility = if (i == index) View.VISIBLE else View.GONE
+        }
+    }
 
     private fun bindClickListeners() {
         // 订阅地址
@@ -349,6 +380,10 @@ class SettingActivity : BaseBindingActivity<ActivitySettingBinding>() {
         // 播放器设置
         binding.llMediaSetting.setOnClickListener {
             MediaSettingDialog(this, apiConfig).show()
+        }
+        // 弹幕设置（与播放页共用同一套偏好）
+        binding.llDanmuSetting.setOnClickListener {
+            DanmuSettingDialog(this, { _, _ -> }).show()
         }
         // 广告过滤
         binding.llVideoPurify.setOnClickListener {

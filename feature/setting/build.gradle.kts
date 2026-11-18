@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 val buildTime = rootProject.extra["buildTime"] as String
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -20,7 +21,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures {
         buildConfig = true
         dataBinding = true
@@ -34,6 +34,8 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:spider"))
     implementation(project(":core:server"))
+    // 画面增强（Anime4K）开关与档位
+    implementation(project(":core:player"))
     implementation(libs.bundles.coroutines)
     implementation(libs.bundles.lifecycle)
     implementation(libs.hilt.android)
@@ -44,4 +46,10 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
     implementation(libs.zxing)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

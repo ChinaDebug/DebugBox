@@ -63,7 +63,8 @@ object AppConstants {
     const val PLAY_TIME_START = "play_time_start_"
     const val PLAY_TIME_END = "play_time_end_"
     const val VIDEO_PURIFY = "video_purify"
-    const val EXO_RENDERER_MODE = "exo_renderer_mode"
+    /** Media3 内核解码模式；键名沿用历史 exo_renderer_mode 以兼容已存配置 */
+    const val MEDIA3_RENDERER_MODE = "exo_renderer_mode"
     const val VOD_PLAYER_PREFERRED = "vod_player_preferred"
 
     const val DOH_URL = "doh_url"

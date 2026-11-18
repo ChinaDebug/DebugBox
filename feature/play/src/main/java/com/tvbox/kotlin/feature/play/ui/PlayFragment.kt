@@ -203,6 +203,11 @@ class PlayFragment : Fragment() {
     private lateinit var session: PlaySession
     private lateinit var controllerDelegate: ControllerListenerDelegate
 
+    /** 画面右侧长按倍速：长按前的倍速，松手后恢复 */
+    private var screenSpeedBeforeLongPress = 1.0f
+    /** 画面右侧长按倍速是否生效中，避免重复触发 */
+    private var isScreenLongPressSpeeding = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -296,6 +301,24 @@ class PlayFragment : Fragment() {
             onSelectEpisodeAction = {
                 Toast.makeText(requireContext(), "请使用详情页选集", Toast.LENGTH_SHORT).show()
             }
+            // 画面右侧长按恒定 2 倍速，松手恢复（详情页全屏预览走的是本 Fragment，必须同样实现）
+            onScreenLongPressSpeed = {
+                if (isScreenLongPressSpeeding) {
+                    false
+                } else {
+                    screenSpeedBeforeLongPress = viewModel.speed.value
+                    isScreenLongPressSpeeding = true
+                    viewModel.switchSpeed(2.0f)
+                    true
+                }
+            }
+            onScreenLongPressSpeedRelease = {
+                if (isScreenLongPressSpeeding) {
+                    isScreenLongPressSpeeding = false
+                    val restore = if (screenSpeedBeforeLongPress > 0) screenSpeedBeforeLongPress else 1.0f
+                    viewModel.switchSpeed(restore)
+                }
+            }
         }
         mController.setListener(controllerDelegate)
 
@@ -345,6 +368,8 @@ class PlayFragment : Fragment() {
         }
         // 视频尺寸就绪后更新分辨率显示与横竖屏切换按钮
         mVideoView.onVideoSizeChangedListener = { _, _ -> menuController.updateResolution() }
+        // 控制栏显示时补刷分辨率，覆盖尺寸在控制栏隐藏期间才就绪的情况
+        mController.onInfoRefresh = { menuController.updateResolution() }
 
         // 启动周期进度刷新（原 startPlayUrl 中启动，现由宿主统一启动，避免每次播放重复 post）
         mainHandler.removeCallbacks(positionRunnable)
@@ -721,10 +746,8 @@ class PlayFragment : Fragment() {
         saveCurrentProgress()
         // 切后台前隐藏控制栏，回前台时不会残留白色焦点边框
         mController.hideBottom()
-        // 后台播放开启（非画中画）时切后台不暂停：置位 surface 续播标志（GSY 在 surface 销毁时会自动暂停，
-        // MyVideoView 据此补恢复保持音频播放）；关闭时暂停预览，回前台由 onResume 自动恢复
+        // 后台播放开启（非画中画）时切后台不暂停，关闭时暂停预览，回前台由 onResume 自动恢复
         val bgEnabled = viewModel.backgroundPlayType() == 1
-        mVideoView.backgroundPlayEnabled = bgEnabled
         if (viewModel.backgroundPlayType() == 2) {
             // 画中画类型：是否进入 PiP 由宿主（全屏播放页 PlayActivity / 详情页 DetailActivity）决定。
             // 延迟确认（PiP 异步生效）：已进入 PiP（画面由系统保留）则保持播放；预览窗未进 PiP（无该能力）则暂停，
@@ -742,8 +765,6 @@ class PlayFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        // 回前台复位后台播放续播标志（surface 已重建，播放/暂停回归正常逻辑）
-        mVideoView.backgroundPlayEnabled = false
         // 回前台恢复播放：非用户手动暂停且播放器处于暂停态（后台暂停/音频焦点被抢占）时自动恢复，
         // 避免回前台黑屏、需手动操作或误判为重新加载
         if (!userPaused && mVideoView.playState == PlayerConstants.STATE_PAUSED) {

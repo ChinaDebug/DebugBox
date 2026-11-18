@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
 }
 
@@ -18,10 +19,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-
-    kotlin {
-        compilerOptions { jvmTarget.set(JvmTarget.JVM_21) }
-    }
 }
 
 dependencies {
@@ -30,4 +27,10 @@ dependencies {
     api("wang.harlon.quickjs:wrapper-java:3.2.3")
     implementation(project(":core:common"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

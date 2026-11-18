@@ -25,10 +25,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlin {
-        compilerOptions { jvmTarget.set(JvmTarget.JVM_21) }
-    }
-
     sourceSets {
         getByName("main") {
             // Chaquopy 将 python 源码目录注册为 sourceSet 的 "python" 扩展（默认 src/main/python），

@@ -15,6 +15,10 @@ object HawkUtils {
     private const val DANMU_SIZESCALE = "danmu_sizescale"
     private const val DANMU_COLOR = "danmu_color"
     private const val DANMU_FANCY = "danmu_fancy"
+    private const val DANMU_API = "danmu_api"
+
+    /** 内置在线弹幕接口默认地址（弹弹play 兼容 API，可在弹幕设置中修改） */
+    const val DEFAULT_DANMU_API = "https://logvardanmu.konfan.cn/87654321"
 
     fun getDanmuOpen(): Boolean = AppPreferencesHolder.getBoolean(DANMU_OPEN, false)
 
@@ -58,5 +62,15 @@ object HawkUtils {
 
     fun setDanmuFancy(fancy: Boolean) {
         AppPreferencesHolder.putBooleanSync(DANMU_FANCY, fancy)
+    }
+
+    /** 在线弹幕接口根地址（弹弹play 兼容），空值时回退内置默认地址 */
+    fun getDanmuApi(): String {
+        val value = AppPreferencesHolder.getString(DANMU_API, DEFAULT_DANMU_API).trim()
+        return value.ifEmpty { DEFAULT_DANMU_API }
+    }
+
+    fun setDanmuApi(url: String) {
+        AppPreferencesHolder.putSync(DANMU_API, url.trim())
     }
 }

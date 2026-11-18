@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
@@ -15,7 +16,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures { buildConfig = true }
 }
 
@@ -36,10 +36,8 @@ dependencies {
     implementation(libs.bundles.lifecycle)
 
     api(libs.room.runtime)
-    api(libs.room.ktx)
     ksp(libs.room.compiler)
-
-    api(libs.datastore.preferences)
+    implementation(libs.sqlite.bundled)
 
     implementation(libs.gson)
     implementation(libs.xstream)
@@ -48,4 +46,10 @@ dependencies {
 
     api(libs.hilt.android)
     ksp(libs.hilt.compiler)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

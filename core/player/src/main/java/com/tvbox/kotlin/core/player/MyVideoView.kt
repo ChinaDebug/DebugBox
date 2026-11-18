@@ -6,33 +6,36 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.AttributeSet
-import android.view.MotionEvent
+import android.view.Gravity
+import android.view.SurfaceView
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Effect
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
-import com.shuyu.gsyvideoplayer.R
-import com.shuyu.gsyvideoplayer.player.IPlayerManager
-import com.shuyu.gsyvideoplayer.utils.GSYVideoType
-import com.shuyu.gsyvideoplayer.video.base.GSYVideoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.tvbox.kotlin.core.player.effect.anime4k.EffectCanvas
 import master.flame.danmaku.ui.widget.DanmakuView
-import tv.danmaku.ijk.media.exo2.IjkExo2MediaPlayer
 
 /**
- * 基于 GSYVideoPlayer 的统一播放视图。
+ * Media3 直控播放视图。
  *
- * 底层内核由 GSY 的 PlayerManager 体系提供 Media3(Exo)，
- * 并将 GSY 生命周期回调映射为统一状态机（[PlayerConstants.STATE_*]），
- * 通过监听器暴露给控制层与业务层。
+ * 内部持有 [ExoPlayer]，自绘 Surface/Texture 渲染层，生命周期回调统一映射为
+ * [PlayerConstants.STATE_*] 状态机并对外暴露监听；控制层与音频面板由宿主注入。
+ * 对外 API 保持原有封装形式，业务层无需感知内核实现。
  */
 class MyVideoView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : GSYVideoPlayer(context, attrs, defStyleAttr) {
+) : FrameLayout(context, attrs, defStyleAttr) {
 
     /** 当前播放状态（沿用 [PlayerConstants.STATE_*] 常量语义） */
     var playState: Int = PlayerConstants.STATE_IDLE
@@ -45,7 +48,7 @@ class MyVideoView @JvmOverloads constructor(
     var onProgressChange: ((Long, Long) -> Unit)? = null
     /** 缓冲进度回调（百分比 0-100，-1 表示内核不支持） */
     var onBufferedChange: ((Int) -> Unit)? = null
-    /** 实时网速回调（KB/s，GSY TrafficStats 统计）：进度循环中无条件刷新，加载/缓冲阶段也能实时拿到速率 */
+    /** 实时网速回调（KB/s） */
     var onNetSpeedChange: ((Long) -> Unit)? = null
     /** 准备完成回调 */
     var onPreparedListener: (() -> Unit)? = null
@@ -57,91 +60,98 @@ class MyVideoView @JvmOverloads constructor(
     var onVideoSizeChangedListener: ((Int, Int) -> Unit)? = null
     //endregion
 
-    /** 是否纯音频播放（音频文件或媒体流无视频轨），宿主据此切换音频模式 UI（波形/歌名/歌词） */
+    /** 是否纯音频播放（音频文件或媒体流无视频轨），宿主据此切换音频模式 UI */
     var audioOnly = false
         private set
 
     /** 纯音频模式变化回调（检测到/手动切换时触发） */
     var onAudioModeChanged: ((Boolean) -> Unit)? = null
 
-    /** 音频模式面板（宿主注入：覆盖视频画面的波形/歌词层），仅在纯音频模式显示 */
-    private var audioPanel: View? = null
-
-    /**
-     * 后台播放开关：切后台（Window Surface 销毁）时保持播放（GSY 在 surface 销毁后会自动暂停，
-     * 此标志开启时由 [onSurfaceDestroyed] 补恢复，音频继续输出）。由业务层在启用后台播放时置位。
-     */
-    var backgroundPlayEnabled = false
-
-    /**
-     * 暂停位置（毫秒）。
-     * GSY 恢复播放依赖内部 mCurrentPosition 回跳，但该值仅在暂停时处于播放态才记录，
-     * 且长时间暂停后内核位置可能失效为 0；此字段作为恢复位置的兜底来源。
-     */
+    /** 暂停位置（毫秒）：恢复播放时位置失效的兜底来源 */
     private var pausedPosition = 0L
-
-    /** 音频模式兜底检测任务：onPrepared 后延迟确认无视频轨 */
-    private var audioCheckRunnable: Runnable? = null
 
     /** 当前播放请求头 */
     var headers: Map<String, String> = emptyMap()
+        private set
 
-    /** Surface 切换错误抑制截止时间戳：Surface 销毁后一段时间内的 onError 视为 Surface 切换伪错误 */
-    private var surfaceErrorGuardUntil = 0L
+    /** 音轨切换进行中标志：PlayerMenuHelper 切换音轨时置位，错误回调据此给出硬解兜底提示 */
+    @Volatile
+    var audioTrackSwitching = false
 
-    /** seek 目标（毫秒）：seek 后内核异步跳转、重新缓冲期间 getCurrentPosition 仍返回旧位置，
-     *  进度上报时若内核位置落后于该目标则用目标值，保证进度条指示与影片实际跳转位置一致 */
-    private var lastSeekTarget = -1L
-    /** seek 是否尚未被内核追上（内核位置 < 目标时为 true）；一旦内核位置到达目标即解除，
-     *  避免 seek 目标超过媒体时长被 clamp 后进度条长期锁死在目标位置 */
-    private var seekPending = false
+    //region 内核与渲染层
+    /** 直控 ExoPlayer（未创建时为 null） */
+    var exoPlayer: ExoPlayer? = null
+        private set
 
-    /** 当前播放倍速（私有字段，对外经 override 的 getSpeed/setSpeed 暴露，避免与 GSY 同名方法 JVM 冲突） */
+    /** 轨道选择器：业务层做音轨/视轨/字幕切换 */
+    var trackSelector: DefaultTrackSelector? = null
+        private set
+
+    /**
+     * 画面增强效果链（如 Anime4K）。
+     * Media3 在 prepare 时构建效果管线，须在每次开始播放前设置，播放中变更不生效。
+     */
+    var videoEffects: List<Effect> = emptyList()
+
+    private var currentUrl: String? = null
+    private var overrideExtension: String? = null
+
+    /** 渲染类型（[PlayerConstants.RENDER_SURFACE]/[PlayerConstants.RENDER_TEXTURE]） */
+    private var renderType: Int = PlayerConstants.RENDER_SURFACE
+
+    /** 渲染宿主：承载按比例缩放的画面层 */
+    private val renderHost: FrameLayout
+
+    /** 比例容器：按缩放模式决定画面实际尺寸 */
+    private val ratioLayout: RatioLayout
+
+    private var surfaceView: SurfaceView? = null
+    private var textureView: TextureView? = null
+
+    /** 视频宽高比（0 表示未知） */
+    private var videoAspect: Float = 0f
+
+    private val speedMeter = NetworkSpeedMeter()
     private var mSpeed: Float = 1f
-
-    init {
-        // 播放视图无需焦点，按键完全由外部控制层处理，避免抢占详情页预览窗拦截层的焦点
-        isFocusable = false
-        isFocusableInTouchMode = false
-        // 音频焦点丢失时不释放播放器，仅暂停，回前台保持暂停画面不重载
-        setReleaseWhenLossAudio(false)
-    }
+    //endregion
 
     /** 弹幕视图（手动同步 seek/pause/resume/release） */
     private var danmuView: DanmakuView? = null
 
-    /**
-     * 暂停态 seek 后重新暂停弹幕的延迟任务。
-     * DanmakuFlameMaster 的 DrawHandler 处理 seek 消息时会走 resume 分支，
-     * 第一步 removeMessages(PAUSE) 会把紧随其后的 pause 消息从队列删除，
-     * 导致暂停态 seek 后弹幕恢复渲染；须等 seek 消息处理完成后再补一次 pause。
-     */
+    /** 暂停态 seek 后延迟补暂停的弹幕任务（DanmakuView.seekTo 走 resume 分支会移除 pause 消息） */
     private val danmuRepauseRunnable = Runnable {
         if (playState == PlayerConstants.STATE_PAUSED) danmuView?.pause()
     }
 
-    /** 音轨切换进行中标志：PlayerMenuHelper 切换音轨时置位，onError(4001) 据此判定为切换引发（仅硬解兜底提示） */
-    @Volatile
-    var audioTrackSwitching = false
-
     /** 外部挂载的控制层 */
     private var mController: View? = null
 
+    /** 音频模式面板（宿主注入：波形/歌词层），仅在纯音频模式显示 */
+    private var audioPanel: View? = null
+
+    /** 音频模式兜底检测任务：准备完成后延迟确认无视频轨 */
+    private var audioCheckRunnable: Runnable? = null
+
+    /** 首次 READY 是否已通知（区分首帧准备与后续重新缓冲） */
+    private var preparedNotified = false
+
+    /** seek 目标（毫秒）：异步跳转/重新缓冲期间进度上报用目标值修正 */
+    private var lastSeekTarget = -1L
+    private var seekPending = false
+
     private val mainHandler = Handler(Looper.getMainLooper())
+
     private val progressRunnable = object : Runnable {
         override fun run() {
-            // 网速独立于播放进度刷新：加载/缓冲（PREPARING/BUFFERING）阶段
-            // 进度回调被排除，但迷你顶栏/缓冲网速仍需实时速率
-            onNetSpeedChange?.invoke(getNetSpeed())
+            // 网速独立于播放进度刷新：加载/缓冲阶段也能拿到实时速率
+            onNetSpeedChange?.invoke(speedMeter.sample())
             if (playState != PlayerConstants.STATE_IDLE &&
                 playState != PlayerConstants.STATE_ERROR &&
                 playState != PlayerConstants.STATE_PREPARING
             ) {
-                val dur = getDuration()
-                val rawPos = getCurrentPositionWhenPlaying()
-                // seek 目标修正：内核异步 seek 未完成（重新缓冲）时 getCurrentPosition 返回旧位置，
-                // 用 seek 目标覆盖，保证进度条指示与实际跳转位置一致；
-                // 内核到达目标或目标超时长（会被 clamp）后解除
+                val dur = duration.toLong()
+                val rawPos = currentPosition
+                // seek 未完成（重新缓冲）时用目标值覆盖，内核追上或目标超时长后解除
                 val pos = if (seekPending && rawPos < lastSeekTarget && lastSeekTarget <= dur) {
                     lastSeekTarget
                 } else {
@@ -150,122 +160,283 @@ class MyVideoView @JvmOverloads constructor(
                 if (rawPos >= lastSeekTarget || lastSeekTarget > dur) {
                     seekPending = false
                 }
-                // 弹幕时钟基准与进度同源刷新（pos 已含 seek 目标修正），
-                // 弹幕线程据此按倍速推算位置，校准倍速/缓冲造成的时钟漂移
                 refreshDanmuClock(pos)
                 onProgressChange?.invoke(dur, pos)
-                onBufferedChange?.invoke(getBufferedPercent())
+                onBufferedChange?.invoke(bufferedPercent())
             }
             mainHandler.postDelayed(this, PROGRESS_REFRESH_INTERVAL)
         }
     }
 
-    /** 缓冲百分比反射方法缓存：IPlayerManager.getBufferedPercentage（GSY v13 各内核均实现） */
-    private var bufferedMethod: java.lang.reflect.Method? = null
+    init {
+        // 播放视图无需焦点，按键完全由外部控制层处理
+        isFocusable = false
+        isFocusableInTouchMode = false
+
+        renderHost = FrameLayout(context).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        }
+        // 画面层按比例尺寸居中于宿主
+        ratioLayout = RatioLayout(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER
+            )
+        }
+        renderHost.addView(ratioLayout)
+        addView(renderHost)
+        buildRenderView()
+    }
+
+    //region 内核创建与渲染层装配
+    private fun ensurePlayer(): ExoPlayer {
+        exoPlayer?.let { return it }
+        // 轨道选择参数：能力保守时仍允许超限选择（避免全片无轨被拒），
+        // 关闭多路自适应（电视端单路自适应更稳，且避免跨渲染器切轨失败）
+        val selector = DefaultTrackSelector(context).apply {
+            setParameters(
+                buildUponParameters()
+                    .setExceedVideoConstraintsIfNecessary(true)
+                    .setExceedAudioConstraintsIfNecessary(true)
+                    .setAllowMultipleAdaptiveSelections(false)
+            )
+        }
+        val player = ExoPlayer.Builder(context, EngineRenderersFactory(context))
+            .setTrackSelector(selector)
+            .build()
+        // 音频焦点交由内核处理；耳机拔出自动暂停
+        player.setAudioAttributes(AudioAttributes.DEFAULT, true)
+        player.setHandleAudioBecomingNoisy(true)
+        player.addListener(playerListener)
+        exoPlayer = player
+        trackSelector = selector
+        bindRenderView(player)
+        player.setPlaybackSpeed(mSpeed)
+        return player
+    }
+
+    private fun bindRenderView(player: ExoPlayer) {
+        surfaceView?.let { player.setVideoSurfaceView(it) }
+        textureView?.let { player.setVideoTextureView(it) }
+    }
+
+    private fun buildRenderView() {
+        ratioLayout.removeAllViews()
+        surfaceView = null
+        textureView = null
+        if (renderType == PlayerConstants.RENDER_SURFACE) {
+            val view = SurfaceView(context)
+            ratioLayout.addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            surfaceView = view
+        } else {
+            val view = TextureView(context)
+            ratioLayout.addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            textureView = view
+        }
+        exoPlayer?.let { bindRenderView(it) }
+        ratioLayout.requestLayout()
+    }
+
+    /** 设置渲染类型（Surface/Texture），切换时重建画面层 */
+    fun setRenderType(type: Int) {
+        val normalized = if (type == PlayerConstants.RENDER_SURFACE) {
+            PlayerConstants.RENDER_SURFACE
+        } else {
+            PlayerConstants.RENDER_TEXTURE
+        }
+        if (renderType == normalized && (surfaceView != null || textureView != null)) return
+        renderType = normalized
+        buildRenderView()
+    }
 
     /**
-     * 获取当前缓冲百分比（0-100），内核不支持或异常时返回 -1。
-     * 反射调用避免对 GSY 内部接口的直接依赖，接口变动时自动降级不影响播放。
+     * 按比例容器：根据缩放模式与宽高比计算画面尺寸，FIT 留黑边、ZOOM 裁剪、FILL 拉伸。
      */
-    private fun getBufferedPercent(): Int {
-        return try {
-            val manager = getGSYVideoManager() ?: return -1
-            val method = bufferedMethod
-                ?: manager.javaClass.getMethod("getBufferedPercentage").also { bufferedMethod = it }
-            (method.invoke(manager) as? Number)?.toInt() ?: -1
-        } catch (_: Throwable) {
-            -1
+    private inner class RatioLayout(context: Context) : FrameLayout(context) {
+
+        var resizeMode: Int = RESIZE_FIT
+        var aspectRatio: Float = 0f
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val width = MeasureSpec.getSize(widthMeasureSpec)
+            val height = MeasureSpec.getSize(heightMeasureSpec)
+            var targetW = width
+            var targetH = height
+            val ar = if (aspectRatio > 0f) aspectRatio else videoAspect
+            if (ar > 0f && width > 0 && height > 0) {
+                when (resizeMode) {
+                    RESIZE_FILL -> Unit
+                    RESIZE_ZOOM -> {
+                        if (width.toFloat() / height > ar) {
+                            targetH = (width / ar).toInt()
+                        } else {
+                            targetW = (height * ar).toInt()
+                        }
+                    }
+                    else -> {
+                        if (width.toFloat() / height > ar) {
+                            targetW = (height * ar).toInt()
+                        } else {
+                            targetH = (width / ar).toInt()
+                        }
+                    }
+                }
+            }
+            setMeasuredDimension(targetW, targetH)
+            val childW = MeasureSpec.makeMeasureSpec(targetW, MeasureSpec.EXACTLY)
+            val childH = MeasureSpec.makeMeasureSpec(targetH, MeasureSpec.EXACTLY)
+            for (i in 0 until childCount) {
+                getChildAt(i).measure(childW, childH)
+            }
+        }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            // 向 Anime4K 提供画布尺寸：决定是否需要 2x 放大链
+            EffectCanvas.set(w, h)
+        }
+    }
+    //endregion
+
+    //region 播放器监听
+    private val playerListener = object : Player.Listener {
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_BUFFERING -> {
+                    if (playState == PlayerConstants.STATE_PAUSED) return
+                    if (!preparedNotified) {
+                        setPlayState(PlayerConstants.STATE_PREPARING)
+                    } else {
+                        setPlayState(PlayerConstants.STATE_BUFFERING)
+                    }
+                }
+                Player.STATE_READY -> {
+                    if (!preparedNotified) {
+                        preparedNotified = true
+                        onPreparedInternal()
+                    } else if (playState != PlayerConstants.STATE_PAUSED &&
+                        playState != PlayerConstants.STATE_PLAYBACK_COMPLETED
+                    ) {
+                        setPlayState(PlayerConstants.STATE_PLAYING)
+                    }
+                }
+                Player.STATE_ENDED -> {
+                    pausedPosition = 0
+                    setPlayState(PlayerConstants.STATE_PLAYBACK_COMPLETED)
+                    onCompletionListener?.invoke()
+                    danmuView?.release()
+                }
+            }
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (!preparedNotified) return
+            if (isPlaying) {
+                if (playState != PlayerConstants.STATE_PLAYING) {
+                    setPlayState(PlayerConstants.STATE_PLAYING)
+                }
+            } else if (playState == PlayerConstants.STATE_PLAYING && exoPlayer?.playWhenReady == false) {
+                setPlayState(PlayerConstants.STATE_PAUSED)
+            }
+            // 投屏等外部直接控制内核时不会走 pause()/resume()，这里按内核播放状态同步弹幕时钟与渲染，
+            // 恢复时按视频位置重新对齐，避免弹幕停在暂停点或持续走钟导致错位
+            refreshDanmuClock()
+            if (haveDanmu()) {
+                if (isPlaying) {
+                    danmuView?.resume()
+                    danmuView?.seekTo(currentPosition)
+                    refreshDanmuClock()
+                } else {
+                    danmuView?.pause()
+                }
+            }
+        }
+
+        override fun onRenderedFirstFrame() {
+            if (playState != PlayerConstants.STATE_PAUSED) {
+                setPlayState(PlayerConstants.STATE_PLAYING)
+            }
+        }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            videoAspect = if (videoSize.width > 0 && videoSize.height > 0) {
+                videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+            } else {
+                0f
+            }
+            ratioLayout.requestLayout()
+            if (videoSize.width > 0 && videoSize.height > 0 && audioOnly) {
+                setAudioMode(false)
+            }
+            onVideoSizeChangedListener?.invoke(videoSize.width, videoSize.height)
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            // 仅硬解模式切到无硬件解码器的音轨（杜比/DTS）时解码器初始化失败，给出可操作提示
+            if (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED &&
+                audioTrackSwitching && PlayerEngineConfig.isOnlyHardwareMode
+            ) {
+                audioTrackSwitching = false
+                Toast.makeText(
+                    context,
+                    "当前仅硬解模式不支持该音轨（杜比/DTS），请切换硬解优先或软解优先",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            setPlayState(PlayerConstants.STATE_ERROR)
+            onErrorListener?.invoke(error.errorCode, 0)
         }
     }
 
-    //region GSY 抽象方法实现（播放逻辑与 UI 空实现，UI 由外部控制器接管）
-    /**
-     * 使用同名覆盖的精简布局（模块内资源优先于 GSY 库），
-     * 仅保留渲染必需控件，移除 GSY 自带左上角返回按钮与中央播放/暂停按钮。
-     */
-    override fun getLayoutId(): Int = R.layout.video_layout_standard
-
-    /** 开始播放：置为准备状态后走 GSY 内部 prepare 流程 */
-    override fun startPlayLogic() {
-        setPlayState(PlayerConstants.STATE_PREPARING)
-        prepareVideo()
+    /** 首次就绪：断点跳转、音轨标志复位、纯音频兜底检测 */
+    private fun onPreparedInternal() {
+        setPlayState(PlayerConstants.STATE_PREPARED)
+        val player = exoPlayer
+        if (player != null && player.playWhenReady && player.isPlaying) {
+            setPlayState(PlayerConstants.STATE_PLAYING)
+        }
+        if (pendingStartPosition > 0) {
+            seekTo(pendingStartPosition)
+        }
+        audioTrackSwitching = false
+        scheduleAudioModeCheck()
+        onPreparedListener?.invoke()
     }
-
-    // GSY 内置控制器 UI 全部留空，避免与自定义控制器冲突
-    override fun showWifiDialog() = Unit
-    override fun showProgressDialog(
-        deltaX: Float,
-        seekTime: String,
-        seekTimePosition: Long,
-        totalTime: String,
-        totalTimeDuration: Long
-    ) = Unit
-
-    override fun dismissProgressDialog() = Unit
-    override fun showVolumeDialog(deltaY: Float, volumePercent: Int) = Unit
-    override fun dismissVolumeDialog() = Unit
-    override fun showBrightnessDialog(percent: Float) = Unit
-    override fun dismissBrightnessDialog() = Unit
-    override fun onClickUiToggle(e: MotionEvent) = Unit
-    override fun hideAllWidget() = Unit
-    override fun changeUiToNormal() = Unit
-    override fun changeUiToPreparingShow() = Unit
-    override fun changeUiToPlayingShow() = Unit
-    override fun changeUiToPauseShow() = Unit
-    override fun changeUiToError() = Unit
-    override fun changeUiToCompleteShow() = Unit
-    override fun changeUiToPlayingBufferingShow() = Unit
     //endregion
 
-    //region 兼容 API
+    //region 播放控制与兼容 API
     /** 设置播放地址与请求头，随后调用 [start] 开始播放 */
     fun setUrl(url: String, headers: Map<String, String>?) {
-        // 未显式指定断点时清除上一播放周期的断点残留，避免换集后 onPrepared 误 seek 到旧集位置
+        // 切换播放目标时清除上一周期的断点/暂停位置残留
         pendingStartPosition = 0
-        // 切换播放目标时清空暂停位置
         pausedPosition = 0
-        // 按 URL 扩展名预判纯音频（mp3/flac/m4a/aac 等），立即切换音频模式 UI；
-        // 无视频轨的媒体流（如纯音频 m3u8）由 onPrepared 后兜底检测
+        lastSeekTarget = -1
+        seekPending = false
+        preparedNotified = false
+        speedMeter.reset()
         setAudioMode(isAudioFileUrl(url))
-        // 丢弃空值请求头（空头会被部分 CDN 拒绝，空 UA 回退播放器默认 UA）
+        // 丢弃空值请求头（空头会被部分 CDN 拒绝）
         val filtered = headers
             ?.filter { !it.value.isNullOrBlank() }
             ?.takeIf { it.isNotEmpty() }
         this.headers = filtered ?: emptyMap()
-        // 扩展名在 query 中的 m3u8/dash 地址需强制按对应类型播放（Exo 按路径扩展名推断会误判）
-        setOverrideExtension(inferOverrideExtension(url))
-        // 注入 allowCrossProtocolRedirects 元数据头供 GSY Exo 内核启用跨协议重定向（非 HLS 路径）
-        setUp(url, false, null, this.headers + ("allowCrossProtocolRedirects" to "true"), null)
-    }
-
-    /**
-     * 推断需覆盖的流扩展名：
-     * - 路径已有 .m3u8/.mpd 扩展名时返回 null（默认推断即可识别）；
-     * - 路径无扩展名但 URL 含 m3u8/hls 或 mpd/dash 字样时返回对应扩展名强制按 HLS/DASH 播放。
-     */
-    private fun inferOverrideExtension(url: String): String? {
-        if (url.startsWith("data:")) return null
-        val lower = url.lowercase()
-        val path = runCatching { android.net.Uri.parse(url).path }.getOrNull()?.lowercase()
-        if (path != null && (path.endsWith(".m3u8") || path.endsWith(".mpd"))) return null
-        return when {
-            lower.contains("m3u8") || lower.contains("type=hls") || lower.contains("format=hls") -> "m3u8"
-            lower.contains(".mpd") || lower.contains("type=mpd") || lower.contains("format=mpd") ||
-                lower.contains("type=dash") || lower.contains("format=dash") -> "mpd"
-            else -> null
+        currentUrl = url
+        overrideExtension = MediaSources.inferExtension(url, null)
+        // 复用的播放器需停止并清空旧媒体源，避免下次 prepare 残留上一集
+        exoPlayer?.apply {
+            stop()
+            clearMediaItems()
         }
+        playState = PlayerConstants.STATE_IDLE
     }
 
     fun setUrl(url: String) = setUrl(url, null)
 
     /**
-     * 设置播放地址并在准备完成后跳转到指定起始位置（断点续播）。
-     * [startPosition] 大于 0 时记录待跳转位置，由 [onPrepared] 在底层内核
-     * 准备完成后执行 seekTo；直接调用 seekTo 在 prepare 完成前会被内核丢弃，
-     * 导致断点续播总是从头开始。
+     * 设置播放地址并在准备完成后跳转到指定位置（断点续播）。
+     * prepare 前 seekTo 会被内核丢弃，故记录待跳转位置到首次就绪时执行。
      */
     fun setUrl(url: String, headers: Map<String, String>?, startPosition: Long) {
-        // 先走无断点重载清除旧残留，再设置本次断点
         setUrl(url, headers)
         if (startPosition > 0) pendingStartPosition = startPosition
     }
@@ -275,57 +446,88 @@ class MyVideoView @JvmOverloads constructor(
 
     /** 开始/继续播放 */
     fun start() {
-        when (playState) {
-            PlayerConstants.STATE_PREPARED, PlayerConstants.STATE_PAUSED,
-            PlayerConstants.STATE_BUFFERING, PlayerConstants.STATE_BUFFERED,
-            PlayerConstants.STATE_PLAYING -> onVideoResume()
-            else -> {
-                // 内核已释放/复位时重新装配，起始位置取暂停位置
-                if (pausedPosition > 0) pendingStartPosition = pausedPosition
-                startPlayLogic()
-            }
+        val player = exoPlayer
+        if (player == null || playState == PlayerConstants.STATE_IDLE ||
+            playState == PlayerConstants.STATE_ERROR
+        ) {
+            if (pausedPosition > 0) pendingStartPosition = pausedPosition
+            startPlayLogic()
+        } else {
+            player.play()
+            setPlayState(PlayerConstants.STATE_PLAYING)
         }
     }
 
-    fun pause() = onVideoPause()
+    /** 装配媒体源并开始准备（内部流程） */
+    private fun startPlayLogic() {
+        val url = currentUrl ?: return
+        val player = ensurePlayer()
+        preparedNotified = false
+        setPlayState(PlayerConstants.STATE_PREPARING)
+        player.setMediaSource(MediaSources.create(context, url, headers, overrideExtension))
+        // 效果链须在 prepare 前装配（空列表用于清除上一集残留效果）
+        player.setVideoEffects(videoEffects)
+        player.prepare()
+        player.play()
+    }
 
-    fun resume() = onVideoResume()
+    fun pause() {
+        val player = exoPlayer ?: return
+        val position = player.currentPosition
+        if (position > 0) pausedPosition = position
+        player.pause()
+        if (playState != PlayerConstants.STATE_IDLE && playState != PlayerConstants.STATE_ERROR) {
+            setPlayState(PlayerConstants.STATE_PAUSED)
+        }
+        refreshDanmuClock()
+        if (haveDanmu()) danmuView?.pause()
+    }
+
+    fun resume() {
+        val player = exoPlayer ?: return
+        if (player.currentPosition <= 0 && pausedPosition > 0) {
+            player.seekTo(pausedPosition)
+        }
+        player.play()
+        setPlayState(PlayerConstants.STATE_PLAYING)
+        refreshDanmuClock()
+        if (haveDanmu()) {
+            // 暂停期间弹幕时钟已停走，恢复时必须按视频位置重新对齐，否则投屏暂停后弹幕会卡住/错位
+            danmuView?.resume()
+            danmuView?.seekTo(currentPosition)
+            refreshDanmuClock()
+        }
+    }
 
     /**
-     * 跳转到指定位置并同步弹幕时钟（弹幕已加载时），保证拖动进度条后弹幕与视频同步。
-     * 暂停态下额外同步 [mCurrentPosition]（GSY 恢复播放前会 seekTo 该字段，不写则
-     * 恢复播放跳回暂停前位置）并在 seek 完成后延迟补一次 pause（DanmakuView.seekTo
-     * 走 resume 分支会移除队列中的 pause 消息，直接 pause 无效）。
+     * 跳转到指定位置并同步弹幕时钟。
+     * 暂停态下 seek 后延迟补一次 pause（DanmakuView.seekTo 走 resume 分支会移除 pause 消息）。
      */
-    override fun seekTo(pos: Long) {
-        super.seekTo(pos)
-        // 记录 seek 目标：内核异步跳转/重新缓冲期间进度上报用目标值修正，避免进度条指示回跳
+    fun seekTo(pos: Long) {
+        val player = exoPlayer ?: return
+        player.seekTo(pos)
         lastSeekTarget = pos
         seekPending = true
-        // 暂停态同步位置缓存：GSY 恢复播放前会按 mCurrentPosition 回跳
         if (playState == PlayerConstants.STATE_PAUSED) {
-            mCurrentPosition = pos
             pausedPosition = pos
         }
-        // 手动 seek 到其他位置时断点目标失效（onPrepared 的断点 seek 除外），避免弹幕误按旧断点同步
+        // 手动 seek 到其他位置时断点目标失效（onPrepared 的断点 seek 除外）
         if (pendingStartPosition > 0 && pos != pendingStartPosition) {
             pendingStartPosition = 0
         }
-        // 按 seek 目标重建弹幕时钟基准：不必等下一次进度刷新，弹幕立即从新位置校准
         refreshDanmuClock(pos)
         if (haveDanmu()) {
             danmuView?.seekTo(pos)
             if (playState == PlayerConstants.STATE_PAUSED) {
-                // seek 消息走 resume 分支会恢复弹幕渲染，等处理完成后再补 pause
                 mainHandler.removeCallbacks(danmuRepauseRunnable)
                 mainHandler.postDelayed(danmuRepauseRunnable, DANMU_SEEK_REPAUSE_DELAY)
             }
         }
     }
 
-    /** 弹幕起始位置（毫秒）：断点 seek 异步完成前 currentPosition 仍是旧值，弹幕按断点目标启动 */
+    /** 弹幕起始位置（毫秒）：断点 seek 异步完成前 currentPosition 仍是旧值，按断点目标启动 */
     fun danmuStartPosition(): Long {
-        val current = getCurrentPositionWhenPlaying()
+        val current = currentPosition
         return if (pendingStartPosition > 0 && current < pendingStartPosition) {
             pendingStartPosition
         } else {
@@ -334,50 +536,67 @@ class MyVideoView @JvmOverloads constructor(
     }
 
     /** 当前播放位置（毫秒） */
-    val currentPosition: Long get() = getCurrentPositionWhenPlaying()
+    val currentPosition: Long get() = exoPlayer?.currentPosition?.coerceAtLeast(0) ?: 0
+
+    /** 视频总时长（毫秒），未知返回 0 */
+    val duration: Int
+        get() {
+            val d = exoPlayer?.duration ?: 0L
+            return if (d == C.TIME_UNSET || d < 0) 0 else d.toInt()
+        }
 
     /** 是否正在播放 */
-    val isPlaying: Boolean get() = getGSYVideoManager()?.isPlaying() ?: false
-
-    /** 底层播放内核（GSY IPlayerManager，当前为 Exo(Media3) 内核） */
-    val mediaPlayer: IPlayerManager?
-        get() = getGSYVideoManager()?.getPlayer()
+    val isPlaying: Boolean get() = exoPlayer?.isPlaying ?: false
 
     /** 视频尺寸 [宽, 高]，未就绪返回 null */
     val videoSize: IntArray?
         get() {
-            val w = getGSYVideoManager()?.getVideoWidth() ?: 0
-            val h = getGSYVideoManager()?.getVideoHeight() ?: 0
-            return if (w > 0 && h > 0) intArrayOf(w, h) else null
+            val size = exoPlayer?.videoSize ?: return null
+            return if (size.width > 0 && size.height > 0) {
+                intArrayOf(size.width, size.height)
+            } else {
+                null
+            }
         }
 
-    /** 实时网速（字节/秒） */
-    val tcpSpeed: Long get() = getNetSpeed().toLong()
+    /** 实时网速（KB/s） */
+    val tcpSpeed: Long get() = speedMeter.sample()
 
-    /** 设置播放倍速（GSY 内部同时作用于已创建与后续播放器） */
-    override fun setSpeed(speed: Float) {
+    /** 设置播放倍速 */
+    fun setSpeed(speed: Float) {
         mSpeed = speed
-        super.setSpeed(speed)
-        // 倍速变更：按当前真实位置重建弹幕时钟基准，避免推算沿用旧倍速产生偏差
+        exoPlayer?.setPlaybackSpeed(speed)
+        // 倍速变更：按当前真实位置重建弹幕时钟基准
         refreshDanmuClock()
     }
 
-    override fun getSpeed(): Float = mSpeed
+    fun getSpeed(): Float = mSpeed
 
     /** 设置画面缩放类型，取值参考 [PlayerConstants.SCREEN_SCALE_*] */
     fun setScreenScaleType(scale: Int) {
-        val gsyType = when (scale) {
-            PlayerConstants.SCREEN_SCALE_16_9 -> GSYVideoType.SCREEN_TYPE_16_9
-            PlayerConstants.SCREEN_SCALE_4_3 -> GSYVideoType.SCREEN_TYPE_4_3
-            // 拉伸填满
-            PlayerConstants.SCREEN_SCALE_MATCH_PARENT -> GSYVideoType.SCREEN_MATCH_FULL
-            // 原始比例完整显示
-            PlayerConstants.SCREEN_SCALE_ORIGINAL -> GSYVideoType.SCREEN_TYPE_DEFAULT
-            // 裁边填满
-            PlayerConstants.SCREEN_SCALE_CENTER_CROP -> GSYVideoType.SCREEN_TYPE_FULL
-            else -> GSYVideoType.SCREEN_TYPE_DEFAULT
+        when (scale) {
+            PlayerConstants.SCREEN_SCALE_16_9 -> {
+                ratioLayout.resizeMode = RESIZE_FIT
+                ratioLayout.aspectRatio = 16f / 9f
+            }
+            PlayerConstants.SCREEN_SCALE_4_3 -> {
+                ratioLayout.resizeMode = RESIZE_FIT
+                ratioLayout.aspectRatio = 4f / 3f
+            }
+            PlayerConstants.SCREEN_SCALE_MATCH_PARENT -> {
+                ratioLayout.resizeMode = RESIZE_FILL
+                ratioLayout.aspectRatio = 0f
+            }
+            PlayerConstants.SCREEN_SCALE_CENTER_CROP -> {
+                ratioLayout.resizeMode = RESIZE_ZOOM
+                ratioLayout.aspectRatio = 0f
+            }
+            else -> {
+                ratioLayout.resizeMode = RESIZE_FIT
+                ratioLayout.aspectRatio = 0f
+            }
         }
-        GSYVideoType.setShowType(gsyType)
+        ratioLayout.requestLayout()
     }
 
     /** 挂载外部控制层（覆盖在渲染层之上，占满全屏） */
@@ -388,17 +607,14 @@ class MyVideoView @JvmOverloads constructor(
         if (controller != null) {
             addView(
                 controller,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                )
+                LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
             )
         }
     }
 
     /**
-     * 设置/切换纯音频模式（宿主在自动检测到纯音频或用户手动切换时调用）。
-     * 切换时同步音频面板显隐并回调 [onAudioModeChanged]，供宿主收起弹幕/字幕等视频元素。
+     * 设置/切换纯音频模式（自动检测或用户手动切换）。
+     * 切换时同步音频面板显隐并回调，供宿主收起弹幕/字幕等视频元素。
      */
     fun setAudioMode(mode: Boolean) {
         if (audioOnly == mode) return
@@ -407,24 +623,16 @@ class MyVideoView @JvmOverloads constructor(
         onAudioModeChanged?.invoke(mode)
     }
 
-    /**
-     * 挂载音频模式面板（波形/歌名/歌词层）。
-     * 面板插入到渲染层与控制层之间：覆盖无画面的视频 surface，且不遮挡控制栏。
-     */
+    /** 挂载音频模式面板（波形/歌名/歌词层）：插到渲染层与控制层之间，不遮挡控制栏 */
     fun setAudioPanel(panel: View?) {
         if (audioPanel === panel) return
         audioPanel?.let { removeView(it) }
         audioPanel = panel
         if (panel != null) {
-            // 面板经 dataBinding 位于宿主布局根中（已有父容器），先脱离原父容器再挂载到播放器内部，
-            // 否则 addView 抛 "The specified child already has a parent" 导致闪退
+            // 面板来自宿主布局根，先脱离原父容器再挂载，避免 "already has a parent"
             (panel.parent as? ViewGroup)?.removeView(panel)
-            val lp = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
+            val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
             val controller = mController
-            // 控制层已挂载时插到其之前，避免覆盖控制栏；未挂载时追加到末尾
             if (controller != null && indexOfChild(controller) > 0) {
                 addView(panel, indexOfChild(controller).coerceAtLeast(0), lp)
             } else {
@@ -432,6 +640,72 @@ class MyVideoView @JvmOverloads constructor(
             }
             panel.visibility = if (audioOnly) View.VISIBLE else View.GONE
         }
+    }
+
+    /** 释放播放器与弹幕资源，状态复位为 IDLE */
+    fun release() {
+        stopProgressLoop()
+        danmuView?.release()
+        danmuClockBaseMs = 0L
+        danmuClockBaseUptime = 0L
+        danmuClockPlaying = false
+        audioTrackSwitching = false
+        audioCheckRunnable?.let { mainHandler.removeCallbacks(it) }
+        audioCheckRunnable = null
+        audioOnly = false
+        audioPanel?.visibility = View.GONE
+        pausedPosition = 0
+        pendingStartPosition = 0
+        preparedNotified = false
+        speedMeter.reset()
+        exoPlayer?.let {
+            it.removeListener(playerListener)
+            it.release()
+        }
+        exoPlayer = null
+        trackSelector = null
+        playState = PlayerConstants.STATE_IDLE
+    }
+    //endregion
+
+    //region 缓冲与音频模式检测
+    /** 当前缓冲百分比（0-100），时长未知返回 -1 */
+    private fun bufferedPercent(): Int {
+        val player = exoPlayer ?: return -1
+        val dur = player.duration
+        if (dur <= 0 || dur == C.TIME_UNSET) return -1
+        val buffered = (player.bufferedPosition * 100 / dur).toInt()
+        return buffered.coerceIn(0, 100)
+    }
+
+    private fun scheduleAudioModeCheck() {
+        audioCheckRunnable?.let { mainHandler.removeCallbacks(it) }
+        if (audioOnly) return
+        val r = Runnable {
+            audioCheckRunnable = null
+            if (!audioOnly &&
+                (playState == PlayerConstants.STATE_PLAYING ||
+                    playState == PlayerConstants.STATE_PREPARED)
+            ) {
+                if (hasNoVideoTrack()) setAudioMode(true)
+            }
+        }
+        audioCheckRunnable = r
+        mainHandler.postDelayed(r, AUDIO_MODE_CHECK_DELAY_MS)
+    }
+
+    /** 是否无视频轨道：有音频轨且无视频轨判定为纯音频 */
+    private fun hasNoVideoTrack(): Boolean {
+        val player = exoPlayer ?: return false
+        var hasVideo = false
+        var hasAudio = false
+        for (group in player.currentTracks.groups) {
+            when (group.type) {
+                C.TRACK_TYPE_VIDEO -> hasVideo = true
+                C.TRACK_TYPE_AUDIO -> hasAudio = true
+            }
+        }
+        return hasAudio && !hasVideo
     }
     //endregion
 
@@ -444,10 +718,7 @@ class MyVideoView @JvmOverloads constructor(
 
     private fun haveDanmu(): Boolean = danmuView?.isPrepared == true
 
-    /**
-     * 弹幕时钟基准：主线程采样（进度刷新/seek/倍速变更时刷新），
-     * 弹幕线程据此推算播放位置，避免在弹幕线程访问内核（Media3 要求主线程访问，否则抛异常）。
-     */
+    /** 弹幕时钟基准：主线程采样，弹幕线程据此推算位置（Media3 禁止跨线程访问内核） */
     @Volatile
     private var danmuClockBaseMs = 0L
 
@@ -458,9 +729,8 @@ class MyVideoView @JvmOverloads constructor(
     private var danmuClockPlaying = false
 
     /**
-     * 线程安全的播放位置推算（毫秒），供弹幕时钟校准：
-     * 以主线程最近一次采样为基准按当前倍速线性推进（倍速播放时弹幕时间轴随视频走），
-     * 暂停时返回采样值（弹幕时钟冻结）。未采样过返回 0，调用方据此跳过校准。
+     * 线程安全的播放位置推算（毫秒）：以最近一次主线程采样为基准按当前倍速推进。
+     * 未采样过返回 0，调用方据此跳过校准。
      */
     fun danmuClockPosition(): Long {
         if (danmuClockBaseUptime == 0L) return 0L
@@ -469,12 +739,15 @@ class MyVideoView @JvmOverloads constructor(
         return danmuClockBaseMs + (elapsed * mSpeed).toLong()
     }
 
-    /** 刷新弹幕时钟基准（需主线程：会读取内核进度与播放状态） */
+    /** 刷新弹幕时钟基准（需主线程） */
     private fun refreshDanmuClock(position: Long? = null) {
         if (Looper.myLooper() != Looper.getMainLooper()) return
-        // IDLE/PREPARING 阶段进度无意义（恒为 0），不采样：避免弹幕时钟被拉回开头
-        if (playState == PlayerConstants.STATE_IDLE || playState == PlayerConstants.STATE_PREPARING) return
-        danmuClockBaseMs = position ?: getCurrentPositionWhenPlaying()
+        if (playState == PlayerConstants.STATE_IDLE ||
+            playState == PlayerConstants.STATE_PREPARING
+        ) {
+            return
+        }
+        danmuClockBaseMs = position ?: currentPosition
         danmuClockBaseUptime = SystemClock.uptimeMillis()
         danmuClockPlaying = isPlaying
     }
@@ -491,215 +764,24 @@ class MyVideoView @JvmOverloads constructor(
     }
     //endregion
 
-    //region GSY 生命周期 → 状态机映射
-    override fun onPrepared() {
-        // 先置 PREPARED 再调 super：GSY 的 onPrepared 内部自动播放走 startAfterPrepared()
-        // （直接 VideoManager.start()，不经过 onVideoResume），若停留 PREPARED 则主动同步为
-        // PLAYING，避免状态卡在 PREPARED 导致 OK/回车无法暂停；若 GSY 未自动播放
-        // （mStartAfterPrepared=false 会走 onVideoPause，状态已切为 PAUSED）则保持
-        setPlayState(PlayerConstants.STATE_PREPARED)
-        super.onPrepared()
-        if (playState == PlayerConstants.STATE_PREPARED) {
-            setPlayState(PlayerConstants.STATE_PLAYING)
-        }
-        // 内核就绪后再跳转断点位置（prepare 前 seekTo 会被内核丢弃）；
-        // 断点位置保留至弹幕加载完成供 danmuStartPosition 使用，手动 seek/下次 setUrl 失效
-        if (pendingStartPosition > 0) {
-            seekTo(pendingStartPosition)
-        }
-        // 复位音轨切换标志（新播放周期开始，onError 不再归属上次切换）
-        audioTrackSwitching = false
-        // 纯音频兜底检测：视频源在 prepare 后很快有视频尺寸，纯音频源（无视频轨）尺寸恒为 0
-        scheduleAudioModeCheck()
-        onPreparedListener?.invoke()
-    }
-
-    /**
-     * 纯音频兜底检测：URL 无音频扩展名但媒体流无视频轨（如纯音频 m3u8）时，
-     * onPrepared 后基于底层轨道信息判定纯音频，进入音频模式。
-     * 用 Exo 轨道判断：视频源必有 video track（与解码能力无关，硬解不支持的视频仍有视频轨），
-     * 不会把慢解码/硬解失败"只有声音没画面"的视频误判为音频而闪现音频面板；
-     * 非 Exo 内核无轨道接口时不判定（保持默认布局）。
-     */
-    private fun scheduleAudioModeCheck() {
-        audioCheckRunnable?.let { mainHandler.removeCallbacks(it) }
-        if (audioOnly) return
-        val r = Runnable {
-            audioCheckRunnable = null
-            if (!audioOnly &&
-                (playState == PlayerConstants.STATE_PLAYING || playState == PlayerConstants.STATE_PREPARED)
-            ) {
-                if (hasNoVideoTrack()) setAudioMode(true)
-            }
-        }
-        audioCheckRunnable = r
-        mainHandler.postDelayed(r, AUDIO_MODE_CHECK_DELAY_MS)
-    }
-
-    /**
-     * 是否无视频轨道（纯音频媒体流）：Exo 内核反射读取内部 ExoPlayer 的轨道信息，
-     * 有音频轨且无视频轨判定为纯音频；非 Exo 内核或读取失败返回 false（不判定）。
-     */
-    private fun hasNoVideoTrack(): Boolean {
-        return try {
-            val manager = getGSYVideoManager() ?: return false
-            val pm = manager.getPlayer() as? IjkExo2MediaPlayer ?: return false
-            val field = IjkExo2MediaPlayer::class.java.getDeclaredField("mInternalPlayer")
-            field.isAccessible = true
-            val exo = field.get(pm) as? ExoPlayer ?: return false
-            var hasVideo = false
-            var hasAudio = false
-            for (group in exo.currentTracks.groups) {
-                when (group.type) {
-                    C.TRACK_TYPE_VIDEO -> hasVideo = true
-                    C.TRACK_TYPE_AUDIO -> hasAudio = true
-                }
-            }
-            hasAudio && !hasVideo
-        } catch (_: Throwable) {
-            false
-        }
-    }
-
-    override fun onVideoPause() {
-        // GSY 仅在 isPlaying 时记录 mCurrentPosition，缓冲边界可能漏记，此处主动补记
-        val position = getCurrentPositionWhenPlaying()
-        super.onVideoPause()
-        if (position > 0) {
-            pausedPosition = position
-            if (mCurrentPosition <= 0) mCurrentPosition = position
-        }
-        setPlayState(PlayerConstants.STATE_PAUSED)
-        if (haveDanmu()) danmuView?.pause()
-    }
-
-    override fun onVideoResume() {
-        // 内核位置读回 0 时以暂停位置修正，避免 GSY 按 0 回跳
-        if (pausedPosition > 0 && getCurrentPositionWhenPlaying() <= 0) {
-            mCurrentPosition = pausedPosition
-        }
-        super.onVideoResume()
-        setPlayState(PlayerConstants.STATE_PLAYING)
-        // 弹幕时钟恢复：已启动则 resume；未启动（弹幕 prepare 完成后由加载回调
-        // 按当前进度 start）跳过，避免重复 start 重置弹幕时钟导致从头开始
-        if (haveDanmu()) {
-            danmuView?.resume()
-        }
-    }
-
-    override fun onAutoCompletion() {
-        super.onAutoCompletion()
-        // 自然播完清空暂停位置，后续重播从头开始
-        pausedPosition = 0
-        setPlayState(PlayerConstants.STATE_PLAYBACK_COMPLETED)
-        onCompletionListener?.invoke()
-        danmuView?.release()
-    }
-
-    override fun onError(what: Int, extra: Int) {
-        if (System.currentTimeMillis() < surfaceErrorGuardUntil) {
-            return
-        }
-        // 4001 = 解码器初始化失败：仅硬解模式下切到无硬件解码器的音轨（如杜比/DTS）会在此失败。
-        // PlayerMenuHelper 已按设备硬件能力预检拦截，此处为预检遗漏（能力声明与实际初始化不符）时的兜底提示
-        if (what == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED && audioTrackSwitching &&
-            ConfigurableExo2PlayerManager.isOnlyHardwareMode
-        ) {
-            audioTrackSwitching = false
-            Toast.makeText(
-                context,
-                "当前仅硬解模式不支持该音轨（杜比/DTS），请切换硬解优先或软解优先",
-                Toast.LENGTH_SHORT
-            ).show()
-            // 继续走下方正常错误流程
-        }
-        super.onError(what, extra)
-        setPlayState(PlayerConstants.STATE_ERROR)
-        onErrorListener?.invoke(what, extra)
-    }
-
-    override fun onSurfaceDestroyed(surface: android.view.Surface?): Boolean {
-        if (playState != PlayerConstants.STATE_IDLE && playState != PlayerConstants.STATE_ERROR) {
-            surfaceErrorGuardUntil = System.currentTimeMillis() + SURFACE_ERROR_GUARD_MS
-        }
-        return super.onSurfaceDestroyed(surface)
-    }
-
-    override fun onVideoSizeChanged() {
-        super.onVideoSizeChanged()
-        val w = getGSYVideoManager()?.getVideoWidth() ?: 0
-        val h = getGSYVideoManager()?.getVideoHeight() ?: 0
-
-        if (w > 0 && h > 0 && audioOnly) {
-            setAudioMode(false)
-        }
-        onVideoSizeChangedListener?.invoke(w, h)
-    }
-
-    override fun onInfo(what: Int, extra: Int) {
-        super.onInfo(what, extra)
-        when (what) {
-            MEDIA_INFO_BUFFERING_START, MEDIA_INFO_BUFFERING_START_LEGACY ->
-                // 暂停状态下忽略缓冲回调，避免覆盖暂停状态
-                if (playState != PlayerConstants.STATE_PAUSED) {
-                    setPlayState(PlayerConstants.STATE_BUFFERING)
-                }
-            MEDIA_INFO_BUFFERING_END, MEDIA_INFO_VIDEO_RENDERING_START ->
-                // 部分内核暂停后仍会回调 VIDEO_RENDERING_START，若强制置 PLAYING
-                // 会把暂停状态覆盖掉，导致暂停条（右上角快进快退迷你条）被隐藏
-                if (playState != PlayerConstants.STATE_PAUSED) {
-                    setPlayState(PlayerConstants.STATE_PLAYING)
-                }
-        }
-    }
-
-    override fun release() {
-        stopProgressLoop()
-        danmuView?.release()
-        // 复位弹幕时钟基准：避免下一次播放采样前沿用上一集的进度校准弹幕
-        danmuClockBaseMs = 0L
-        danmuClockBaseUptime = 0L
-        danmuClockPlaying = false
-        // 清理音轨切换标志，避免退出/释放后残留标志误触发恢复
-        audioTrackSwitching = false
-        // 清理纯音频检测任务并复位音频模式（宿主已销毁，不触发回调，仅隐藏面板）
-        audioCheckRunnable?.let { mainHandler.removeCallbacks(it) }
-        audioCheckRunnable = null
-        audioOnly = false
-        audioPanel?.visibility = View.GONE
-        // 释放后清空暂停位置，避免影响下一播放目标
-        pausedPosition = 0
-        // 释放后复位状态机：GSY 的 release 不会重置内部状态，
-        // 若不复位 playState，下一次 start() 会误走 onVideoResume 空分支而卡在加载
-        playState = PlayerConstants.STATE_IDLE
-        super.release()
-    }
-
     private fun setPlayState(state: Int) {
         if (playState != state) {
             playState = state
             onPlayStateChange?.invoke(state)
         }
     }
-    //endregion
 
     companion object {
         private const val PROGRESS_REFRESH_INTERVAL = 300L
-
-        /** Surface 切换错误抑制窗口（毫秒）：Surface 销毁后该时段内的 onError 视为切换伪错误忽略 */
-        private const val SURFACE_ERROR_GUARD_MS = 3_000L
-        /** 暂停态 seek 后重新暂停弹幕的延迟（毫秒）：
-         *  需晚于 DrawHandler 处理完 seek 消息（其 resume 分支会移除 pause 消息） */
         private const val DANMU_SEEK_REPAUSE_DELAY = 80L
-
-        /** 纯音频兜底检测延迟（毫秒）：onPrepared 后轨道信息已就绪（demux 阶段，不依赖解码），
-         *  只需短暂等待 GSY 状态稳定即可基于轨道判断，纯音频流可快速进入音频模式 */
         private const val AUDIO_MODE_CHECK_DELAY_MS = 500L
 
-        /** 后台播放 surface 销毁后补恢复的延迟（毫秒）：等待 GSY 完成暂停/释放 surface 引用后再恢复 */
-        private const val SURFACE_PAUSE_RESUME_DELAY_MS = 120L
+        /** 画面缩放模式：等比适配 / 拉伸填满 / 裁剪填满 */
+        private const val RESIZE_FIT = 0
+        private const val RESIZE_FILL = 1
+        private const val RESIZE_ZOOM = 2
 
-        /** 纯音频扩展名：命中即按纯音频模式播放（无需等待视频尺寸判定） */
+        /** 纯音频扩展名：命中即按纯音频模式播放 */
         private val AUDIO_EXTS = setOf(
             "mp3", "flac", "wav", "m4a", "aac", "ogg", "oga", "opus", "ape", "wma", "mka", "amr"
         )
@@ -710,12 +792,5 @@ class MyVideoView @JvmOverloads constructor(
                 ?: return AUDIO_EXTS.any { url.lowercase().contains(".$it") }
             return AUDIO_EXTS.any { path.lowercase().endsWith(".$it") }
         }
-
-        /** MediaPlayer / Exo 标准缓冲事件码 */
-        private const val MEDIA_INFO_BUFFERING_START = 701
-        private const val MEDIA_INFO_BUFFERING_END = 702
-        /** 旧内核 / 兼容值 */
-        private const val MEDIA_INFO_BUFFERING_START_LEGACY = 2
-        private const val MEDIA_INFO_VIDEO_RENDERING_START = 3
     }
 }

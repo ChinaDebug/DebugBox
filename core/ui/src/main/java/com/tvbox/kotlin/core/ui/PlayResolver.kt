@@ -83,6 +83,18 @@ interface PlayResolver {
      */
     suspend fun fetchDanmu(url: String): String?
 
+    /** 当前源是否提供在线弹幕搜索界面（由源 jar 实现），默认不支持 */
+    fun hasDanmuSearchUi(): Boolean = false
+
+    /** 打开源的在线弹幕搜索界面：name=剧名，episode=集名，longClick=长按入口 */
+    fun searchDanmuUi(name: String, episode: String, longClick: Boolean) = Unit
+
+    /** 内置在线弹幕搜索：按番剧名查询候选弹幕库，失败返回空列表 */
+    suspend fun searchOnlineDanmu(keyword: String): List<OnlineDanmuItem> = emptyList()
+
+    /** 拉取内置在线弹幕内容（JSON），转换为播放器可解析的 XML；失败返回 null */
+    suspend fun loadOnlineDanmu(url: String): String? = null
+
     /**
      * 判断播放标志是否命中源的 VIP 解析规则。
      * 未命中时解析流程应直接嗅探播放地址本身，而非套用默认解析器。
@@ -101,6 +113,9 @@ interface PlayResolver {
      *（Thunder.stop() 与 Jianpian.finish）。
      */
     fun stopDownloadProtocols()
+
+    /** 在线弹幕候选条目：name 供列表展示，url 用于拉取弹幕内容 */
+    data class OnlineDanmuItem(val name: String, val url: String)
 
     /** 特殊协议处理结果：url 非空即可播放；error 非空表示协议识别后不可播放 */
     data class ProtocolResult(

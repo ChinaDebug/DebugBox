@@ -36,7 +36,6 @@ class SettingViewModel @Inject constructor(
         const val EVENT_DOH_CHANGED = "setting_doh_changed"
         const val EVENT_PLAYER_CHANGED = "setting_player_changed"
         const val EVENT_THEME_CHANGED = "setting_theme_changed"
-        const val EVENT_WALLPAPER_CHANGED = "setting_wallpaper_changed"
         const val EVENT_CONFIG_REFRESH = "setting_config_refresh"
     }
 
@@ -72,9 +71,6 @@ class SettingViewModel @Inject constructor(
     // ---------------- 主题与壁纸 ----------------
     private val _themeIndex = MutableStateFlow(0)
     val themeIndex: StateFlow<Int> = _themeIndex.asStateFlow()
-
-    private val _wallpaperBlur = MutableStateFlow(true)
-    val wallpaperBlur: StateFlow<Boolean> = _wallpaperBlur.asStateFlow()
 
     private val _wallpaperUrl = MutableStateFlow("")
     val wallpaperUrl: StateFlow<String> = _wallpaperUrl.asStateFlow()
@@ -142,7 +138,6 @@ class SettingViewModel @Inject constructor(
         _playRender.value = appPreferences.getInt(AppConstants.PLAY_RENDER, 1)
         _playSpeed.value = appPreferences.getFloat(AppConstants.PLAY_TIME_STEP, 1.0f)
         _themeIndex.value = appPreferences.getInt(AppConstants.THEME_SELECT, 0)
-        _wallpaperBlur.value = appPreferences.getBoolean(AppConstants.WALLPAPER_BLUR, true)
         _wallpaperUrl.value = apiConfig.wallpaper
         _subtitleSize.value = appPreferences.getInt(AppConstants.SUBTITLE_TEXT_SIZE, 16)
         _showPreview.value = appPreferences.getBoolean(AppConstants.SHOW_PREVIEW, true)
@@ -172,7 +167,6 @@ class SettingViewModel @Inject constructor(
         playRender = _playRender.value,
         playSpeed = _playSpeed.value,
         themeIndex = _themeIndex.value,
-        wallpaperBlur = _wallpaperBlur.value,
         showPreview = _showPreview.value,
         homeShowSource = _homeShowSource.value,
         homeRec = _homeRec.value,
@@ -278,13 +272,6 @@ class SettingViewModel @Inject constructor(
         _themeIndex.value = index
         appPreferences.put(AppConstants.THEME_SELECT, index)
         if (changed) EventHub.post(TypedEvent(EVENT_THEME_CHANGED))
-    }
-
-    /** 保存壁纸虚化开关 */
-    suspend fun saveWallpaperBlur(blur: Boolean) {
-        _wallpaperBlur.value = blur
-        appPreferences.put(AppConstants.WALLPAPER_BLUR, blur)
-        EventHub.post(TypedEvent(EVENT_WALLPAPER_CHANGED))
     }
 
     /** 保存字幕大小 */
@@ -408,7 +395,6 @@ class SettingViewModel @Inject constructor(
         val playRender: Int = 0,
         val playSpeed: Float = 0f,
         val themeIndex: Int = 0,
-        val wallpaperBlur: Boolean = true,
         val showPreview: Boolean = true,
         val homeShowSource: Boolean = false,
         val homeRec: Int = 0,

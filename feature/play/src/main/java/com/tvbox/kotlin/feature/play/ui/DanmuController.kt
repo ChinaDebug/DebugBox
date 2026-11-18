@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
 import com.tvbox.kotlin.core.common.util.HawkUtils
+import com.tvbox.kotlin.core.ui.dialog.DanmuSettingDialog
 import com.tvbox.kotlin.core.ui.R as uiR
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -29,6 +30,9 @@ class DanmuController(private val host: PlayHost) {
 
     /** 当前弹幕源（注入/开始加载时记录）：checkDanmu 幂等判定依据，源未变化时不打断/不重复拉取 */
     private var currentDanmuSource = ""
+
+    /** 在线弹幕覆盖前的源弹幕（首次覆盖时备份，用于"使用源弹幕"恢复） */
+    private var sourceDanmuBackup: String? = null
 
     private var danmuLoadJob: Job? = null
 
@@ -66,6 +70,7 @@ class DanmuController(private val host: PlayHost) {
         danmuLoadJob = null
         danmuLoaded = false
         currentDanmuSource = ""
+        sourceDanmuBackup = null
         pendingReload = false
         danmuLoadGeneration++
         host.danmakuView?.let { view ->
@@ -114,11 +119,8 @@ class DanmuController(private val host: PlayHost) {
         }
     }
 
-    /** 视频正常播放后加载弹幕（playing 状态回调与开关打开时调用）。
-     * 弹幕完全由开关驱动：关闭时不下发任何弹幕任务（不下载不装载，
-     * 避免调 jar 获取弹幕内容触发源 jar 的"弹幕加载成功"提示），开启时才下载+解析+渲染。 */
+    /** 视频正常播放后加载弹幕。弹幕完全由开关驱动：关闭时不下发任何任务，不预下载。 */
     fun loadDanmuWhenPlaying(showToast: Boolean = true) {
-        // 开关关闭：完全跳过弹幕，不预下载
         if (!HawkUtils.getDanmuOpen()) return
         if (!danmuLoaded && host.danmakuView != null && host.viewModel.getDanmu().isNotEmpty()) {
             danmuLoaded = true
@@ -127,17 +129,13 @@ class DanmuController(private val host: PlayHost) {
     }
 
     /**
-     * 应用弹幕设置并可选择重载：
-     * - 设置参数始终应用到共享 [danmakuContext]；
-     * - 大小/行数/透明度渲染期生效即时可见，速度在 prepare 时固化需重载；
-     * - reload=true 时执行加载任务（含"请稍等"提示）；
-     * - reload=false 时仅显示并同步到当前播放进度。
+     * 应用弹幕设置并可选重载。
+     * 大小/行数/透明度渲染期生效，速度在 prepare 时固化需重载。
      */
     private fun setDanmuViewSettings(reload: Boolean, showToast: Boolean = true) {
         DanmuLoader.applyDanmakuSettings(danmakuContext)
         if (reload) {
-            // 失败提示仅跟随用户主动操作（开启弹幕/修改设置），自动加载失败保持静默：
-            // 弹幕服务异步生成期间拉取常见空响应/超时，与源端“加载成功”提示同时出现会互相矛盾
+            // 失败提示仅跟随用户主动操作；自动加载失败保持静默，避免与源端提示矛盾
             loadDanmuIfNeeded(showToast = showToast, notifyFailure = showToast)
         } else {
             val view = host.danmakuView ?: return
@@ -152,21 +150,20 @@ class DanmuController(private val host: PlayHost) {
      *  @param notifyFailure 拉取失败时是否提示；自动加载为 false，仅用户主动操作提示 */
     private fun loadDanmuIfNeeded(showToast: Boolean = true, notifyFailure: Boolean = false) {
         val view = host.danmakuView ?: return
-        // 登记本次加载的弹幕源：播放回调自动加载后，checkDanmu 才能按同源跳过，
-        // 否则会被误判为新源而 release+prepare 重来一遍（表现为弹幕加载两次）
+        // 登记本次加载的弹幕源，供 checkDanmu 按同源跳过，避免重复 release+prepare
         currentDanmuSource = host.viewModel.getDanmu()
-        // 优先使用已缓存的弹幕内容（首次下载成功后缓存，
-        // 后续开关/设置重载直接解析缓存内容，不重复网络请求，避免"加载成功又失败"）
+        // 优先解析缓存内容，避免重复网络请求
         val cached = host.viewModel.getCachedDanmuContent()
         val danmu = if (!cached.isNullOrEmpty()) cached else host.viewModel.getDanmu()
         if (danmu.isEmpty()) {
             view.visibility = View.GONE
             return
         }
-        // 旧任务仍在进行：取消后立即重发会让源 jar 被重复调用（重复抓取与重复提示），
-        // 登记待重载，等旧任务结束（内容已入缓存，重载走缓存解析）再执行
+        // 旧任务仍活跃时登记待重载，等其结束再执行；递增代际使旧任务结果失效，
+        // 避免旧源内容写入缓存后重载仍显示旧弹幕
         val running = danmuLoadJob
         if (running != null && running.isActive) {
+            danmuLoadGeneration++
             pendingReload = true
             pendingReloadShowToast = showToast
             return
@@ -175,7 +172,6 @@ class DanmuController(private val host: PlayHost) {
         danmuLoadJob = null
         danmuLoadGeneration++
         val generation = danmuLoadGeneration
-        // 本方法仅在弹幕开关开启时被调用（loadDanmuWhenPlaying 已按开关过滤），
         // 显示视图等待加载，不遮挡视频
         view.visibility = View.VISIBLE
         if (showToast) {
@@ -195,7 +191,10 @@ class DanmuController(private val host: PlayHost) {
                     // 无缓存内容时才走网络拉取；已缓存直接解析内容
                     remoteFetcher = if (cached.isNullOrEmpty()) host.viewModel::fetchDanmu else null,
                     onContent = { content ->
-                        if (cached.isNullOrEmpty()) host.viewModel.cacheDanmuContent(content)
+                        // 仅当前代际可写入缓存，防止被取代的旧任务污染新弹幕源
+                        if (cached.isNullOrEmpty() && generation == danmuLoadGeneration) {
+                            host.viewModel.cacheDanmuContent(content)
+                        }
                     },
                     isLatest = { generation == danmuLoadGeneration }
                 )
@@ -252,9 +251,75 @@ class DanmuController(private val host: PlayHost) {
         Toast.makeText(host.context, host.context.getString(resId), duration).show()
     }
 
-    /** 打开弹幕设置弹窗（原 onDanmuClick 内容） */
+    /** 打开弹幕设置弹窗；在线搜索使用内置弹幕库，不依赖源 jar */
     fun showDanmuSettingDialog() {
-        DanmuSettingDialog(host.context) { open, needReload -> handleDanmuSetting(open, needReload) }.show()
+        DanmuSettingDialog(
+            host.context,
+            { open, needReload -> handleDanmuSetting(open, needReload) }
+        ) { openOnlineDanmuSearch() }.show()
+    }
+
+    /** 内置在线弹幕搜索：以剧名 + 当前集数作为关键字，选择后直接加载 */
+    private fun openOnlineDanmuSearch() {
+        DanmuSearchDialog(
+            host.context,
+            host.viewModel,
+            buildDanmuKeyword(),
+            onSelected = { content -> applyOnlineDanmu(content) },
+            onRestoreSource = { restoreSourceDanmu() }
+        ).show()
+    }
+
+    /** 组合初始搜索词：剧名沿用标题，集数取自当前集名中的数字，便于直接命中该集弹幕 */
+    private fun buildDanmuKeyword(): String {
+        val title = host.viewModel.title.value.ifEmpty {
+            host.viewModel.vodInfo.value?.name.orEmpty()
+        }.trim()
+        val episode = host.viewModel.currentEpisode.value?.name.orEmpty()
+        val number = Regex("\\d+").find(episode)?.value
+        return if (title.isNotEmpty() && number != null && !title.contains(number)) {
+            "$title $number"
+        } else {
+            title
+        }
+    }
+
+    /** 应用在线选择的弹幕内容：写入弹幕源并强制重新加载 */
+    private fun applyOnlineDanmu(content: String) {
+        if (content.isEmpty()) return
+        // 首次被在线弹幕覆盖前备份源弹幕，便于随时恢复
+        if (sourceDanmuBackup == null) sourceDanmuBackup = host.viewModel.getDanmu()
+        host.viewModel.setDanmu(content)
+        currentDanmuSource = content
+        danmuLoaded = false
+        HawkUtils.setDanmuOpen(true)
+        host.controller.setHasDanmu(true)
+        host.danmakuView?.visibility = View.VISIBLE
+        loadDanmuIfNeeded(showToast = true, notifyFailure = true)
+    }
+
+    /** 恢复源弹幕：撤销在线弹幕覆盖，回到源 jar 提供的弹幕 */
+    private fun restoreSourceDanmu() {
+        val backup = sourceDanmuBackup ?: return
+        sourceDanmuBackup = null
+        host.viewModel.setDanmu(backup)
+        currentDanmuSource = ""
+        danmuLoaded = false
+        host.controller.setHasDanmu(backup.isNotEmpty())
+        if (backup.isEmpty()) {
+            host.danmakuView?.let {
+                it.hide()
+                it.visibility = View.GONE
+            }
+            Toast.makeText(
+                host.context,
+                host.context.getString(uiR.string.danmu_no_source),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        host.danmakuView?.visibility = View.VISIBLE
+        loadDanmuIfNeeded(showToast = true, notifyFailure = true)
     }
 
     /**

@@ -15,6 +15,8 @@ import com.owen.tvrecyclerview.widget.TvRecyclerView
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager
 import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.util.AppPreferences
+import com.tvbox.kotlin.core.player.effect.anime4k.Anime4kSettings
+import com.tvbox.kotlin.core.player.effect.anime4k.Anime4kTier
 import com.tvbox.kotlin.core.spider.ApiConfig
 import com.tvbox.kotlin.core.ui.R as uiR
 import com.tvbox.kotlin.core.ui.dialog.BaseDialog
@@ -26,7 +28,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 播放器设置对话框
- * 左栏分类（通用/EXO），右栏展示对应设置项，点击弹窗修改。
+ * 左栏分类（通用/MEDIA3），右栏展示对应设置项，点击弹窗修改。
  * 焦点管理：默认选中并聚焦左侧第一个分类，右侧默认展开其设置项；
  * 左侧焦点/点击切换时同步右侧内容并重置右侧选中到第一项。
  */
@@ -50,24 +52,24 @@ class MediaSettingDialog(
     )
 
     private val categories by lazy {
-        listOf(context.getString(uiR.string.media_category_general), "EXO")
+        listOf(context.getString(uiR.string.media_category_general), "MEDIA3")
     }
 
     /**
-     * 点播首选只选内核档（存储 2=Exo、3=MX、4=Reex、5=Kodi）；
-     * 历史 0/1/2 统一归一为 Exo。
+     * 点播首选只选内核档（存储 2=Media3、3=MX、4=Reex、5=Kodi）；
+     * 历史 0/1/2 统一归一为 Media3。
      */
     private fun vodPreferredNames(): List<String> = listOf(
-        "Exo", "MXPlayer", "ReexPlayer", "Kodi"
+        "Media3", "MXPlayer", "ReexPlayer", "Kodi"
     )
 
-    /** 存储值 → 选项下标：历史 0/1/2 归一为 0(Exo)，3/4/5 顺延为 1/2/3 */
+    /** 存储值 → 选项下标：历史 0/1/2 归一为 0(Media3)，3/4/5 顺延为 1/2/3 */
     private fun storedToVodOption(stored: Int): Int = when {
         stored in 0..2 -> 0
         else -> (stored - 2).coerceIn(1, vodPreferredNames().lastIndex)
     }
 
-    /** 选项下标 → 存储值：Exo 写 2，其余按内核档 3/4/5 写入 */
+    /** 选项下标 → 存储值：Media3 写 2，其余按内核档 3/4/5 写入 */
     private fun vodOptionToStored(pos: Int): Int = pos + 2
 
     private val generalItems: List<SettingItem> by lazy {
@@ -93,8 +95,8 @@ class MediaSettingDialog(
         )
     }
 
-    /** EXO 解码模式设置项：0=硬解优先、1=软解优先、2=仅硬解、3=仅软解 */
-    private fun buildExoItems(): List<SettingItem> {
+    /** Media3 解码模式设置项：0=硬解优先、1=软解优先、2=仅硬解、3=仅软解 */
+    private fun buildMedia3Items(): List<SettingItem> {
         val items = mutableListOf<SettingItem>()
         items.add(SettingItem(context.getString(uiR.string.media_decode_mode), {
             val names = listOf(
@@ -103,7 +105,7 @@ class MediaSettingDialog(
                 context.getString(uiR.string.media_decode_hard_only),
                 context.getString(uiR.string.media_decode_soft_only)
             )
-            names[appPreferences.getInt(AppConstants.EXO_RENDERER_MODE, 0).coerceIn(0, names.lastIndex)]
+            names[appPreferences.getInt(AppConstants.MEDIA3_RENDERER_MODE, 0).coerceIn(0, names.lastIndex)]
         }) {
             val names = listOf(
                 context.getString(uiR.string.media_decode_hard),
@@ -112,20 +114,57 @@ class MediaSettingDialog(
                 context.getString(uiR.string.media_decode_soft_only)
             )
             showSelect(context.getString(uiR.string.media_select_decode), names,
-                appPreferences.getInt(AppConstants.EXO_RENDERER_MODE, 0)) { pos ->
+                appPreferences.getInt(AppConstants.MEDIA3_RENDERER_MODE, 0)) { pos ->
                 scope.launch {
-                    appPreferences.put(AppConstants.EXO_RENDERER_MODE, pos)
+                    appPreferences.put(AppConstants.MEDIA3_RENDERER_MODE, pos)
                 }
+                refreshContent()
+            }
+        })
+        // Anime4K 画面增强：仅对点播生效（直播由宿主跳过，避免码流分辨率变化导致 GL 链重建）
+        items.add(SettingItem("Anime4K 画质增强", {
+            if (Anime4kSettings.isEnabledPref(context)) "开启" else "关闭"
+        }) {
+            val options = listOf("关闭", "开启")
+            showSelect(
+                "Anime4K 画质增强", options,
+                if (Anime4kSettings.isEnabledPref(context)) 1 else 0
+            ) { pos ->
+                Anime4kSettings.setEnabled(context, pos == 1)
+                refreshContent()
+            }
+        })
+        items.add(SettingItem("Anime4K 档位", {
+            Anime4kTier.current(context).label
+        }) {
+            val tiers = Anime4kTier.entries
+            showSelect(
+                "Anime4K 档位", tiers.map { it.label },
+                tiers.indexOf(Anime4kTier.current(context)).coerceAtLeast(0)
+            ) { pos ->
+                Anime4kTier.set(context, tiers[pos])
+                refreshContent()
+            }
+        })
+        items.add(SettingItem("Anime4K 去模糊", {
+            if (Anime4kSettings.isDeblurPref(context)) "开启" else "关闭"
+        }) {
+            val options = listOf("关闭", "开启")
+            showSelect(
+                "Anime4K 去模糊", options,
+                if (Anime4kSettings.isDeblurPref(context)) 1 else 0
+            ) { pos ->
+                Anime4kSettings.setDeblur(context, pos == 1)
                 refreshContent()
             }
         })
         return items
     }
 
-    /** 指定分类对应的设置项（EXO 项随渲染器模式动态构建） */
+    /** 指定分类对应的设置项（Media3 项随渲染器模式动态构建） */
     private fun contentItems(category: String): List<SettingItem> = when (category) {
         context.getString(uiR.string.media_category_general) -> generalItems
-        "EXO" -> buildExoItems()
+        "MEDIA3" -> buildMedia3Items()
         else -> emptyList()
     }
 

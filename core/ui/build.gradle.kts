@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.library)
 }
 
@@ -13,7 +14,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures {
         buildConfig = true
         dataBinding = true
@@ -42,4 +42,10 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
     implementation(libs.zxing)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }

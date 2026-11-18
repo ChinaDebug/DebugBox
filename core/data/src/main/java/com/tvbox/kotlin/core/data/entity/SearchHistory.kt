@@ -1,9 +1,9 @@
 package com.tvbox.kotlin.core.data.entity
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room3.ColumnInfo
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 
 /**
  * 搜索历史表，按关键词建立索引便于查重。

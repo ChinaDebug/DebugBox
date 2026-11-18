@@ -8,8 +8,6 @@ import android.view.Window
 import android.widget.TextView
 import android.widget.Toast
 import com.tvbox.kotlin.core.common.AppConstants
-import com.tvbox.kotlin.core.common.EventHub
-import com.tvbox.kotlin.core.common.TypedEvent
 import com.tvbox.kotlin.core.common.util.AppPreferences
 import com.tvbox.kotlin.core.common.util.FileUtils
 import com.tvbox.kotlin.core.common.util.WallpaperManager
@@ -18,7 +16,6 @@ import com.tvbox.kotlin.core.spider.ApiConfig
 import com.tvbox.kotlin.core.ui.R as uiR
 import com.tvbox.kotlin.core.ui.dialog.BaseDialog
 import com.tvbox.kotlin.core.ui.dialog.LocalFilePickerDialog
-import com.tvbox.kotlin.feature.setting.ui.SettingViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,18 +75,19 @@ class WallpaperDialog(
             Toast.makeText(context, context.getString(uiR.string.toast_wallpaper_changing), Toast.LENGTH_SHORT).show()
             scope.launch {
                 val target = File(context.filesDir, "wp")
-                // 下载放 IO 线程，避免主线程同步阻塞
+                val temp = File(context.filesDir, "wp.tmp")
+                // 下载放 IO 线程，先写临时文件再替换，避免下到一半失败把原有壁纸弄坏
                 val ok = withContext(Dispatchers.IO) {
                     try {
-                        okHttpHelper.download(url, target)
-                        true
+                        okHttpHelper.download(url, temp)
                     } catch (t: Throwable) {
-                        false
+                        temp.delete()
+                        return@withContext false
                     }
+                    temp.renameTo(target).also { renamed -> if (!renamed) temp.delete() }
                 }
                 if (ok && target.exists()) {
                     WallpaperManager.getInstance().invalidate()
-                    EventHub.post(TypedEvent(SettingViewModel.EVENT_WALLPAPER_CHANGED))
                     // 异步加载模糊壁纸应用到窗口背景，避免更换瞬间闪一下原图
                     host?.changeWallpaper(true)
                     Toast.makeText(context, context.getString(uiR.string.toast_wallpaper_ok), Toast.LENGTH_SHORT).show()
@@ -101,15 +99,14 @@ class WallpaperDialog(
             }
         }
         llWallBlur.setOnClickListener {
-            scope.launch {
-                appPreferences.put(AppConstants.WALLPAPER_BLUR,
-                    !appPreferences.getBoolean(AppConstants.WALLPAPER_BLUR, true))
-            }
+            // 必须先同步落盘再刷新界面/重载壁纸：异步写入会让下面的读取拿到旧值，
+            // 表现为开关文字不翻转、虚化状态与实际不符
+            val blur = !appPreferences.getBoolean(AppConstants.WALLPAPER_BLUR, true)
+            appPreferences.putSync(AppConstants.WALLPAPER_BLUR, blur)
+            refreshBlur()
             WallpaperManager.getInstance().invalidate()
-            EventHub.post(TypedEvent(SettingViewModel.EVENT_WALLPAPER_CHANGED))
             // 虚化开关切换后立即重新加载壁纸
             host?.changeWallpaper(true)
-            refreshBlur()
         }
         // 本地文件：自定义 SAF 文件管理器选择本地图片（过滤图片格式），选中后复制为壁纸并应用
         llWallLocal.setOnClickListener {
@@ -129,7 +126,6 @@ class WallpaperDialog(
             val wp = File(context.filesDir, "wp")
             if (wp.exists()) wp.delete()
             WallpaperManager.getInstance().invalidate()
-            EventHub.post(TypedEvent(SettingViewModel.EVENT_WALLPAPER_CHANGED))
             host?.changeWallpaper(true)
         }
     }
@@ -138,17 +134,19 @@ class WallpaperDialog(
     private fun applyLocalWallpaper(file: File) {
         scope.launch {
             val target = File(context.filesDir, "wp")
+            val temp = File(context.filesDir, "wp.tmp")
+            // 先复制到临时文件再替换，复制失败时不破坏当前壁纸
             val ok = withContext(Dispatchers.IO) {
                 try {
-                    FileUtils.copyFile(file, target)
-                    true
+                    FileUtils.copyFile(file, temp)
                 } catch (t: Throwable) {
-                    false
+                    temp.delete()
+                    return@withContext false
                 }
+                temp.renameTo(target).also { renamed -> if (!renamed) temp.delete() }
             }
             if (ok && target.exists()) {
                 WallpaperManager.getInstance().invalidate()
-                EventHub.post(TypedEvent(SettingViewModel.EVENT_WALLPAPER_CHANGED))
                 host?.changeWallpaper(true)
                 Toast.makeText(context, context.getString(uiR.string.toast_wallpaper_ok), Toast.LENGTH_SHORT).show()
                 dismiss()

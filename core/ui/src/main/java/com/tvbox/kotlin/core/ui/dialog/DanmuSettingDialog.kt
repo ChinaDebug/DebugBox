@@ -1,4 +1,4 @@
-package com.tvbox.kotlin.feature.play.ui
+package com.tvbox.kotlin.core.ui.dialog
 
 import android.app.Dialog
 import android.content.Context
@@ -19,14 +19,15 @@ import java.text.DecimalFormat
 /**
  * 弹幕设置对话框
  * 提供开关、颜色、速度、大小、行数、透明度设置。
- * 事件语义：开启开关与速度变更需重载弹幕（needReload=true），
- * 颜色/花式/大小/行数/透明度仅应用设置即可生效（needReload=false），
+ * 事件语义：开启开关、速度、随机颜色、花式弹幕变更需重载弹幕（needReload=true），
+ * 大小/行数/透明度仅应用设置即可生效（needReload=false），
  * 避免无谓重载把弹幕时间线拉回开头。
  * 通过 [onChanged] 通知宿主：参数为 (弹幕开关状态, 是否需要重载)。
  */
 class DanmuSettingDialog(
     context: Context,
-    private val onChanged: (danmuOpen: Boolean, needReload: Boolean) -> Unit
+    private val onChanged: (danmuOpen: Boolean, needReload: Boolean) -> Unit,
+    private val onSearchOnline: (() -> Unit)? = null
 ) : BaseDialog(context, uiR.style.CustomDialogStyle) {
 
     init {
@@ -43,6 +44,34 @@ class DanmuSettingDialog(
         initSize()
         initLine()
         initAlpha()
+        initApi()
+        initSearchOnline()
+    }
+
+    /** 弹幕接口：仅显示用户自定义地址，内置默认地址留空；点击可编辑 */
+    private fun initApi() {
+        val value = findViewById<TextView>(uiR.id.danmuApiValue) ?: return
+        value.text = customApiLabel(HawkUtils.getDanmuApi())
+        findViewById<View>(uiR.id.rowDanmuApi)?.setOnClickListener {
+            DanmuApiDialog(context) { url -> value.text = customApiLabel(url) }.show()
+        }
+    }
+
+    /** 内置默认地址不展示，避免用户误以为是自定义配置 */
+    private fun customApiLabel(url: String): String =
+        if (url.trim().trimEnd('/') == HawkUtils.DEFAULT_DANMU_API) "" else url
+
+    /** 在线弹幕搜索入口：收起设置弹窗后由宿主调起源 jar 的搜索界面 */
+    private fun initSearchOnline() {
+        val button = findViewById<TextView>(uiR.id.tvDanmuSearch) ?: return
+        if (onSearchOnline == null) {
+            button.visibility = View.GONE
+            return
+        }
+        button.setOnClickListener {
+            dismiss()
+            onSearchOnline.invoke()
+        }
     }
 
     private fun initOnOff() {
@@ -74,17 +103,24 @@ class DanmuSettingDialog(
         ) { position, nowSelected ->
             when (position) {
                 0 -> { // 关闭：统一关闭随机颜色与花式弹幕
+                    // 已经是关闭态时不做任何处理，避免无谓重载
+                    if (!HawkUtils.getDanmuColor() && !HawkUtils.getDanmuFancy()) {
+                        return@setMultiAdapter
+                    }
                     HawkUtils.setDanmuColor(false)
                     HawkUtils.setDanmuFancy(false)
-                    onChanged(HawkUtils.getDanmuOpen(), false)
+                    // 颜色在解析期固化、花式背景在缓存期生成，必须重载才能恢复原始样式
+                    onChanged(HawkUtils.getDanmuOpen(), true)
                 }
                 1 -> { // 随机颜色：独立勾选
                     HawkUtils.setDanmuColor(nowSelected)
-                    onChanged(HawkUtils.getDanmuOpen(), false)
+                    // 随机颜色在解析每条弹幕时写入 textColor，运行时修改必须重载才生效
+                    onChanged(HawkUtils.getDanmuOpen(), true)
                 }
                 2 -> { // 花式弹幕：独立勾选
                     HawkUtils.setDanmuFancy(nowSelected)
-                    onChanged(HawkUtils.getDanmuOpen(), false)
+                    // 花式背景由缓存渲染器在测量/缓存期生成，切换后需重载重建缓存
+                    onChanged(HawkUtils.getDanmuOpen(), true)
                 }
             }
         }

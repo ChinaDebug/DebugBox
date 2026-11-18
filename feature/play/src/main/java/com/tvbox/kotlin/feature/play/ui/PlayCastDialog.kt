@@ -119,7 +119,11 @@ class PlayCastDialog(
 
             fun bind(device: CastDevice) {
                 tvName.text = device.name
-                tvIp.text = "${device.hostAddress}:${device.port}"
+                tvIp.text = if (device.deviceType == CastDevice.DeviceType.DLNA) {
+                    "DLNA"
+                } else {
+                    "${device.hostAddress}:${device.port}"
+                }
                 itemView.setOnClickListener { onItemClick?.invoke(device) }
             }
         }

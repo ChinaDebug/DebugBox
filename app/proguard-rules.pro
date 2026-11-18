@@ -91,21 +91,21 @@
 #############################################
 # Room 数据库
 #############################################
--keep class * extends androidx.room.RoomDatabase { *; }
--keep @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao class * { *; }
--keepclassmembers @androidx.room.Entity class * {
-    @androidx.room.PrimaryKey <fields>;
-    @androidx.room.ColumnInfo <fields>;
-    @androidx.room.Embedded <fields>;
+-keep class * extends androidx.room3.RoomDatabase { *; }
+-keep @androidx.room3.Entity class * { *; }
+-keep @androidx.room3.Dao class * { *; }
+-keepclassmembers @androidx.room3.Entity class * {
+    @androidx.room3.PrimaryKey <fields>;
+    @androidx.room3.ColumnInfo <fields>;
+    @androidx.room3.Embedded <fields>;
 }
 -keepclassmembers class * {
-    @androidx.room.Query <methods>;
-    @androidx.room.Insert <methods>;
-    @androidx.room.Update <methods>;
-    @androidx.room.Delete <methods>;
+    @androidx.room3.Query <methods>;
+    @androidx.room3.Insert <methods>;
+    @androidx.room3.Update <methods>;
+    @androidx.room3.Delete <methods>;
 }
--dontwarn androidx.room.paging.**
+-dontwarn androidx.room3.paging.**
 
 #############################################
 # Gson 序列化
@@ -322,20 +322,9 @@
 -keep class androidx.media3.exoplayer.mediacodec.MediaCodecRenderer { *; }
 -keepclassmembers class androidx.media3.exoplayer.mediacodec.MediaCodecRenderer { *; }
 
-# 保留 GSYVideoPlayer 全部类（内部通过反射创建 Exo2 PlayerManager 内核）
--keep class com.shuyu.gsyvideoplayer.** { *; }
--keep interface com.shuyu.gsyvideoplayer.** { *; }
--dontwarn com.shuyu.gsyvideoplayer.**
-
-# 保留 GSY 边播边缓存（AndroidVideoCache，包名 com.danikula.videocache）
--keep class com.danikula.videocache.** { *; }
--dontwarn com.danikula.videocache.**
-
-# 保留 IJK Exo2 内核（IjkExo2MediaPlayer 内部字段 mInternalPlayer 通过反射访问，
-# 且实现 IMediaPlayer 接口回调，混淆会导致缓冲状态/首帧监听失效）
--keep class tv.danmaku.ijk.** { *; }
--keep interface tv.danmaku.ijk.** { *; }
--dontwarn tv.danmaku.ijk.**
+# 保留自编译 FFmpeg 渲染器（DefaultRenderersFactory 按类名反射加载扩展渲染器）
+-keep class androidx.media3.decoder.ffmpeg.** { *; }
+-dontwarn androidx.media3.decoder.ffmpeg.**
 
 # 保留 DanmakuFlameMaster 弹幕库（含 native 加载类 com.ctiao）
 -keep class master.flame.danmaku.** { *; }
@@ -378,3 +367,14 @@
 # Conscrypt TLS Provider 注册
 -keep class org.conscrypt.** { *; }
 -dontwarn org.conscrypt.**
+
+# DLNA/UPnP（cling）：XML 绑定与设备描述依赖反射，必须整体保留
+-keep class org.fourthline.cling.** { *; }
+-keep class org.seamless.** { *; }
+-dontwarn org.fourthline.cling.**
+-dontwarn org.seamless.**
+# cling 内置的 Jetty/Servlet/CDI 实现不会被使用（已替换为 OkHttp/Socket 实现）
+-dontwarn org.eclipse.jetty.**
+-dontwarn javax.enterprise.**
+-dontwarn javax.servlet.**
+-dontwarn javax.activation.**

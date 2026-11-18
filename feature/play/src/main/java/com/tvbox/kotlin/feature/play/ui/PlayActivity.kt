@@ -163,6 +163,11 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
     /** 是否处于倍速长按临时快进中 */
     private var isLongPressSpeeding = false
 
+    /** 画面右侧长按 2 倍速前的原速 */
+    private var screenSpeedBeforeLongPress = 1.0f
+    /** 是否处于画面右侧长按 2 倍速中 */
+    private var isScreenLongPressSpeeding = false
+
     // ------------------------------------------------------------------
     // 能力控制器装配
     // ------------------------------------------------------------------
@@ -224,7 +229,6 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
         playLoadError = binding.playLoadError
         playLoadTip = binding.playLoadTip
 
-        // 初始化控制器
         mController = PlayerVodControlView(this)
         mVideoView.setVideoController(mController)
         danmakuView?.let { mVideoView.setDanmuView(it) }
@@ -276,6 +280,24 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
             }
             // 保留差异：选集弹窗
             onSelectEpisodeAction = { showEpisodeDialog() }
+            // 画面右侧长按：恒定 2 倍速播放，松手恢复原速
+            onScreenLongPressSpeed = {
+                if (isLongPressSpeeding) {
+                    false
+                } else {
+                    screenSpeedBeforeLongPress = viewModel.speed.value
+                    isScreenLongPressSpeeding = true
+                    viewModel.switchSpeed(2.0f)
+                    true
+                }
+            }
+            onScreenLongPressSpeedRelease = {
+                if (isScreenLongPressSpeeding) {
+                    isScreenLongPressSpeeding = false
+                    val restore = if (screenSpeedBeforeLongPress > 0) screenSpeedBeforeLongPress else 1.0f
+                    viewModel.switchSpeed(restore)
+                }
+            }
         }
         mController.setListener(controllerDelegate)
 
@@ -332,6 +354,8 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
         }
         // 视频尺寸就绪后更新分辨率显示与横竖屏切换按钮
         mVideoView.onVideoSizeChangedListener = { _, _ -> menuController.updateResolution() }
+        // 控制栏显示时补刷分辨率，覆盖尺寸在控制栏隐藏期间才就绪的情况
+        mController.onInfoRefresh = { menuController.updateResolution() }
 
         // 返回键处理
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -492,8 +516,6 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
     override fun onResume() {
         super.onResume()
         mainHandler.postDelayed(progressSaveRunnable, PROGRESS_SAVE_INTERVAL)
-        // 回前台复位后台播放续播标志（surface 已重建，播放/暂停回归正常逻辑）
-        mVideoView.backgroundPlayEnabled = false
         // 回前台恢复播放：非用户手动暂停且播放器处于暂停态（后台暂停/音频焦点被抢占自动暂停）时自动恢复，
         // 避免切后台回前台画面黑屏、需手动操作或误判为重新加载（onResume resume）
         if (!userPaused && mVideoView.playState == PlayerConstants.STATE_PAUSED) {
@@ -509,10 +531,7 @@ class PlayActivity : BaseBindingActivity<ActivityPlayBinding>() {
         saveCurrentProgress()
         // 切后台前隐藏控制栏并清空按钮焦点，回前台时不会残留白色焦点边框
         mController.hideBottom()
-        // 后台播放类型为 0（关闭）时切后台暂停播放，回前台自动恢复；
-        // 开启后台播放时置位 surface 续播标志：GSY 在 surface 销毁（切后台）时仍会自动暂停，
-        // MyVideoView 据此补恢复，保持音频继续输出
-        mVideoView.backgroundPlayEnabled = viewModel.backgroundPlayType() != 0
+        // 后台播放类型为 0（关闭）时切后台暂停播放，回前台自动恢复
         if (viewModel.backgroundPlayType() == 0 && mVideoView.isPlaying) {
             mVideoView.pause()
         }

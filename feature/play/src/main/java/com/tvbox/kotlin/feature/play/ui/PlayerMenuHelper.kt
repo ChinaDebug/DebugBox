@@ -17,44 +17,18 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.util.AppPreferences
-import com.tvbox.kotlin.core.player.ConfigurableExo2PlayerManager
 import com.tvbox.kotlin.core.player.MyVideoView
+import com.tvbox.kotlin.core.player.PlayerEngineConfig
 import com.tvbox.kotlin.core.player.TrackInfoBean
 import com.tvbox.kotlin.core.player.subtitle.model.Subtitle
 import com.tvbox.kotlin.core.player.subtitle.widget.SimpleSubtitleView
 import com.tvbox.kotlin.core.ui.R as CoreUiR
 import com.tvbox.kotlin.core.ui.dialog.SelectDialog
-import tv.danmaku.ijk.media.exo2.Exo2PlayerManager
-import tv.danmaku.ijk.media.exo2.IjkExo2MediaPlayer
 
 /**
  * 播放器控制栏功能统一入口，供 [PlayActivity] 与详情页预览 [PlayFragment] 复用。
  */
 object PlayerMenuHelper {
-
-    /** 显示倍速选择菜单：点击档位立即切换并关闭；显示期间暂停控制栏自动隐藏（调用方在 dismiss 中恢复） */
-    fun showPlaySpeedMenu(
-        context: Context,
-        controller: PlayerVodControlView,
-        viewModel: PlayViewModel
-    ): PlayerPopupMenu? {
-        val anchor = controller.getSpeedAnchor() ?: return null
-        val currentSpeed = viewModel.speed.value
-        // 当前速度可能不在档位数组中（如长按临时快进恢复前），取第一个不小于当前速度的档位
-        val defaultPos = PlayViewModel.SPEED_OPTIONS
-            .indexOfFirst { it >= currentSpeed }
-            .takeIf { it >= 0 } ?: 0
-        val items = PlayViewModel.SPEED_OPTIONS.map { "x${it}" }
-        controller.pauseAutoHide()
-        return PlayerPopupMenu.showSingle(
-            context, anchor, items, defaultPos,
-            context.resources.getDimensionPixelSize(CoreUiR.dimen.vs_150)
-        ) { position ->
-            viewModel.switchSpeed(PlayViewModel.SPEED_OPTIONS[position])
-            // 选择后立即隐藏控制栏
-            controller.hideBottom()
-        }
-    }
 
     /** 显示屏显设置多选菜单：勾选即时生效并持久化到 AppPreferences，菜单保持打开由返回键关闭 */
     fun showScreenDisplayMenu(
@@ -64,10 +38,10 @@ object PlayerMenuHelper {
         val anchor = controller.getScreenDisplayAnchor() ?: return null
         val prefs = AppPreferences.getShared(context)
         val selected = LinkedHashSet<Int>()
-        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_NET_SPEED, false)) selected.add(0)
-        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SEEK_TIME, false)) selected.add(1)
-        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SYS_TIME, false)) selected.add(2)
-        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_BATTERY, false)) selected.add(3)
+        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_NET_SPEED, true)) selected.add(0)
+        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SEEK_TIME, true)) selected.add(1)
+        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SYS_TIME, true)) selected.add(2)
+        if (prefs.getBoolean(AppConstants.SCREEN_DISPLAY_BATTERY, true)) selected.add(3)
         val items = listOf(
             context.getString(CoreUiR.string.screen_display_net_speed),
             context.getString(CoreUiR.string.screen_display_seek_time),
@@ -94,10 +68,10 @@ object PlayerMenuHelper {
     fun applyScreenDisplay(context: Context, controller: PlayerVodControlView) {
         val prefs = AppPreferences.getShared(context)
         controller.applyScreenDisplay(
-            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_NET_SPEED, false),
-            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SEEK_TIME, false),
-            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SYS_TIME, false),
-            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_BATTERY, false)
+            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_NET_SPEED, true),
+            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SEEK_TIME, true),
+            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_SYS_TIME, true),
+            prefs.getBoolean(AppConstants.SCREEN_DISPLAY_BATTERY, true)
         )
     }
 
@@ -126,8 +100,8 @@ object PlayerMenuHelper {
      * 渲染器级 SelectionOverride 切换；[playKey] 非空时切换音轨会持久化记忆。
      */
     fun showAudioTrackDialog(context: Context, videoView: MyVideoView, playKey: String? = null) {
-        val ijkPlayer = getIjkPlayer(videoView) as? IjkExo2MediaPlayer ?: return
-        val trackInfo = buildExoAudioTracks(ijkPlayer)
+        if (getExoPlayer(videoView) == null) return
+        val trackInfo = buildExoAudioTracks(videoView)
         if (trackInfo.isEmpty()) {
             Toast.makeText(context, context.getString(CoreUiR.string.vod_no_audio), Toast.LENGTH_SHORT).show()
             return
@@ -147,19 +121,12 @@ object PlayerMenuHelper {
             select = selectedIdx,
             autoWidth = true
         ) { bean, _ ->
-            switchExoAudioTrack(ijkPlayer, bean, videoView, playKey)
+            switchExoAudioTrack(videoView, bean, playKey)
         }.show()
     }
 
-    /** 根据播放器内核类型取到底层播放器实例（当前仅 Exo 内核装配） */
-    fun getIjkPlayer(videoView: MyVideoView): Any? {
-        return videoView.mediaPlayer?.let { manager ->
-            when (manager) {
-                is Exo2PlayerManager -> manager.getMediaPlayer()
-                else -> null
-            }
-        }
-    }
+    /** 当前直控内核（未创建时返回 null） */
+    fun getExoPlayer(videoView: MyVideoView): ExoPlayer? = videoView.exoPlayer
 
     // ------------------------------------------------------------------
     // 视轨选择
@@ -170,8 +137,8 @@ object PlayerMenuHelper {
      * 渲染器级 SelectionOverride 切换。
      */
     fun showVideoTrackDialog(context: Context, videoView: MyVideoView) {
-        val ijkPlayer = getIjkPlayer(videoView) as? IjkExo2MediaPlayer ?: return
-        val trackInfo = buildExoVideoTracks(ijkPlayer)
+        if (getExoPlayer(videoView) == null) return
+        val trackInfo = buildExoVideoTracks(videoView)
         if (trackInfo.isEmpty()) {
             Toast.makeText(context, context.getString(CoreUiR.string.vod_no_video), Toast.LENGTH_SHORT).show()
             return
@@ -185,7 +152,7 @@ object PlayerMenuHelper {
             select = selectedIdx,
             autoWidth = true
         ) { bean, _ ->
-            switchExoVideoTrack(ijkPlayer, bean, videoView)
+            switchExoVideoTrack(videoView, bean)
         }.show()
     }
 
@@ -193,14 +160,15 @@ object PlayerMenuHelper {
      * 读取 Exo 内核视频轨道：同分辨率多个 TrackGroup 合并为单个视轨，
      * 避免杜比双层 MKV（BL+EL 或 DV 主轨+HDR10 回退轨）被误判为多视轨而意外显示切换图标。
      */
-    fun buildExoVideoTracks(mp: IjkExo2MediaPlayer): List<TrackInfoBean> {
+    fun buildExoVideoTracks(videoView: MyVideoView): List<TrackInfoBean> {
         val result = mutableListOf<TrackInfoBean>()
         try {
-            val mapped = mp.getTrackSelector()?.getCurrentMappedTrackInfo() ?: return result
+            val mp = getExoPlayer(videoView) ?: return result
+            val mapped = videoView.trackSelector?.currentMappedTrackInfo ?: return result
             // 当前选中视频轨道：按 TrackGroup 引用匹配 currentTracks，标记默认选中项
             val selectedGroups = mutableSetOf<TrackGroup>()
             try {
-                for (group in mp.getCurrentTracks().groups) {
+                for (group in mp.currentTracks.groups) {
                     if (!group.isSelected) continue
                     for (i in 0 until group.length) {
                         if (!group.isTrackSelected(i)) continue
@@ -282,10 +250,10 @@ object PlayerMenuHelper {
      * 切换 Exo 内核视频轨道：通过 TrackSelector 渲染器级 SelectionOverride 强制选择目标轨道。
      * 与音轨切换同一路径，切换后由内核自动重建解码器并保持播放。
      */
-    fun switchExoVideoTrack(mp: IjkExo2MediaPlayer, bean: TrackInfoBean, videoView: MyVideoView) {
+    fun switchExoVideoTrack(videoView: MyVideoView, bean: TrackInfoBean) {
         try {
-            val trackSelector = mp.getTrackSelector() as? DefaultTrackSelector ?: return
-            val mappedInfo = trackSelector.getCurrentMappedTrackInfo() ?: return
+            val trackSelector = videoView.trackSelector ?: return
+            val mappedInfo = trackSelector.currentMappedTrackInfo ?: return
             if (bean.renderId !in 0 until mappedInfo.rendererCount) return
             if (mappedInfo.getRendererType(bean.renderId) != C.TRACK_TYPE_VIDEO) return
             val groups = mappedInfo.getTrackGroups(bean.renderId)
@@ -303,15 +271,16 @@ object PlayerMenuHelper {
     }
 
     /** 读取 Exo 内核音频轨道 */
-    fun buildExoAudioTracks(mp: IjkExo2MediaPlayer): List<TrackInfoBean> {
+    fun buildExoAudioTracks(videoView: MyVideoView): List<TrackInfoBean> {
         val result = mutableListOf<TrackInfoBean>()
         try {
-            val mapped = mp.getTrackSelector()?.getCurrentMappedTrackInfo() ?: return result
+            val mp = getExoPlayer(videoView) ?: return result
+            val mapped = videoView.trackSelector?.currentMappedTrackInfo ?: return result
             // 当前选中音频轨道：按 TrackGroup 引用匹配 currentTracks（不依赖 format.id，
             // 内嵌音轨可能无 id 导致选中状态失效），组内记录选中轨道索引
             val selectedAudioGroups = mutableMapOf<TrackGroup, MutableSet<Int>>()
             try {
-                for (group in mp.getCurrentTracks().groups) {
+                for (group in mp.currentTracks.groups) {
                     if (!group.isSelected) continue
                     for (i in 0 until group.length) {
                         if (!group.isTrackSelected(i)) continue
@@ -355,10 +324,10 @@ object PlayerMenuHelper {
      * 切换 Exo 内核音频轨道：经 TrackSelector SelectionOverride 切换，[playKey] 非空时持久化所选轨道。
      * 音频为单渲染器 FFmpeg 软解，无解码失败风险。
      */
-    fun switchExoAudioTrack(mp: IjkExo2MediaPlayer, bean: TrackInfoBean, videoView: MyVideoView, playKey: String? = null) {
+    fun switchExoAudioTrack(videoView: MyVideoView, bean: TrackInfoBean, playKey: String? = null) {
         try {
-            val trackSelector = mp.getTrackSelector() as? DefaultTrackSelector ?: return
-            val mappedInfo = trackSelector.getCurrentMappedTrackInfo() ?: return
+            val trackSelector = videoView.trackSelector ?: return
+            val mappedInfo = trackSelector.currentMappedTrackInfo ?: return
             if (bean.renderId !in 0 until mappedInfo.rendererCount) return
             if (mappedInfo.getRendererType(bean.renderId) != C.TRACK_TYPE_AUDIO) return
             val groups = mappedInfo.getTrackGroups(bean.renderId)
@@ -367,8 +336,8 @@ object PlayerMenuHelper {
             // 仅硬解模式（OFF）无 FFmpeg 音频软解兜底：目标音轨为杜比/DTS 家族且设备无对应硬件解码器时
             // 拦截切换（播放保持现状不中断），避免切换后解码失败报 4001
             val targetFormat = groups.get(bean.trackGroupId).getFormat(bean.trackId)
-            if (ConfigurableExo2PlayerManager.isOnlyHardwareMode &&
-                ConfigurableExo2PlayerManager.isDolbyOrDts(targetFormat.sampleMimeType) &&
+            if (PlayerEngineConfig.isOnlyHardwareMode &&
+                PlayerEngineConfig.isDolbyOrDts(targetFormat.sampleMimeType) &&
                 !hasHardwareDecoder(targetFormat.sampleMimeType)
             ) {
                 Toast.makeText(
@@ -485,16 +454,16 @@ object PlayerMenuHelper {
      */
     fun loadDefaultTrack(context: Context, videoView: MyVideoView, playKey: String?) {
         if (playKey.isNullOrEmpty()) return
-        val player = getIjkPlayer(videoView) as? IjkExo2MediaPlayer ?: return
+        if (getExoPlayer(videoView) == null) return
         val mem = AudioTrackMemory.loadExo(context, playKey) ?: return
-        applyExoMemoryTrack(player, mem.first, mem.second, mem.third)
+        applyExoMemoryTrack(videoView, mem.first, mem.second, mem.third)
     }
 
     /** 应用记忆的 Exo 音频轨道：校验索引后 setParameters（与手动切换同路径）；仅硬解模式记忆为不可解杜比时跳过 */
-    private fun applyExoMemoryTrack(mp: IjkExo2MediaPlayer, renderId: Int, groupIndex: Int, trackId: Int) {
+    private fun applyExoMemoryTrack(videoView: MyVideoView, renderId: Int, groupIndex: Int, trackId: Int) {
         try {
-            val trackSelector = mp.getTrackSelector() as? DefaultTrackSelector ?: return
-            val mappedInfo = trackSelector.getCurrentMappedTrackInfo() ?: return
+            val trackSelector = videoView.trackSelector ?: return
+            val mappedInfo = trackSelector.currentMappedTrackInfo ?: return
             if (renderId !in 0 until mappedInfo.rendererCount) return
             if (mappedInfo.getRendererType(renderId) != C.TRACK_TYPE_AUDIO) return
             val groups = mappedInfo.getTrackGroups(renderId)
@@ -502,8 +471,8 @@ object PlayerMenuHelper {
             if (trackId !in 0 until groups.get(groupIndex).length) return
             // 仅硬解模式且记忆为无硬件解码器的杜比/DTS 音轨：恢复必然解码失败，跳过保持默认
             val mime = groups.get(groupIndex).getFormat(trackId).sampleMimeType
-            if (ConfigurableExo2PlayerManager.isOnlyHardwareMode &&
-                ConfigurableExo2PlayerManager.isDolbyOrDts(mime) &&
+            if (PlayerEngineConfig.isOnlyHardwareMode &&
+                PlayerEngineConfig.isDolbyOrDts(mime) &&
                 !hasHardwareDecoder(mime)
             ) {
                 return
@@ -524,14 +493,15 @@ object PlayerMenuHelper {
     // ------------------------------------------------------------------
 
     /** 读取 Exo 内核字幕轨道（TRACK_TYPE_TEXT 渲染器下的文本轨道） */
-    fun buildExoSubtitleTracks(mp: IjkExo2MediaPlayer): List<TrackInfoBean> {
+    fun buildExoSubtitleTracks(videoView: MyVideoView): List<TrackInfoBean> {
         val result = mutableListOf<TrackInfoBean>()
         try {
-            val mapped = mp.getTrackSelector()?.getCurrentMappedTrackInfo() ?: return result
+            val mp = getExoPlayer(videoView) ?: return result
+            val mapped = videoView.trackSelector?.currentMappedTrackInfo ?: return result
             // 当前选中字幕轨道的 Format.id 集合，用于标记默认选中项
             val selectedIds = mutableSetOf<String>()
             try {
-                for (group in mp.getCurrentTracks().groups) {
+                for (group in mp.currentTracks.groups) {
                     if (!group.isSelected) continue
                     for (i in 0 until group.length) {
                         if (!group.isTrackSelected(i)) continue
@@ -574,35 +544,30 @@ object PlayerMenuHelper {
      * 通过反射读取内部 ExoPlayer 后使用 TrackSelectionOverride 强制选择目标文本轨道；
      * 参数基于当前生效参数增量修改，避免从零重建导致音轨/视轨的 SelectionOverride 被清空。
      */
-    fun switchExoSubtitleTrack(mp: IjkExo2MediaPlayer, bean: TrackInfoBean, videoView: MyVideoView) {
+    fun switchExoSubtitleTrack(videoView: MyVideoView, bean: TrackInfoBean) {
         try {
-            val mapped = mp.getTrackSelector()?.getCurrentMappedTrackInfo() ?: return
+            val player = getExoPlayer(videoView) ?: return
+            val mapped = videoView.trackSelector?.currentMappedTrackInfo ?: return
             val group = mapped.getTrackGroups(bean.renderId).get(bean.trackGroupId)
             val override = TrackSelectionOverride(group, listOf(bean.trackId))
-            val field = IjkExo2MediaPlayer::class.java.getDeclaredField("mInternalPlayer")
-            field.isAccessible = true
-            val player = field.get(mp) as? ExoPlayer ?: return
             // 增量修改：保留音轨/视轨等既有 override，仅调整文本轨道
             val params = player.trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                 .setOverrideForType(override)
                 .build()
-            player.setTrackSelectionParameters(params)
+            player.trackSelectionParameters = params
         } catch (e: Throwable) {
             Toast.makeText(videoView.context, "字幕切换失败：${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     /**
-     * 挂载内置字幕监听：内部 ExoPlayer 的 onCues 回调将字幕推送到 [SimpleSubtitleView]，
+     * 挂载内置字幕监听：内核对 onCues 回调将字幕推送到 [SimpleSubtitleView]，
      * 仅在其 [SimpleSubtitleView.isInternal] 为 true 时渲染，避免与外置字幕串扰。
      */
     fun setupInternalSubtitleListener(videoView: MyVideoView, subtitleView: SimpleSubtitleView) {
-        val player = getIjkPlayer(videoView) as? IjkExo2MediaPlayer ?: return
+        val exo = getExoPlayer(videoView) ?: return
         try {
-            val field = IjkExo2MediaPlayer::class.java.getDeclaredField("mInternalPlayer")
-            field.isAccessible = true
-            val exo = field.get(player) as? ExoPlayer ?: return
             exo.addListener(object : Player.Listener {
                 override fun onCues(cueGroup: CueGroup) {
                     val content = if (cueGroup.cues.isNotEmpty()) {
@@ -615,7 +580,7 @@ object PlayerMenuHelper {
                 }
             })
         } catch (_: Throwable) {
-            // 内部 ExoPlayer 不可用时忽略，不影响外置字幕
+            // 内核不可用时忽略，不影响外置字幕
         }
     }
 }

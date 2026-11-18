@@ -1,7 +1,7 @@
 package com.tvbox.kotlin.core.data.db
 
-import androidx.room.Database
-import androidx.room.RoomDatabase
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
 import com.tvbox.kotlin.core.data.dao.CacheDao
 import com.tvbox.kotlin.core.data.dao.SearchDao
 import com.tvbox.kotlin.core.data.dao.StorageDriveDao

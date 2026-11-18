@@ -14,6 +14,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // cling（DLNA/UPnP）仅在此仓库发布
+        maven("http://4thline.org/m2") {
+            isAllowInsecureProtocol = true
+        }
         maven { url = uri("https://jitpack.io") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
     }

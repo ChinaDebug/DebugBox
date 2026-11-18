@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 选中且获得焦点：主题色浅底 + 白色描边 -->
+    <item
+        android:state_activated="true"
+        android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/vs_8" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke
+                android:width="2mm"
+                android:color="@android:color/white" />
+        </shape>
+    </item>
+
+    <!-- 当前选中分类：与普通项保持同一色系，仅提高不透明度 -->
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/vs_8" />
+            <solid android:color="?attr/color_theme_40" />
+        </shape>
+    </item>
+
+    <!-- 遥控焦点：主题色浅底 + 白边，与设置项焦点风格一致 -->
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/vs_8" />
+            <solid android:color="?attr/color_theme_40" />
+            <stroke
+                android:width="2mm"
+                android:color="@android:color/white" />
+        </shape>
+    </item>
+
+    <!-- 普通态：玻璃质感浅底 -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/vs_8" />
+            <solid android:color="@color/color_dialog_glass_btn_bg" />
+        </shape>
+    </item>
+</selector>

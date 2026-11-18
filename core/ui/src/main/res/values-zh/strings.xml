@@ -83,7 +83,7 @@
     <string name="cast_enable">允许接收投屏</string>
     <string name="cast_device_name">投屏设备名</string>
     <string name="toast_cast_name_saved">设备名已保存</string>
-    <string name="mn_play_type">播放器</string>
+    <string name="mn_play_type">内核</string>
     <string name="mn_search">搜索展示</string>
     <string name="mn_ratio">画面缩放</string>
     <string name="mn_bgplay">后台</string>
@@ -218,6 +218,72 @@
     <string name="act_player">播放</string>
     <string name="act_system">系统</string>
 
+    // 播放器设置面板
+    <string name="player_tab_picture">画面</string>
+    <string name="player_tab_audio">音视轨</string>
+    <string name="player_tab_danmu">弹幕字幕</string>
+    <string name="player_tab_other">其他</string>
+    <string name="player_tab_screen">屏显</string>
+    <string name="player_tab_cast">投屏</string>
+    <string name="player_long_press_speed_tip">2.0X 倍速播放中</string>
+    <string name="player_decode_mode_restart_tip">解码模式将在重新播放后生效</string>
+    <string name="player_speed">播放速度</string>
+    <string name="player_orientation">横竖屏切换</string>
+    <string name="player_tier">增强档位</string>
+    <string name="player_preset">画面预设</string>
+    <string name="preset_original">原画</string>
+    <string name="preset_natural">自然</string>
+    <string name="preset_vivid">鲜艳</string>
+    <string name="preset_clear">清晰</string>
+    <string name="preset_bright">明亮</string>
+    <string name="preset_cinema">影院</string>
+    <string name="preset_soft">柔和</string>
+    <string name="preset_warm">暖色</string>
+    <string name="preset_cool">冷色</string>
+    <string name="preset_comfort">护眼</string>
+    <string name="preset_anime">动画</string>
+    <string name="preset_sport">运动</string>
+    <string name="preset_game">游戏</string>
+    <string name="preset_custom">自定义</string>
+    <string name="preset_custom_adjust">自定义调节</string>
+    <string name="picture_saturation">饱和度</string>
+    <string name="picture_contrast">对比度</string>
+    <string name="picture_brightness">亮度</string>
+    <string name="picture_gamma">伽马</string>
+    <string name="picture_temperature">色温</string>
+    <string name="picture_hue">色相</string>
+    <string name="picture_sharpen">锐度</string>
+    <string name="picture_shadow">阴影提升</string>
+    <string name="picture_reset_default">恢复默认</string>
+    <string name="quality_status_off">未开启</string>
+    <string name="quality_status_building">着色器编译中…</string>
+    <string name="quality_status_effective">已生效 · %1$d 个着色器</string>
+    <string name="quality_status_waiting">已构建，等待画面刷新</string>
+    <string name="quality_status_pending">已开启 · 恢复播放后生效</string>
+    <string name="quality_status_soft_decode">软解中 · 增强不可用（请切换硬解）</string>
+    <string name="quality_soft_decode_tip">当前为软解，画质增强需硬解；请在 播放 → 解码模式 切换为硬解后重播</string>
+    <string name="quality_status_failed">设备不支持，已回退直通</string>
+    <string name="danmu_search_title">在线弹幕搜索</string>
+    <string name="danmu_search_hint">输入番剧名称</string>
+    <string name="danmu_search_action">搜索</string>
+    <string name="danmu_search_empty">未找到相关弹幕</string>
+    <string name="danmu_search_searching">正在搜索弹幕…</string>
+    <string name="danmu_search_loading">正在加载弹幕…</string>
+    <string name="danmu_search_empty_input">请输入要搜索的番剧名称</string>
+    <string name="danmu_use_source">使用源弹幕</string>
+    <string name="danmu_empty_for_episode">该剧集暂无弹幕，请换一个来源或剧集</string>
+    <string name="danmu_no_source">当前源未提供弹幕</string>
+    <string name="danmu_api_title">弹幕接口</string>
+    <string name="danmu_api_hint">输入兼容接口地址</string>
+    <string name="danmu_api_default">恢复默认</string>
+    <string name="danmu_api_saved">弹幕接口已保存</string>
+
+    // 设置页分类
+    <string name="setting_cat_home">偏好设置</string>
+    <string name="setting_cat_play">播放设置</string>
+    <string name="setting_cat_data">历史管理</string>
+    <string name="setting_cat_system">系统</string>
+
     // Search Page //
     <string name="search_input">输入内容不能为空</string>
     <string name="search_site">没有指定搜索源</string>
@@ -259,7 +325,7 @@
     <string name="vod_remaining_time">影片剩余</string>
     <string name="vod_ends_at">影片结束</string>
 
-    // EXO Player
+    // Media3 轨道选择
     <string name="exo_track_selection_title_video">视频</string>
     <string name="exo_track_selection_title_audio">音频</string>
     <string name="exo_track_selection_title_text">文字</string>
@@ -568,4 +634,10 @@
     <string name="subtitle_load_success">字幕加载成功</string>
     <string name="subtitle_load_fail">字幕加载失败：%1$s</string>
     <string name="subtitle_no_internal">没有内置字幕</string>
+    <string name="danmu_search_online">在线弹幕搜索</string>
+    <string name="danmu_search_unavailable">当前源不支持在线弹幕搜索</string>
+    <string name="quality_enhance">画质增强</string>
+    <string name="quality_enable">Anime4K 增强</string>
+    <string name="quality_tier">增强档位</string>
+    <string name="quality_deblur">去模糊</string>
 </resources>

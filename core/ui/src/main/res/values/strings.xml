@@ -87,7 +87,7 @@
     <string name="cast_enable">Allow Cast Receive</string>
     <string name="cast_device_name">Cast Device Name</string>
     <string name="toast_cast_name_saved">Device name saved</string>
-    <string name="mn_play_type">Player</string>
+    <string name="mn_play_type">Kernel</string>
     <string name="mn_search">Search Display</string>
     <string name="mn_ratio">Screen Ratio</string>
     <string name="mn_bgplay">Bgplay</string>
@@ -219,6 +219,72 @@
     <string name="act_player">Play</string>
     <string name="act_system">System</string>
 
+    // Player settings panel //
+    <string name="player_tab_picture">Picture</string>
+    <string name="player_tab_audio">Audio/Video Tracks</string>
+    <string name="player_tab_danmu">Danmaku</string>
+    <string name="player_tab_other">Other</string>
+    <string name="player_tab_screen">Display</string>
+    <string name="player_tab_cast">Cast</string>
+    <string name="player_long_press_speed_tip">2.0X speed</string>
+    <string name="player_decode_mode_restart_tip">Decode mode takes effect after replay</string>
+    <string name="player_speed">Speed</string>
+    <string name="player_orientation">Orientation</string>
+    <string name="player_tier">Enhance Tier</string>
+    <string name="player_preset">Picture Preset</string>
+    <string name="preset_original">Original</string>
+    <string name="preset_natural">Natural</string>
+    <string name="preset_vivid">Vivid</string>
+    <string name="preset_clear">Clear</string>
+    <string name="preset_bright">Bright</string>
+    <string name="preset_cinema">Cinema</string>
+    <string name="preset_soft">Soft</string>
+    <string name="preset_warm">Warm</string>
+    <string name="preset_cool">Cool</string>
+    <string name="preset_comfort">Comfort</string>
+    <string name="preset_anime">Anime</string>
+    <string name="preset_sport">Sport</string>
+    <string name="preset_game">Game</string>
+    <string name="preset_custom">Custom</string>
+    <string name="preset_custom_adjust">Custom Adjust</string>
+    <string name="picture_saturation">Saturation</string>
+    <string name="picture_contrast">Contrast</string>
+    <string name="picture_brightness">Brightness</string>
+    <string name="picture_gamma">Gamma</string>
+    <string name="picture_temperature">Temperature</string>
+    <string name="picture_hue">Hue</string>
+    <string name="picture_sharpen">Sharpness</string>
+    <string name="picture_shadow">Shadow Lift</string>
+    <string name="picture_reset_default">Restore Default</string>
+    <string name="quality_status_off">Off</string>
+    <string name="quality_status_building">Compiling shaders…</string>
+    <string name="quality_status_effective">Active · %1$d shaders</string>
+    <string name="quality_status_waiting">Built, waiting for frame refresh</string>
+    <string name="quality_status_pending">Enabled · applies after playback resumes</string>
+    <string name="quality_status_soft_decode">Software decoding · enhancement unavailable (switch to hardware)</string>
+    <string name="quality_soft_decode_tip">Software decoding is active. Quality enhancement requires hardware decoding. Switch 播放 → 解码模式 to hardware and replay.</string>
+    <string name="quality_status_failed">Unsupported, fallback to passthrough</string>
+    <string name="danmu_search_title">Online Danmaku Search</string>
+    <string name="danmu_search_hint">Enter anime name</string>
+    <string name="danmu_search_action">Search</string>
+    <string name="danmu_search_empty">No danmaku found</string>
+    <string name="danmu_search_searching">Searching danmaku…</string>
+    <string name="danmu_search_loading">Loading danmaku…</string>
+    <string name="danmu_search_empty_input">Enter an anime name to search</string>
+    <string name="danmu_use_source">Use source danmaku</string>
+    <string name="danmu_empty_for_episode">No danmaku for this episode, try another source or episode</string>
+    <string name="danmu_no_source">Current source provides no danmaku</string>
+    <string name="danmu_api_title">Danmaku API</string>
+    <string name="danmu_api_hint">Enter a DanDanPlay-compatible API URL</string>
+    <string name="danmu_api_default">Restore default</string>
+    <string name="danmu_api_saved">Danmaku API saved</string>
+
+    // Settings page categories //
+    <string name="setting_cat_home">Preferences</string>
+    <string name="setting_cat_play">Playback</string>
+    <string name="setting_cat_data">History</string>
+    <string name="setting_cat_system">System</string>
+
     // Search Page //
     <string name="search_input">Input cannot be blank</string>
     <string name="search_site">No source site selected</string>
@@ -279,7 +345,7 @@
     <string name="screen_display_sys_time">System Time</string>
     <string name="screen_display_battery">Battery</string>
 
-    // EXO Player
+    // Media3 track selection
     <string name="exo_track_selection_title_video">Video</string>
     <string name="exo_track_selection_title_audio">Audio</string>
     <string name="exo_track_selection_title_text">Text</string>
@@ -568,4 +634,10 @@
     <string name="danmu_speed_fast">Fast</string>
     <string name="danmu_size_fmt">%1$d×</string>
     <string name="danmu_lines_fmt">%1$d lines</string>
+    <string name="danmu_search_online">Search Danmaku Online</string>
+    <string name="danmu_search_unavailable">Current source has no online danmaku search</string>
+    <string name="quality_enhance">Quality Enhance</string>
+    <string name="quality_enable">Anime4K Enhance</string>
+    <string name="quality_tier">Enhance Tier</string>
+    <string name="quality_deblur">Deblur</string>
 </resources>

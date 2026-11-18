@@ -21,6 +21,9 @@ class WallpaperManager private constructor() {
     private var currentTask: Future<*>? = null
     private var cachedBitmap: Bitmap? = null
 
+    /** 加载代次：每次发起加载或清空缓存自增，用于丢弃过期的加载结果 */
+    private var generation = 0
+
     fun interface LoadCallback {
         fun onLoaded(bitmap: Bitmap?)
     }
@@ -38,10 +41,16 @@ class WallpaperManager private constructor() {
             return
         }
         currentTask?.cancel(false)
+        val taskGeneration = ++generation
         val appContext = context.applicationContext
         currentTask = executor.submit {
             val result = doLoad(appContext)
             mainHandler.post {
+                // 期间又发起了新的加载或清空了缓存：丢弃本次结果，避免旧图覆盖新图
+                if (taskGeneration != generation) {
+                    if (result != null && !result.isRecycled) result.recycle()
+                    return@post
+                }
                 currentTask = null
                 cachedBitmap = result
                 callback.onLoaded(result)
@@ -52,6 +61,7 @@ class WallpaperManager private constructor() {
     /** 清空缓存 */
     @Synchronized
     fun invalidate() {
+        generation++
         currentTask?.cancel(false)
         currentTask = null
         cachedBitmap = null

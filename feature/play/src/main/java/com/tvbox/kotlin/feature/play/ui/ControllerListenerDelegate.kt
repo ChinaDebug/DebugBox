@@ -1,5 +1,6 @@
 package com.tvbox.kotlin.feature.play.ui
 
+import android.content.res.Configuration
 import android.widget.Toast
 import com.tvbox.kotlin.core.common.bean.ParseBean
 import com.tvbox.kotlin.core.ui.R as uiR
@@ -29,6 +30,12 @@ class ControllerListenerDelegate(
 
     /** Activity: 长按松手恢复原速；Fragment: null */
     var onSpeedLongPressRelease: (() -> Unit)? = null
+
+    /** Activity: 画面右侧长按固定 2 倍速；Fragment: null */
+    var onScreenLongPressSpeed: (() -> Boolean)? = null
+
+    /** Activity: 画面右侧长按松手恢复原速；Fragment: null */
+    var onScreenLongPressSpeedRelease: (() -> Unit)? = null
 
     /** Fragment: 播放成功状态回调（播放/错误/完成时通知宿主详情页）；Activity: null */
     var playSuccessListener: ((Boolean) -> Unit)? = null
@@ -101,8 +108,16 @@ class ControllerListenerDelegate(
         }
     }
 
+    /** 倍速按钮：竖屏弹出独立倍速滑块，横屏打开设置面板的播放页（避免竖屏进入右侧面板） */
     override fun onSpeedClick() {
-        menuController.showPlaySpeedMenu()
+        if (host.context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            host.controller.pauseAutoHide()
+            PlayerSpeedDialog(host.context, host).apply {
+                setOnDismissListener { host.controller.resumeAutoHide() }
+            }.show()
+        } else {
+            openSettingsPanel(0)
+        }
     }
 
     override fun onSpeedLongPress(): Boolean {
@@ -111,6 +126,14 @@ class ControllerListenerDelegate(
 
     override fun onSpeedLongPressRelease() {
         onSpeedLongPressRelease?.invoke()
+    }
+
+    override fun onScreenLongPressSpeed(): Boolean {
+        return onScreenLongPressSpeed?.invoke() ?: false
+    }
+
+    override fun onScreenLongPressSpeedRelease() {
+        onScreenLongPressSpeedRelease?.invoke()
     }
 
     override fun onScaleClick() {
@@ -128,6 +151,23 @@ class ControllerListenerDelegate(
 
     override fun onDanmuClick() {
         danmuController.showDanmuSettingDialog()
+    }
+
+    override fun onQualityClick() {
+        QualitySettingDialog(host.context, host).show()
+    }
+
+    /** 打开右侧设置面板：面板打开期间暂停控制栏自动隐藏，关闭后恢复 */
+    override fun onSettingsClick() {
+        openSettingsPanel(0)
+    }
+
+    /** 打开右侧设置面板并定位到指定分类 */
+    private fun openSettingsPanel(page: Int) {
+        host.controller.pauseAutoHide()
+        val dialog = PlayerSettingsPanelDialog(host.context, host, this, page)
+        dialog.setOnDismissListener { host.controller.resumeAutoHide() }
+        dialog.show()
     }
 
     override fun onAudioClick() {

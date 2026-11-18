@@ -40,6 +40,14 @@ public final class ExperimentalFfmpegVideoRenderer extends DecoderVideoRenderer 
   /** 4K 高码率视频软解需充足并行解码线程，超过上限线程同步开销反噬吞吐 */
   private static final int MAX_DECODE_THREADS = 12;
 
+  /**
+   * 最近一次向 Surface 输出帧的时间（elapsedRealtime）。
+   *
+   * 软解直接把解码帧写 Surface，不经过 VideoSink，因此不支持视频效果链（如 Anime4K）；
+   * 播放器界面据此判断当前是否处于软解，避免把“效果不生效”误报为编译中。
+   */
+  public static volatile long lastRenderAtMs;
+
   private final int numInputBuffers;
   private final int numOutputBuffers;
   private final int threads;
@@ -125,6 +133,7 @@ public final class ExperimentalFfmpegVideoRenderer extends DecoderVideoRenderer 
       throw new FfmpegDecoderException(
           "Failed to render output buffer to surface: decoder is not initialized.");
     }
+    lastRenderAtMs = android.os.SystemClock.elapsedRealtime();
     decoder.renderToSurface(outputBuffer, surface);
     outputBuffer.release();
   }

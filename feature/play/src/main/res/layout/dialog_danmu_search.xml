@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="@dimen/vs_960"
+        android:layout_height="@dimen/vs_600"
+        android:layout_gravity="center"
+        android:background="@drawable/shape_user_pause"
+        android:orientation="vertical"
+        android:padding="@dimen/vs_20">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_45"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/danmu_search_title"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_26"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/dialog_close"
+                android:layout_width="@dimen/vs_40"
+                android:layout_height="@dimen/vs_40"
+                android:background="@drawable/button_player_control"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_22" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_60"
+            android:layout_marginTop="@dimen/vs_10"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/et_danmu_keyword"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/input_search"
+                android:gravity="center_vertical"
+                android:hint="@string/danmu_search_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingLeft="@dimen/vs_20"
+                android:paddingRight="@dimen/vs_15"
+                android:singleLine="true"
+                android:textColor="@android:color/white"
+                android:textColorHint="@color/color_6CFFFFFF"
+                android:textSize="@dimen/ts_24" />
+
+            <TextView
+                android:id="@+id/btn_danmu_search"
+                android:layout_width="@dimen/vs_120"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/vs_20"
+                android:layout_marginLeft="@dimen/vs_20"
+                android:background="@drawable/button_subtitle_search"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/danmu_search_action"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_24" />
+
+            <TextView
+                android:id="@+id/btn_danmu_source"
+                android:layout_width="@dimen/vs_150"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/vs_10"
+                android:layout_marginLeft="@dimen/vs_10"
+                android:background="@drawable/button_subtitle_search"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/danmu_use_source"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_24" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/vs_10"
+            android:layout_weight="1">
+
+            <com.owen.tvrecyclerview.widget.TvRecyclerView
+                android:id="@+id/trv_danmu_results"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/tv_danmu_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="@string/danmu_search_empty"
+                android:textColor="@color/color_FFFFFF_80"
+                android:textSize="@dimen/ts_22"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/danmu_loading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/danmu_loading_bar"
+                    android:layout_width="@dimen/vs_50"
+                    android:layout_height="@dimen/vs_50"
+                    android:indeterminateBehavior="repeat"
+                    android:indeterminateOnly="true"
+                    android:indeterminateTint="?attr/color_theme_70"
+                    android:indeterminateTintMode="src_atop" />
+
+                <TextView
+                    android:id="@+id/danmu_loading_tip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/vs_15"
+                    android:layout_marginLeft="@dimen/vs_15"
+                    android:text="@string/danmu_search_searching"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -21,7 +21,6 @@ import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.hjq.permissions.permission.PermissionLists
 import com.hjq.permissions.permission.base.IPermission
-import tv.danmaku.ijk.media.exo2.IjkExo2MediaPlayer
 
 /**
  * 字幕管理控制器，屏蔽 PlayFragment/PlayActivity 的宿主差异。
@@ -108,9 +107,9 @@ class SubtitleController(
 
     /** 获取当前播放器的内置轨道信息（Exo 内核） */
     fun getCurrentTrackInfo(): TrackInfo? {
-        val player = PlayerMenuHelper.getIjkPlayer(host.videoView) as? IjkExo2MediaPlayer ?: return null
+        if (PlayerMenuHelper.getExoPlayer(host.videoView) == null) return null
         val trackInfo = TrackInfo()
-        val tracks = PlayerMenuHelper.buildExoSubtitleTracks(player)
+        val tracks = PlayerMenuHelper.buildExoSubtitleTracks(host.videoView)
         if (tracks.isEmpty()) return null
         tracks.forEach { trackInfo.addSubtitle(it) }
         return trackInfo
@@ -128,8 +127,7 @@ class SubtitleController(
             Toast.makeText(host.context, host.context.getString(uiR.string.vod_sub_na), Toast.LENGTH_SHORT).show()
             return
         }
-        val player = PlayerMenuHelper.getIjkPlayer(host.videoView) as? IjkExo2MediaPlayer
-        if (player == null) {
+        if (PlayerMenuHelper.getExoPlayer(host.videoView) == null) {
             Toast.makeText(host.context, host.context.getString(uiR.string.subtitle_no_internal), Toast.LENGTH_SHORT).show()
             return
         }
@@ -148,7 +146,7 @@ class SubtitleController(
             host.subtitleView?.destroy()
             host.subtitleView?.clearSubtitleCache()
             host.subtitleView?.isInternal = true
-            PlayerMenuHelper.switchExoSubtitleTrack(player, bean, host.videoView)
+            PlayerMenuHelper.switchExoSubtitleTrack(host.videoView, bean)
             // 暂停 → 800ms 后 seek 回原位置恢复播放
             host.videoView.pause()
             mTrackSwitchProgress = progress

@@ -20,6 +20,8 @@ import com.tvbox.kotlin.core.player.PlayerHelper
 import com.tvbox.kotlin.core.server.ControlManager
 import com.tvbox.kotlin.core.server.cast.CastManager
 import com.tvbox.kotlin.core.server.cast.discovery.DeviceDiscovery
+import com.tvbox.kotlin.core.server.cast.dlna.DlnaCastManager
+import com.tvbox.kotlin.core.server.cast.dlna.DlnaRenderer
 import com.tvbox.kotlin.core.server.cast.model.CastData
 import com.tvbox.kotlin.core.server.cast.model.CastDevice
 import com.tvbox.kotlin.core.ui.BaseViewModel
@@ -134,7 +136,7 @@ class PlayViewModel @Inject constructor(
     val currentEpisode: StateFlow<VodInfo.VodSeries?> = _currentEpisode.asStateFlow()
 
     /** 当前解码器类型，取值参考 [PlayerConstants.PLAYER_TYPE_*] */
-    private val _playerType = MutableStateFlow(PlayerConstants.PLAYER_TYPE_EXO)
+    private val _playerType = MutableStateFlow(PlayerConstants.PLAYER_TYPE_MEDIA3)
     val playerType: StateFlow<Int> = _playerType.asStateFlow()
 
     /** 当前缩放类型，取值参考 [PlayerConstants.SCREEN_SCALE_*] */
@@ -169,6 +171,12 @@ class PlayViewModel @Inject constructor(
     private val _castScanning = MutableStateFlow(false)
     val castScanning: StateFlow<Boolean> = _castScanning.asStateFlow()
 
+    /** DLNA 控制点：与自研投屏共用设备列表 */
+    private val dlnaManager = DlnaCastManager()
+    /** DLNA 设备 id（UDN）→ 渲染器，投屏时按 id 定位 */
+    private val dlnaRenderers = HashMap<String, DlnaRenderer>()
+    private var dlnaCollectJob: Job? = null
+
     /** 播放进度记忆 key，由 playerContent 返回，用于进度缓存隔离 */
     private var progressKey: String? = null
     /** 起始播放位置，用于首次播放恢复 */
@@ -199,7 +207,7 @@ class PlayViewModel @Inject constructor(
     init {
         // 从偏好恢复播放器配置（历史 0/1 档位归一为 Exo）
         _playerType.value = PlayerConstants.normalizePlayType(
-            appPreferences.get(PlayerConstants.KEY_PLAY_TYPE, PlayerConstants.PLAYER_TYPE_EXO)
+            appPreferences.get(PlayerConstants.KEY_PLAY_TYPE, PlayerConstants.PLAYER_TYPE_MEDIA3)
         )
         _scaleType.value = appPreferences.get(PlayerConstants.KEY_PLAY_SCALE, 0)
     }
@@ -260,11 +268,11 @@ class PlayViewModel @Inject constructor(
         if (userSelectedPlayerType >= 0) return userSelectedPlayerType
         val preferred = appPreferences.get(AppConstants.VOD_PLAYER_PREFERRED, 0)
         return when (preferred) {
-            1, 2 -> PlayerConstants.PLAYER_TYPE_EXO
+            1, 2 -> PlayerConstants.PLAYER_TYPE_MEDIA3
             3 -> PlayerConstants.PLAYER_TYPE_MX
             4 -> PlayerConstants.PLAYER_TYPE_REEX
             5 -> PlayerConstants.PLAYER_TYPE_KODI
-            else -> PlayerConstants.PLAYER_TYPE_EXO
+            else -> PlayerConstants.PLAYER_TYPE_MEDIA3
         }
     }
 
@@ -829,6 +837,33 @@ class PlayViewModel @Inject constructor(
     suspend fun fetchDanmu(url: String): String? =
         runCatchingResume { playResolver.fetchDanmu(url) }.getOrNull()
 
+    /** 当前源是否提供在线弹幕搜索界面 */
+    fun hasOnlineDanmuSearch(): Boolean =
+        runCatching { playResolver.hasDanmuSearchUi() }.getOrDefault(false)
+
+    /** 内置在线弹幕搜索：返回候选列表，失败为空 */
+    suspend fun searchOnlineDanmuList(keyword: String): List<PlayResolver.OnlineDanmuItem> =
+        runCatchingResume { playResolver.searchOnlineDanmu(keyword) }.getOrElse { emptyList() }
+
+    /** 拉取内置在线弹幕内容（已转为 XML），失败返回 null */
+    suspend fun loadOnlineDanmuContent(url: String): String? =
+        runCatchingResume { playResolver.loadOnlineDanmu(url) }.getOrNull()
+
+    /**
+     * 调起源 jar 的在线弹幕搜索界面，剧名/集名取自当前播放信息。
+     *
+     * @return 是否已调起（源不支持时返回 false）
+     */
+    fun searchOnlineDanmu(longClick: Boolean = false): Boolean {
+        if (!hasOnlineDanmuSearch()) return false
+        val name = _title.value.ifEmpty { _vodInfo.value?.name.orEmpty() }
+        val episode = _currentEpisode.value?.name.orEmpty()
+        return runCatching {
+            playResolver.searchDanmuUi(name, episode, longClick)
+            true
+        }.getOrDefault(false)
+    }
+
     /** 停止下载类协议后台任务（开源 BT 下载/荐片 P2P），播放器销毁时调用 */
     fun stopProtocolTasks() {
         runCatchingResume { playResolver.stopDownloadProtocols() }
@@ -1306,11 +1341,13 @@ class PlayViewModel @Inject constructor(
     // 投屏发送
     // ------------------------------------------------------------------
 
-    /** 启动投屏设备发现 */
+    /** 启动投屏设备发现：自研 TVBox 设备与 DLNA 渲染器并行扫描 */
     fun startCastDiscovery() {
         if (_castScanning.value) return
         _castScanning.value = true
         _castDevices.value = emptyList()
+        dlnaRenderers.clear()
+        startDlnaDiscovery()
         CastManager.getInstance(application).startDeviceDiscovery(object : DeviceDiscovery.DeviceDiscoveryListener {
             override fun onDeviceFound(device: CastDevice) {
                 val current = _castDevices.value.toMutableList()
@@ -1331,9 +1368,34 @@ class PlayViewModel @Inject constructor(
         })
     }
 
-    /** 停止投屏设备发现 */
+    /** 绑定 DLNA 控制点并持续收集发现的渲染器 */
+    private fun startDlnaDiscovery() {
+        dlnaManager.init(application)
+        dlnaCollectJob?.cancel()
+        dlnaCollectJob = viewModelScope.launch {
+            dlnaManager.devices.collect { renderers ->
+                renderers.forEach { dlnaRenderers[it.id] = it }
+                val tvbox = _castDevices.value.filter { it.deviceType != CastDevice.DeviceType.DLNA }
+                val dlna = renderers.map {
+                    CastDevice(
+                        name = it.name,
+                        hostAddress = it.id,
+                        port = 0,
+                        deviceType = CastDevice.DeviceType.DLNA
+                    )
+                }
+                _castDevices.value = tvbox + dlna
+            }
+        }
+    }
+
+    /** 停止投屏设备发现：同时解绑 DLNA 控制点，避免服务与组播锁泄漏 */
     fun stopCastDiscovery() {
         CastManager.getInstance(application).stopDeviceDiscovery()
+        dlnaCollectJob?.cancel()
+        dlnaCollectJob = null
+        dlnaManager.release(application)
+        dlnaRenderers.clear()
         _castScanning.value = false
     }
 
@@ -1347,10 +1409,28 @@ class PlayViewModel @Inject constructor(
             return
         }
         val episodeName = _currentEpisode.value?.name ?: ""
+        val title = _title.value.ifEmpty { episodeName }
+        if (device.deviceType == CastDevice.DeviceType.DLNA) {
+            val renderer = dlnaRenderers[device.hostAddress]
+            if (renderer == null) {
+                error(context.getString(uiR.string.cast_failed))
+                onResult?.invoke(false)
+                return
+            }
+            dlnaManager.cast(renderer, url, title, _currentPosition.value) { success, _ ->
+                if (success) {
+                    toast(context.getString(uiR.string.cast_success))
+                } else {
+                    error(context.getString(uiR.string.cast_failed))
+                }
+                onResult?.invoke(success)
+            }
+            return
+        }
         val danmuData = getCachedDanmuContent() ?: getDanmu()
         val data = CastData(
             url = url,
-            title = _title.value.ifEmpty { episodeName },
+            title = title,
             position = _currentPosition.value,
             duration = _duration.value,
             isPlaying = _playState.value == PlayState.PLAYING,

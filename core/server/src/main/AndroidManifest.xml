@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- DLNA 控制点：绑定期间执行 SSDP 发现与 AVTransport 控制 -->
+        <service
+            android:name="com.tvbox.kotlin.core.server.cast.dlna.DlnaCastService"
+            android:exported="false" />
+    </application>
+</manifest>

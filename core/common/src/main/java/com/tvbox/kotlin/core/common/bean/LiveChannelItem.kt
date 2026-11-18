@@ -26,6 +26,9 @@ class LiveChannelItem {
     var sourceNum: Int = 0
     var include_back: Boolean = false
 
+    /** 频道级回看配置（优先于分组配置） */
+    var catchup: LiveCatchup? = null
+
     fun preSource() {
         sourceIndex--
         if (sourceIndex < 0) sourceIndex = sourceNum - 1
@@ -51,5 +54,6 @@ class LiveChannelItem {
         sourceIndex = this@LiveChannelItem.sourceIndex
         sourceNum = this@LiveChannelItem.sourceNum
         include_back = this@LiveChannelItem.include_back
+        catchup = this@LiveChannelItem.catchup
     }
 }

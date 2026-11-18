@@ -6,7 +6,6 @@ import com.tvbox.kotlin.core.data.dao.SearchDao
 import com.tvbox.kotlin.core.data.dao.StorageDriveDao
 import com.tvbox.kotlin.core.data.dao.VodCollectDao
 import com.tvbox.kotlin.core.data.dao.VodRecordDao
-import com.tvbox.kotlin.core.data.db.AppDataBase
 import com.tvbox.kotlin.core.data.db.AppDataManager
 import dagger.Module
 import dagger.Provides
@@ -17,7 +16,7 @@ import javax.inject.Singleton
 
 /**
  * 数据层 Hilt 绑定模块。
- * 提供 AppDataBase 与各 DAO；AppDataManager 及 Repository（CacheManager、RoomDataManger、SearchPresenter）
+ * 提供各 DAO；AppDataManager 及 Repository（CacheManager、RoomDataManger、SearchPresenter）
  * 通过 @Inject @Singleton 构造注入自动绑定，无需在此重复声明。
  */
 @Module
@@ -26,15 +25,8 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideAppDataBase(@ApplicationContext context: Context): AppDataBase =
-        AppDataManager.build(context)
-
-    @Provides
-    @Singleton
-    fun provideAppDataManager(
-        @ApplicationContext context: Context,
-        appDataBase: AppDataBase
-    ): AppDataManager = AppDataManager(context, appDataBase)
+    fun provideAppDataManager(@ApplicationContext context: Context): AppDataManager =
+        AppDataManager(context)
 
     @Provides
     fun provideCacheDao(appDataManager: AppDataManager): CacheDao =

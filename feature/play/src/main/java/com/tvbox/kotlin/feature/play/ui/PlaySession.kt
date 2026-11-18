@@ -139,7 +139,7 @@ class PlaySession(
      * 释放旧播放器，按当前配置装配新播放器并开始播放。
      * 统一用 [PlayHost.postOnUi] 切主线程并加 [PlayHost.isAlive] 存活守卫。
      * 第三方播放器（MX/Reex/Kodi，类型 >= [PlayerConstants.PLAYER_TYPE_MX]）直接调起外部应用，
-     * 不走 GSY 装配与超时检测。
+     * 不装配播放内核，也不启动卡加载超时检测。
      */
     fun startPlayUrl(url: String, headers: Map<String, String>?) {
         if (!host.isAlive()) return
@@ -160,7 +160,7 @@ class PlaySession(
         }
         host.viewModel.setPlayUrl(if (isLocalProxy) originalPlayUrl else url)
 
-        // 第三方播放器：调用外部应用播放，不装配 GSY、不启动卡加载超时检测
+        // 第三方播放器：调用外部应用播放，不装配播放内核、不启动卡加载超时检测
         val playerType = host.viewModel.playerType.value
         if (playerType >= PlayerConstants.PLAYER_TYPE_MX) {
             host.showTip("正在加载", true, false)

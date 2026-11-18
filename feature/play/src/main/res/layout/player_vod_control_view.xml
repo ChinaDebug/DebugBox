@@ -9,7 +9,8 @@
     <LinearLayout
         android:id="@+id/top_container"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/vs_128"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/vs_128"
         android:layout_gravity="top"
         android:background="@drawable/box_controller_top_bg"
         android:gravity="end"
@@ -455,6 +456,25 @@
         android:visibility="gone"
         tools:text="100" />
 
+    <TextView
+        android:id="@+id/tv_long_press_speed_tip"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/vs_50"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/vs_110"
+        android:background="@drawable/shape_user_pause"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:gravity="center"
+        android:paddingStart="@dimen/vs_30"
+        android:paddingEnd="@dimen/vs_30"
+        android:text="@string/player_long_press_speed_tip"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/ts_24"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
     <LinearLayout
         android:id="@+id/tv_progress_container"
         android:layout_width="wrap_content"
@@ -853,6 +873,7 @@
 	
 	            <LinearLayout
 	                android:id="@+id/play_scale"
+                android:visibility="gone"
 	                android:layout_width="@dimen/vs_60"
 	                android:layout_height="@dimen/vs_60"
 	                android:layout_gravity="center"
@@ -874,6 +895,7 @@
 	            </LinearLayout>
 	            <TextView
 	                android:id="@+id/play_scale_txt"
+                android:visibility="gone"
 	                android:layout_width="@dimen/vs_40"
 	                android:layout_height="@dimen/vs_20"
 	                android:layout_gravity="center"
@@ -891,6 +913,7 @@
 	
 	            <LinearLayout
 	                android:id="@+id/play_player"
+                android:visibility="gone"
 	                android:layout_width="@dimen/vs_60"
 	                android:layout_height="@dimen/vs_60"
 	                android:layout_gravity="center"
@@ -922,7 +945,7 @@
 	                android:focusable="false"
 	                android:focusableInTouchMode="false"
 	                android:gravity="center"
-	                android:text="Exo"
+	                android:text="Media3"
 	                android:textColor="@color/color_FFFFFF"
 	                android:textSize="@dimen/ts_12"
 	                android:textStyle="bold"
@@ -930,6 +953,7 @@
 
             <LinearLayout
                 android:id="@+id/play_subtitle"
+                android:visibility="gone"
 	                android:layout_width="@dimen/vs_60"
 	                android:layout_height="@dimen/vs_60"
 	                android:layout_gravity="center"
@@ -951,6 +975,7 @@
 
                 <LinearLayout
                     android:id="@+id/ll_danmu_setting"
+                    android:visibility="gone"
                     android:layout_width="@dimen/vs_60"
                     android:layout_height="@dimen/vs_60"
                     android:layout_gravity="center"
@@ -969,9 +994,32 @@
                         android:layout_gravity="center"
                         android:src="@drawable/v_danmu" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/play_quality"
+                    android:visibility="gone"
+                    android:layout_width="@dimen/vs_60"
+                    android:layout_height="@dimen/vs_60"
+                    android:layout_gravity="center"
+                    android:layout_marginStart="@dimen/vs_6"
+                    android:layout_marginLeft="@dimen/vs_6"
+                    android:layout_marginEnd="@dimen/vs_6"
+                    android:layout_marginRight="@dimen/vs_6"
+                    android:background="@drawable/button_player_control"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="@dimen/vs_35"
+                        android:layout_height="@dimen/vs_35"
+                        android:layout_gravity="center"
+                        android:src="@drawable/hm_settings" />
+                </LinearLayout>
 	
 	            <LinearLayout
                 android:id="@+id/play_video"
+                android:visibility="gone"
                 android:layout_width="@dimen/vs_60"
                 android:layout_height="@dimen/vs_60"
                 android:layout_gravity="center"
@@ -993,6 +1041,7 @@
 
 	            <LinearLayout
                 android:id="@+id/play_audio"
+                android:visibility="gone"
                 android:layout_width="@dimen/vs_60"
                 android:layout_height="@dimen/vs_60"
                 android:layout_gravity="center"
@@ -1014,6 +1063,7 @@
 
             <LinearLayout
                 android:id="@+id/play_cast"
+                android:visibility="gone"
                 android:layout_width="@dimen/vs_60"
                 android:layout_height="@dimen/vs_60"
                 android:layout_gravity="center"
@@ -1035,6 +1085,7 @@
 
             <LinearLayout
                 android:id="@+id/screen_display"
+                android:visibility="gone"
                 android:layout_width="@dimen/vs_60"
                 android:layout_height="@dimen/vs_60"
                 android:layout_gravity="center"
@@ -1115,7 +1166,7 @@
 	                android:background="@drawable/button_player_control"
 	                android:focusable="true"
 	                android:gravity="center"
-	                android:nextFocusRight="@id/landscape_portrait"
+	                android:nextFocusRight="@id/play_settings"
 	                android:nextFocusUp="@id/play_time_end"
 	                android:nextFocusDown="@id/play_time_end"
 	                android:padding="@dimen/vs_8"
@@ -1143,6 +1194,27 @@
 	                tools:visibility="gone" />
 	                
 	            <LinearLayout
+                android:id="@+id/play_settings"
+                android:layout_width="@dimen/vs_60"
+                android:layout_height="@dimen/vs_60"
+                android:layout_gravity="center"
+                android:layout_marginStart="@dimen/vs_6"
+                android:layout_marginLeft="@dimen/vs_6"
+                android:layout_marginEnd="@dimen/vs_6"
+                android:layout_marginRight="@dimen/vs_6"
+                android:background="@drawable/button_player_control"
+                android:focusable="true"
+                android:nextFocusRight="@id/landscape_portrait"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="@dimen/vs_35"
+                    android:layout_height="@dimen/vs_35"
+                    android:layout_gravity="center"
+                    android:src="@drawable/hm_settings" />
+            </LinearLayout>
+	            <LinearLayout
 	                android:id="@+id/landscape_portrait"
 	                android:layout_width="@dimen/vs_45"
 	                android:layout_height="@dimen/vs_45"
@@ -1154,7 +1226,7 @@
 	                android:background="@drawable/button_player_control"
 	                android:focusable="true"
 	                android:gravity="center"
-	                android:nextFocusLeft="@id/play_time_end"
+	                android:nextFocusLeft="@id/play_settings"
 	                android:orientation="horizontal"
 	                android:visibility="gone">
 	
@@ -1165,7 +1237,7 @@
 	                    android:layout_gravity="center"                    
 	                    android:src="@drawable/htov" />
 	            </LinearLayout>                
-	        </LinearLayout>
+        </LinearLayout>
         </HorizontalScrollView>
         
         <LinearLayout
@@ -1234,5 +1306,6 @@
         android:visibility="invisible" >
 
     </LinearLayout>
+
 
 </FrameLayout>

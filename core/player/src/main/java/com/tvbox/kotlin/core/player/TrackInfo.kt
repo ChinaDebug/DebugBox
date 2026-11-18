@@ -3,16 +3,16 @@ package com.tvbox.kotlin.core.player
 /**
  * 单条轨道信息（音频/字幕）。
  *
- * 当前仅服务 Exo（Media3）内核：使用 [renderId] + [trackGroupId] + [trackId]
+ * 当前仅服务 Media3 内核：使用 [renderId] + [trackGroupId] + [trackId]
  * 三元组定位具体 Format。
  *
  */
 data class TrackInfoBean(
-    /** 轨道在底层播放器中的索引（Exo 为 Format 在 TrackGroup 中的下标） */
+    /** 轨道在底层播放器中的索引（Media3 为 Format 在 TrackGroup 中的下标） */
     var trackId: Int = INVALID_TRACK_ID,
-    /** Exo 渲染器索引 */
+    /** Media3 渲染器索引 */
     var renderId: Int = 0,
-    /** Exo TrackGroup 在 TrackGroupArray 中的下标 */
+    /** Media3 TrackGroup 在 TrackGroupArray 中的下标 */
     var trackGroupId: Int = 0,
     /** 展示名称 */
     var name: String = "",

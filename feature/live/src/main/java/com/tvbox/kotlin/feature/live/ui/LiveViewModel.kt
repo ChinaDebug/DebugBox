@@ -82,6 +82,10 @@ class LiveViewModel @Inject constructor(
     private val _currentHeaders = MutableStateFlow<Map<String, String>>(emptyMap())
     val currentHeaders: StateFlow<Map<String, String>> = _currentHeaders.asStateFlow()
 
+    /** 是否正在播放回看（时移）节目 */
+    private val _isCatchup = MutableStateFlow(false)
+    val isCatchup: StateFlow<Boolean> = _isCatchup.asStateFlow()
+
     /** EPG 节目单 */
     private val _epgList = MutableStateFlow<List<Epginfo>>(emptyList())
     val epgList: StateFlow<List<Epginfo>> = _epgList.asStateFlow()
@@ -279,10 +283,12 @@ class LiveViewModel @Inject constructor(
 
     /** 实际执行播放：更新频道对象、URL 与 EPG */
     private fun playChannelInternal(group: LiveChannelGroup, channel: LiveChannelItem) {
-        // 回看支持标记：源地址含 PLTV/8888（HLS 回看流）视为支持回看
-        channel.include_back = channel.getUrl()?.contains("PLTV/8888") == true
+        // 回看支持标记：源地址含 PLTV/8888（HLS 回看流）或源配置了 catchup 模板
+        channel.include_back = channel.getUrl()?.contains("PLTV/8888") == true ||
+            (channel.catchup ?: group.catchup)?.available == true
         // 浅拷贝强制发射：换源复用同一列表对象时 StateFlow 引用相等不发射，UI（底部路线显示）不刷新
         _currentChannel.value = channel.copy()
+        _isCatchup.value = false
         val url = channel.getUrl().orEmpty()
         // 强制发射：换源/换频道后 URL 可能与上次相同（如源循环回首个），StateFlow 去重不发射
         // 导致播放器不重载，先置空再置值确保每次都触发 collect 重载
@@ -292,6 +298,42 @@ class LiveViewModel @Inject constructor(
         saveLastChannel(group, channel)
         loadEpg(channel.channelName)
         _playState.value = 0
+    }
+
+    /**
+     * 点击 EPG 节目：正在播出的节目回到直播，已结束且频道支持回看时切到回看地址。
+     *
+     * @return 是否发生切换（未开始或无回看配置时返回 false）
+     */
+    fun playEpg(epg: Epginfo): Boolean {
+        val start = epg.startdateTime ?: return false
+        val end = epg.enddateTime ?: return false
+        val now = Date()
+        val playing = !now.before(start) && !now.after(end)
+        if (playing) return backToLive()
+        if (!now.after(end)) return false
+        val channel = _currentChannel.value ?: return false
+        val catchup = channel.catchup ?: _currentGroup.value?.catchup ?: return false
+        val url = catchup.buildUrl(channel.getUrl().orEmpty(), start, end) ?: return false
+        _isCatchup.value = true
+        _currentUrl.value = ""
+        _currentUrl.value = url
+        _currentHeaders.value = buildPlayHeaders(url)
+        _playState.value = 0
+        return true
+    }
+
+    /** 从回看切回当前频道直播流；本就在直播时返回 false */
+    fun backToLive(): Boolean {
+        if (!_isCatchup.value) return false
+        val channel = _currentChannel.value ?: return false
+        val url = channel.getUrl().orEmpty()
+        _isCatchup.value = false
+        _currentUrl.value = ""
+        _currentUrl.value = url
+        _currentHeaders.value = buildPlayHeaders(url)
+        _playState.value = 0
+        return true
     }
 
     /** 切换到下一频道 */

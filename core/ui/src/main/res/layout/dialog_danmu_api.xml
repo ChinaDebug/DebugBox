@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:background="@drawable/shape_dialog_bg_main">
+
+    <LinearLayout
+        android:layout_width="@dimen/vs_600"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/vs_30">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="@dimen/vs_20"
+            android:text="@string/danmu_api_title"
+            android:textColor="@color/color_FFFFFF"
+            android:textSize="@dimen/ts_26"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/et_danmu_api"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_60"
+            android:background="@drawable/shape_setting_model_focus"
+            android:hint="@string/danmu_api_hint"
+            android:inputType="textUri"
+            android:paddingLeft="@dimen/vs_15"
+            android:paddingRight="@dimen/vs_15"
+            android:singleLine="true"
+            android:textColor="@color/color_FFFFFF"
+            android:textColorHint="@color/color_FFFFFF_50"
+            android:textSize="@dimen/ts_20" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_50"
+            android:layout_marginTop="@dimen/vs_20"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_danmu_api_default"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/danmu_api_default"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_20" />
+
+            <TextView
+                android:id="@+id/btn_danmu_api_cancel"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/dialog_cancel"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_20" />
+
+            <TextView
+                android:id="@+id/btn_danmu_api_confirm"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/vs_15"
+                android:layout_marginLeft="@dimen/vs_15"
+                android:layout_weight="1"
+                android:background="@drawable/button_dialog_main"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/dialog_confirm"
+                android:textColor="@color/color_FFFFFF"
+                android:textSize="@dimen/ts_20" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

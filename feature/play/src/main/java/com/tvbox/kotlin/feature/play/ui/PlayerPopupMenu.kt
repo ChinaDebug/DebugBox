@@ -206,7 +206,6 @@ class PlayerPopupMenu private constructor(
         val popupWidth = container.measuredWidth
         val popupHeight = container.measuredHeight
 
-        // 获取锚点按钮在屏幕上的位置
         val anchorLoc = IntArray(2)
         anchor.getLocationOnScreen(anchorLoc)
         val anchorX = anchorLoc[0]

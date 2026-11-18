@@ -1,0 +1,1101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 遮罩：点击关闭面板 -->
+    <View
+        android:id="@+id/settings_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#66000000"
+        android:clickable="true"
+        android:focusable="false" />
+
+    <!-- 右侧滑出面板：左侧分类，右侧功能项 -->
+    <LinearLayout
+        android:id="@+id/settings_panel"
+        android:layout_width="@dimen/vs_640"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="@drawable/shape_user_pause"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:padding="@dimen/vs_20">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_50"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/act_settings"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_26"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/settings_close"
+                android:layout_width="@dimen/vs_40"
+                android:layout_height="@dimen/vs_40"
+                android:background="@drawable/button_player_control"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="@android:color/white"
+                android:textSize="@dimen/ts_22" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/vs_10"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <!-- 分类栏 -->
+            <LinearLayout
+                android:id="@+id/settings_categories"
+                android:layout_width="@dimen/vs_180"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/cat_play"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/act_player"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+
+                <TextView
+                    android:id="@+id/cat_picture"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/player_tab_picture"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+
+                <TextView
+                    android:id="@+id/cat_audio"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/player_tab_audio"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+
+                <TextView
+                    android:id="@+id/cat_danmu"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/player_tab_danmu"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+
+                <TextView
+                    android:id="@+id/cat_screen"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/player_tab_screen"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+
+                <TextView
+                    android:id="@+id/cat_cast"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/vs_50"
+                    android:layout_marginBottom="@dimen/vs_6"
+                    android:background="@drawable/shape_setting_model_focus"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/vs_20"
+                    android:paddingStart="@dimen/vs_20"
+                    android:text="@string/player_tab_cast"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/ts_22" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/vs_10"
+                android:layout_marginLeft="@dimen/vs_10"
+                android:layout_weight="1">
+
+                <!-- 播放 -->
+                <ScrollView
+                    android:id="@+id/page_play"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:text="@string/player_speed"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_20" />
+
+                        <SeekBar
+                            android:id="@+id/ps_speed"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_40"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:focusable="true"
+                            android:max="6" />
+
+                        <TextView
+                            android:id="@+id/ps_speed_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:gravity="center"
+                            android:text="x1.0"
+                            android:textColor="@android:color/white"
+                            android:textSize="@dimen/ts_22" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:background="@color/color_FFFFFF_50" />
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_player"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/mn_play_type"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_player_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_decode"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/media_decode_mode"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_decode_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:background="@color/color_FFFFFF_50" />
+
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 画面 -->
+                <ScrollView
+                    android:id="@+id/page_picture"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <!-- 画面缩放：预设按钮形式，点击即应用 -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:text="@string/mn_ratio"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_20" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_40"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/ps_scale_default"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_scale_16_9"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_scale_4_3"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_scale_fill"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_scale_original"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_scale_crop"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+                        </LinearLayout>
+
+                        <!-- 画面预设：一键组合档位/锐化/去模糊 -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:text="@string/player_preset"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_20" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_40"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/ps_preset_original"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_original"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_natural"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_natural"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_vivid"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_vivid"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_clear"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_clear"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_bright"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_bright"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_cinema"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_cinema"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_soft"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_soft"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_40"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/ps_preset_warm"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_warm"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_cool"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_cool"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_comfort"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_comfort"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_anime"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_anime"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_sport"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_sport"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+
+                            <TextView
+                                android:id="@+id/ps_preset_game"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_marginEnd="@dimen/vs_5"
+                                android:layout_marginRight="@dimen/vs_5"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_game"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+                        </LinearLayout>
+
+                        <!-- 自定义预设单独一行 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_40"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/ps_preset_custom"
+                                android:layout_width="@dimen/vs_200"
+                                android:layout_height="match_parent"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:text="@string/preset_custom"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_18" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_anime4k"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/quality_enable"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_anime4k_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <!-- 实际生效状态：着色器是否编译成功、是否已绘制增强帧 -->
+                        <TextView
+                            android:id="@+id/ps_anime4k_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:text="@string/quality_status_off"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_18" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_6"
+                            android:text="@string/player_tier"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_20" />
+
+                        <!-- 档位选项：与 AVBox 一致，横向平铺直接选择 -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/ps_tier_light"
+                                android:layout_width="0dp"
+                                android:layout_height="@dimen/vs_45"
+                                android:layout_marginEnd="@dimen/vs_4"
+                                android:layout_marginRight="@dimen/vs_4"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_20" />
+
+                            <TextView
+                                android:id="@+id/ps_tier_standard"
+                                android:layout_width="0dp"
+                                android:layout_height="@dimen/vs_45"
+                                android:layout_marginEnd="@dimen/vs_4"
+                                android:layout_marginRight="@dimen/vs_4"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_20" />
+
+                            <TextView
+                                android:id="@+id/ps_tier_high"
+                                android:layout_width="0dp"
+                                android:layout_height="@dimen/vs_45"
+                                android:layout_marginEnd="@dimen/vs_4"
+                                android:layout_marginRight="@dimen/vs_4"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_20" />
+
+                            <TextView
+                                android:id="@+id/ps_tier_ultra"
+                                android:layout_width="0dp"
+                                android:layout_height="@dimen/vs_45"
+                                android:layout_marginEnd="@dimen/vs_4"
+                                android:layout_marginRight="@dimen/vs_4"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_20" />
+
+                            <TextView
+                                android:id="@+id/ps_tier_upscale"
+                                android:layout_width="0dp"
+                                android:layout_height="@dimen/vs_45"
+                                android:layout_weight="1"
+                                android:background="@drawable/shape_setting_model_focus"
+                                android:focusable="true"
+                                android:gravity="center"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_20" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_deblur"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/quality_deblur"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_deblur_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 音视频 -->
+                <ScrollView
+                    android:id="@+id/page_audio"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_audio"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/vod_audio"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_video"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/vod_video"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 弹幕字幕 -->
+                <ScrollView
+                    android:id="@+id/page_danmu"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_subtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/vod_sub_option"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_danmu"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/danmu_setting"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 屏显 -->
+                <ScrollView
+                    android:id="@+id/page_screen"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_net_speed"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/screen_display_net_speed"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_net_speed_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_seek_time"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/screen_display_seek_time"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_seek_time_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_sys_time"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/screen_display_sys_time"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_sys_time_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_battery"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/screen_display_battery"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/ps_battery_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/color_FFFFFF_80"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- 投屏 -->
+                <ScrollView
+                    android:id="@+id/page_cast"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingEnd="@dimen/vs_10"
+                        android:paddingRight="@dimen/vs_10">
+
+                        <LinearLayout
+                            android:id="@+id/ps_row_cast"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/vs_50"
+                            android:layout_marginBottom="@dimen/vs_8"
+                            android:background="@drawable/shape_setting_model_focus"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:paddingRight="@dimen/vs_20"
+                            android:paddingEnd="@dimen/vs_20">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/push_cast_btn"
+                                android:textColor="@android:color/white"
+                                android:textSize="@dimen/ts_22" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </ScrollView>
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

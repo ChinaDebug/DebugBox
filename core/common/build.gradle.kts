@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
@@ -15,7 +16,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_21) } }
     buildFeatures { buildConfig = true }
 }
 
@@ -29,7 +29,9 @@ dependencies {
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.fragment)
 
-    api(libs.datastore.preferences)
+    implementation(libs.mmkv)
+    // 仅用于旧版 DataStore 偏好的一次性迁移
+    implementation(libs.datastore.preferences)
 
     api(libs.xxpermissions)
 
@@ -39,4 +41,10 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
