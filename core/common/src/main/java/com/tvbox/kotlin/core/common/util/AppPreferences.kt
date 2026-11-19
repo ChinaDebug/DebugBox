@@ -25,10 +25,14 @@ class AppPreferences @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    private val mmkv: MMKV = run {
+    /**
+     * MMKV 实例；初始化失败（原生库加载失败、存储不可写等）时为空，
+     * 读写降级为默认值/忽略写入，避免在 Application 注入阶段直接闪退。
+     */
+    private val mmkv: MMKV? = runCatching {
         MMKV.initialize(context)
-        requireNotNull(MMKV.mmkvWithID(ID, MMKV.SINGLE_PROCESS_MODE)) { "MMKV 初始化失败" }
-    }
+        MMKV.mmkvWithID(ID, MMKV.SINGLE_PROCESS_MODE)
+    }.onFailure { LOG.e("AppPreferences", it) }.getOrNull()
 
     init {
         migrateLegacyDataStore()
@@ -42,20 +46,20 @@ class AppPreferences @Inject constructor(
         is Long -> getLong(key, default)
         is Float -> getFloat(key, default)
         is String -> getString(key, default)
-        else -> (mmkv.decodeString(key) as? T) ?: default
+        else -> (mmkv?.decodeString(key) as? T) ?: default
     } as T
 
-    fun getInt(key: String, default: Int = 0): Int = mmkv.decodeInt(key, default)
+    fun getInt(key: String, default: Int = 0): Int = mmkv?.decodeInt(key, default) ?: default
 
-    fun getBoolean(key: String, default: Boolean = false): Boolean = mmkv.decodeBool(key, default)
+    fun getBoolean(key: String, default: Boolean = false): Boolean = mmkv?.decodeBool(key, default) ?: default
 
-    fun getString(key: String, default: String = ""): String = mmkv.decodeString(key, default) ?: default
+    fun getString(key: String, default: String = ""): String = mmkv?.decodeString(key, default) ?: default
 
-    fun getLong(key: String, default: Long = 0L): Long = mmkv.decodeLong(key, default)
+    fun getLong(key: String, default: Long = 0L): Long = mmkv?.decodeLong(key, default) ?: default
 
-    fun getFloat(key: String, default: Float = 0f): Float = mmkv.decodeFloat(key, default)
+    fun getFloat(key: String, default: Float = 0f): Float = mmkv?.decodeFloat(key, default) ?: default
 
-    fun contains(key: String): Boolean = mmkv.containsKey(key)
+    fun contains(key: String): Boolean = mmkv?.containsKey(key) ?: false
 
     /** 同步写入并落盘，调用后立即生效 */
     fun putSync(key: String, value: Any?) {
@@ -64,7 +68,7 @@ class AppPreferences @Inject constructor(
 
     /** 等待所有写入落盘（备份前调用，确保备份到最新数据） */
     suspend fun flush() {
-        mmkv.sync()
+        mmkv?.sync()
     }
 
     /** 写入任意类型值 */
@@ -74,36 +78,39 @@ class AppPreferences @Inject constructor(
 
     /** 移除单个 key */
     suspend fun remove(key: String) {
-        mmkv.removeValueForKey(key)
+        mmkv?.removeValueForKey(key)
     }
 
     /** 按前缀批量移除 key（如删除历史时清空该影片全部集的进度缓存） */
     suspend fun removeKeysByPrefix(prefix: String) {
         if (prefix.isEmpty()) return
-        mmkv.allKeys()?.filter { it.startsWith(prefix) }?.forEach { mmkv.removeValueForKey(it) }
+        val store = mmkv ?: return
+        store.allKeys()?.filter { it.startsWith(prefix) }?.forEach { store.removeValueForKey(it) }
     }
 
     /** 清空全部偏好 */
     suspend fun clear() {
-        mmkv.clearAll()
+        mmkv?.clearAll()
     }
 
     private fun encode(key: String, value: Any?) {
+        val store = mmkv ?: return
         when (value) {
-            is Boolean -> mmkv.encode(key, value)
-            is Int -> mmkv.encode(key, value)
-            is Long -> mmkv.encode(key, value)
-            is Float -> mmkv.encode(key, value)
-            is String -> mmkv.encode(key, value)
-            is Set<*> -> mmkv.encode(key, value.filterIsInstance<String>().toSet())
-            null -> mmkv.removeValueForKey(key)
-            else -> mmkv.encode(key, value.toString())
+            is Boolean -> store.encode(key, value)
+            is Int -> store.encode(key, value)
+            is Long -> store.encode(key, value)
+            is Float -> store.encode(key, value)
+            is String -> store.encode(key, value)
+            is Set<*> -> store.encode(key, value.filterIsInstance<String>().toSet())
+            null -> store.removeValueForKey(key)
+            else -> store.encode(key, value.toString())
         }
     }
 
     /** 将旧版 DataStore 中的偏好一次性导入 MMKV，导入后写入标记避免重复执行 */
     private fun migrateLegacyDataStore() {
-        if (mmkv.containsKey(KEY_LEGACY_MIGRATED)) return
+        val store = mmkv ?: return
+        if (store.containsKey(KEY_LEGACY_MIGRATED)) return
         try {
             val legacyFile = File(context.filesDir, "datastore/$LEGACY_STORE_NAME.preferences_pb")
             if (legacyFile.exists()) {
@@ -113,7 +120,7 @@ class AppPreferences @Inject constructor(
         } catch (t: Throwable) {
             LOG.e("migrateLegacyDataStore", t)
         }
-        mmkv.encode(KEY_LEGACY_MIGRATED, true)
+        store.encode(KEY_LEGACY_MIGRATED, true)
     }
 
     companion object {

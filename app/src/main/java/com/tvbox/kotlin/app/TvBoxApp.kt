@@ -10,6 +10,8 @@ import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.LOG
 import com.tvbox.kotlin.core.common.util.AppPreferences
 import com.tvbox.kotlin.core.common.util.AppPreferencesHolder
+import com.tvbox.kotlin.core.network.OkHttpHelper
+import com.tvbox.kotlin.core.player.MediaSources
 import com.tvbox.kotlin.core.server.cast.CastBridge
 import com.tvbox.kotlin.core.server.cast.model.CastData
 import com.tvbox.kotlin.core.ui.R as uiR
@@ -30,6 +32,9 @@ class TvBoxApp : Application() {
     @Inject
     lateinit var preferences: AppPreferences
 
+    @Inject
+    lateinit var okHttpHelper: OkHttpHelper
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -39,6 +44,8 @@ class TvBoxApp : Application() {
         AppPreferences.setShared(preferences)
         // 注册 Holder 静态入口，供 Bean/工具类（HawkListHelper 等）静态访问偏好
         AppPreferencesHolder.install(preferences)
+        // 播放数据源统一走全局网络栈：自定义 DNS/DoH/hosts、TLS 兼容层与连接池复用
+        MediaSources.installHttpClient { okHttpHelper.client() }
         putDefaultParams()
         initAutoSize()
         initCore()

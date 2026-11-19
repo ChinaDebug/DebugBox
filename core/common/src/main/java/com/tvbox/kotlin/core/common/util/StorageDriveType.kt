@@ -39,7 +39,7 @@ object StorageDriveType {
         "GFP", "GIFV", "GL", "GOM", "GRASP", "GTS", "GVI", "GVP", "GXF", "H261", "H262",
         "H263", "H264", "H265", "HDMOV", "HDV", "HEVC", "HKM", "IMOVIELIBRARY",
         "IMOVIEMOBILE", "IMOVIEPROJ", "IMOVIEPROJECT", "INP", "INSV", "INT", "IRCP",
-        "IRF", "ISM", "ISMC", "ISMCLIP", "ISMV", "IVA", "IVF", "IVR", "IVS", "IZZ",
+        "IRF", "ISM", "ISMC", "ISMCLIP", "ISMV", "ISO", "IVA", "IVF", "IVR", "IVS", "IZZ",
         "IZZY", "JDR", "JMV", "JNR", "JSS", "JTS", "JTV", "JV", "K3G", "KDENLIVE",
         "KINE", "KMPROJECT", "KMV", "KTN", "KUX", "LFPACKAGE", "LREC", "LRV", "LSF",
         "LSX", "LVF", "LVIX", "LXF", "M15", "M1PG", "M1V", "M21", "M2A", "M2P", "M2T",

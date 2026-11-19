@@ -6,7 +6,6 @@ import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import com.tvbox.kotlin.core.common.LOG
@@ -18,6 +17,7 @@ import com.tvbox.kotlin.core.data.dao.VodCollectDao
 import com.tvbox.kotlin.core.data.dao.VodRecordDao
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 
 /**
  * 数据库管理器：负责构建 AppDataBase、提供 DAO 访问与备份/恢复。
@@ -27,20 +27,29 @@ class AppDataManager internal constructor(
     private val context: Context
 ) {
 
+    /** 懒构建实例：构建失败会向调用方抛出明确异常，而非留下不可用实例 */
     @Volatile
-    private var appDataBase: AppDataBase = build(context)
+    private var appDataBase: AppDataBase? = null
 
-    fun getCacheDao(): CacheDao = appDataBase.cacheDao()
+    private fun database(): AppDataBase {
+        appDataBase?.let { return it }
+        synchronized(this) {
+            appDataBase?.let { return it }
+            return build(context).also { appDataBase = it }
+        }
+    }
 
-    fun getVodRecordDao(): VodRecordDao = appDataBase.vodRecordDao()
+    fun getCacheDao(): CacheDao = database().cacheDao()
 
-    fun getVodCollectDao(): VodCollectDao = appDataBase.vodCollectDao()
+    fun getVodRecordDao(): VodRecordDao = database().vodRecordDao()
 
-    fun getStorageDriveDao(): StorageDriveDao = appDataBase.storageDriveDao()
+    fun getVodCollectDao(): VodCollectDao = database().vodCollectDao()
 
-    fun getSearchDao(): SearchDao = appDataBase.searchDao()
+    fun getStorageDriveDao(): StorageDriveDao = database().storageDriveDao()
 
-    fun getDatabase(): AppDataBase = appDataBase
+    fun getSearchDao(): SearchDao = database().searchDao()
+
+    fun getDatabase(): AppDataBase = database()
 
     /**
      * 备份数据库到指定文件。
@@ -51,7 +60,7 @@ class AppDataManager internal constructor(
     @Throws(IOException::class)
     fun backup(path: File): Boolean {
         val dbFile = context.getDatabasePath(DB_PATH)
-        appDataBase.close()
+        database().close()
         return try {
             if (dbFile.exists()) {
                 FileUtils.copyFile(dbFile, path)
@@ -75,10 +84,11 @@ class AppDataManager internal constructor(
             throw IllegalStateException("backup version incompatible")
         }
         val dbFile = context.getDatabasePath(DB_PATH)
-        appDataBase.close()
+        database().close()
         return try {
-            if (dbFile.exists()) {
-                dbFile.delete()
+            // 主库与 -wal/-shm/-journal 一并清理，避免残留日志覆盖刚恢复的数据
+            DB_FILE_SUFFIXES.forEach { suffix ->
+                File(dbFile.path + suffix).takeIf { it.exists() }?.delete()
             }
             dbFile.parentFile?.takeIf { !it.exists() }?.mkdirs()
             FileUtils.copyFile(path, dbFile)
@@ -99,7 +109,7 @@ class AppDataManager internal constructor(
         var db: SQLiteDatabase? = null
         return try {
             db = SQLiteDatabase.openDatabase(path.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
-            db.version <= DB_FILE_VERSION
+            db.version <= DB_SCHEMA_VERSION
         } catch (t: Throwable) {
             LOG.e("isBackupCompatible", t)
             false
@@ -108,62 +118,148 @@ class AppDataManager internal constructor(
         }
     }
 
-    /** 重建数据库实例（Room3 关闭后不可复用），失败仅记录日志（正常情况下由重启流程兜底） */
+    /**
+     * 关闭后仅置空实例，下次访问 [database] 时按需重建。
+     * 不再保留已关闭的旧实例，避免重建失败后后续 DAO 访问抛出 "already-closed object" 造成误判。
+     */
     private fun reopenDatabase() {
-        try {
-            appDataBase = build(context)
-        } catch (t: Throwable) {
-            LOG.e("reopenDatabase", t)
+        synchronized(this) {
+            appDataBase = null
         }
     }
 
     companion object {
-        const val DB_FILE_VERSION = 4
         const val DB_NAME = "tvbox"
-        const val DB_PATH = "$DB_NAME.v$DB_FILE_VERSION.db"
+        const val DB_PATH = "$DB_NAME.db"
 
-        /** 迁移 1->2：创建网盘配置表 */
+        /** 主库与所有附属文件后缀，备份/恢复/隔离时统一处理 */
+        private val DB_FILE_SUFFIXES = listOf("", "-wal", "-shm", "-journal")
+
+        /** 旧版本曾使用带版本号的库文件名，升级时接管其数据，避免历史/收藏丢失 */
+        private val LEGACY_DB_NAME_REGEX = Regex("^$DB_NAME\\.v(\\d+)\\.db$")
+
+        private const val SQLITE_MAGIC = "SQLite format 3\u0000"
+        private const val SQLITE_HEADER_SIZE = 64
+
+        /**
+         * 读取 SQLite 文件头中的 user_version（偏移 60，大端 4 字节）。
+         * 直接读文件而不用 openDatabase，避免启动阶段加锁、触发 WAL 恢复或写回。
+         * 返回 null 表示不是合法 SQLite 文件（按损坏处理）。
+         */
+        private fun readUserVersion(file: File): Int? = try {
+            RandomAccessFile(file, "r").use { raf ->
+                if (raf.length() < SQLITE_HEADER_SIZE) return null
+                val magic = ByteArray(16)
+                raf.readFully(magic)
+                if (String(magic, Charsets.US_ASCII) != SQLITE_MAGIC) return null
+                raf.seek(60)
+                val raw = ByteArray(4)
+                raf.readFully(raw)
+                (raw[0].toInt() and 0xFF shl 24) or
+                    (raw[1].toInt() and 0xFF shl 16) or
+                    (raw[2].toInt() and 0xFF shl 8) or
+                    (raw[3].toInt() and 0xFF)
+            }
+        } catch (t: Throwable) {
+            LOG.e("readUserVersion", t)
+            null
+        }
+
+        /**
+         * 隔离不可用库文件：损坏或 schema 版本高于当前（无法降级）时，
+         * 重命名备份并清掉附属文件，交由 Room 重建空库，保证应用始终可启动。
+         */
+        private fun quarantineUnusableDb(context: Context) {
+            val dbFile = context.getDatabasePath(DB_PATH)
+            if (!dbFile.exists()) return
+            val version = readUserVersion(dbFile)
+            val reason = when {
+                version == null -> "数据库文件损坏或非 SQLite 格式"
+                version > DB_SCHEMA_VERSION -> "schema 版本($version)高于当前($DB_SCHEMA_VERSION)"
+                else -> return
+            }
+            val backup = File(dbFile.parentFile, "$DB_NAME.corrupt.${System.currentTimeMillis()}.db")
+            LOG.w("quarantineUnusableDb", "$reason，已备份为 ${backup.name} 并重建")
+            if (!dbFile.renameTo(backup)) return
+            DB_FILE_SUFFIXES.drop(1).forEach { suffix ->
+                File(dbFile.path + suffix).takeIf { it.exists() }?.delete()
+            }
+        }
+
+        private fun migrateLegacyDbFile(context: Context) {
+            val target = context.getDatabasePath(DB_PATH)
+            if (target.exists()) return
+            val legacy = target.parentFile
+                ?.listFiles { f -> LEGACY_DB_NAME_REGEX.matches(f.name) }
+                ?.maxByOrNull { LEGACY_DB_NAME_REGEX.find(it.name)!!.groupValues[1].toInt() }
+                ?: return
+            if (!legacy.renameTo(target)) return
+            // WAL/SHM/journal 必须随库文件一起迁移，否则可能丢失未落盘记录
+            DB_FILE_SUFFIXES.drop(1).forEach { suffix ->
+                File(legacy.path + suffix).takeIf { it.exists() }
+                    ?.renameTo(File(target.path + suffix))
+            }
+        }
+
+        /** 迁移 1->2：创建网盘配置表（IF NOT EXISTS 保证可重复执行） */
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override suspend fun migrate(connection: SQLiteConnection) {
-                try {
-                    connection.execSQL("CREATE TABLE IF NOT EXISTS `storageDrive` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` INTEGER NOT NULL, `configJson` TEXT)")
-                } catch (e: SQLiteException) {
-                    LOG.e("MIGRATION_1_2", e)
-                }
+                connection.execSQL("CREATE TABLE IF NOT EXISTS `storageDrive` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` INTEGER NOT NULL, `configJson` TEXT)")
             }
         }
 
-        /** 迁移 2->3：创建搜索历史表与索引 */
+        /** 迁移 2->3：创建搜索历史表与索引（IF NOT EXISTS 保证可重复执行） */
         val MIGRATION_2_3: Migration = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
-                try {
-                    connection.execSQL("CREATE TABLE IF NOT EXISTS t_search (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)")
-                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)")
-                } catch (e: SQLiteException) {
-                    LOG.e("MIGRATION_2_3", e)
-                }
+                connection.execSQL("CREATE TABLE IF NOT EXISTS t_search (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, searchKeyWords TEXT)")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS index_t_search_searchKeyWords ON t_search (searchKeyWords)")
             }
         }
 
-        /** 迁移 3->4：观看记录与收藏表增加 apiUrl 列（订阅地址归属，旧数据为 null 兼容显示） */
+        /** 迁移 3->4：观看记录与收藏表增加 apiUrl 列（先探测列，保证迁移可重复执行且不吞异常） */
         val MIGRATION_3_4: Migration = object : Migration(3, 4) {
             override suspend fun migrate(connection: SQLiteConnection) {
-                try {
-                    connection.execSQL("ALTER TABLE `vodRecord` ADD COLUMN `apiUrl` TEXT")
-                    connection.execSQL("ALTER TABLE `vodCollect` ADD COLUMN `apiUrl` TEXT")
-                } catch (e: SQLiteException) {
-                    LOG.e("MIGRATION_3_4", e)
+                connection.addColumnIfAbsent("vodRecord", "apiUrl")
+                connection.addColumnIfAbsent("vodCollect", "apiUrl")
+            }
+        }
+
+        /** SQLite 不支持 ADD COLUMN IF NOT EXISTS，先查 PRAGMA 再决定是否添加 */
+        private suspend fun SQLiteConnection.addColumnIfAbsent(table: String, column: String) {
+            if (hasColumn(table, column)) return
+            execSQL("ALTER TABLE `$table` ADD COLUMN `$column` TEXT")
+        }
+
+        private suspend fun SQLiteConnection.hasColumn(table: String, column: String): Boolean {
+            val statement = prepare("PRAGMA table_info(`$table`)")
+            return try {
+                var found = false
+                while (statement.step()) {
+                    // PRAGMA table_info 第 2 列（下标 1）为列名
+                    if (statement.getText(1)?.equals(column, ignoreCase = true) == true) {
+                        found = true
+                        break
+                    }
                 }
+                found
+            } finally {
+                statement.close()
             }
         }
 
         /** 构建 AppDataBase 实例，日志模式与主线程查询许可 */
-        fun build(context: Context): AppDataBase =
-            Room.databaseBuilder(context.applicationContext, AppDataBase::class.java, DB_PATH)
+        fun build(context: Context): AppDataBase {
+            // 顺序：先隔离损坏/高版本库，再接管旧文件名，最后复检接管来的库，
+            // 避免目标库损坏时跳过了旧库接管、或旧库本身版本过高导致 Room 崩溃
+            quarantineUnusableDb(context)
+            migrateLegacyDbFile(context)
+            quarantineUnusableDb(context)
+            return Room.databaseBuilder(context.applicationContext, AppDataBase::class.java, DB_PATH)
                 .setDriver(BundledSQLiteDriver())
                 .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .allowMainThreadQueries()
                 .build()
+        }
     }
 }

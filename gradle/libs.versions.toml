@@ -55,7 +55,7 @@ media3 = "1.11.1"
 
 # ---------- 其他工具库 ----------
 brotli = "0.1.2"
-mmkv = "2.4.3"
+mmkv = "1.3.17"
 conscrypt = "2.6.1"
 checkerQual = "3.13.0"
 sardineAndroid = "0.9"

@@ -39,19 +39,26 @@ object MediaSources {
     /** 普通网络源读/连超时（秒） */
     private const val DEFAULT_TIMEOUT_SECONDS = 15L
 
-    /** 磁力边下边播读/连超时（秒）：需等待慢源首个数据块，远大于普通源 */
+    /** 磁力边下边播读超时（秒）：需等待慢源首个数据块，远大于普通源 */
     private const val BT_LOCAL_TIMEOUT_SECONDS = 120L
 
-    private val HTTP_CLIENT: okhttp3.OkHttpClient = okhttp3.OkHttpClient.Builder()
+    /** ISO 探测与读取超时（秒）：BD 原盘单次读取数据量大，慢链路易触发短超时 */
+    private const val ISO_CONNECT_TIMEOUT_SECONDS = 10L
+    private const val ISO_READ_TIMEOUT_SECONDS = 30L
+
+    /** 无全局网络栈时（如单测）的兜底客户端 */
+    private val FALLBACK_CLIENT: okhttp3.OkHttpClient = okhttp3.OkHttpClient.Builder()
         .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
 
-    /** ISO 探测与读取的读超时更宽松：BD 原盘单次读取数据量大，慢链路易触发短超时 */
-    private val ISO_HTTP_CLIENT: okhttp3.OkHttpClient = okhttp3.OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    /** 全局网络栈提供者，由 App 注入 OkHttpHelper，保证自定义 DNS/DoH/hosts、TLS 兼容层与连接池复用 */
+    @Volatile
+    private var clientProvider: (() -> okhttp3.OkHttpClient)? = null
+
+    fun installHttpClient(provider: () -> okhttp3.OkHttpClient) {
+        clientProvider = provider
+    }
 
     /**
      * 推断媒体扩展名（m3u8/mpd/null）。
@@ -161,7 +168,10 @@ object MediaSources {
         context: Context,
         headers: Map<String, String>
     ): DataSource.Factory =
-        DefaultDataSource.Factory(context, okHttpDataSource(headers, ISO_HTTP_CLIENT))
+        DefaultDataSource.Factory(
+            context,
+            okHttpDataSource(headers, clientFor(ISO_READ_TIMEOUT_SECONDS, ISO_CONNECT_TIMEOUT_SECONDS))
+        )
 
     /** ISO 分段源：ISO 数据源按 UDF 区块读取，再由 M2TS 适配器按 192 字节包输出 */
     private fun isoProgressiveSource(
@@ -176,21 +186,28 @@ object MediaSources {
         url.startsWith("http://", true) || url.startsWith("https://", true)
 
     /**
+     * 基于全局网络栈派生播放客户端：保留 DNS/DoH/hosts、TLS 兼容层与连接池，
+     * 关闭磁盘缓存避免 Range 请求干扰，并按场景覆盖超时。
+     */
+    private fun clientFor(
+        readTimeoutSeconds: Long,
+        connectTimeoutSeconds: Long = DEFAULT_TIMEOUT_SECONDS
+    ): okhttp3.OkHttpClient =
+        (clientProvider?.invoke() ?: FALLBACK_CLIENT).newBuilder()
+            .cache(null)
+            .connectTimeout(connectTimeoutSeconds, TimeUnit.SECONDS)
+            .readTimeout(readTimeoutSeconds, TimeUnit.SECONDS)
+            .build()
+
+    /**
      * 构造 OkHttp 数据源工厂：[timeoutSeconds] 控制读/连超时。
      */
     private fun okHttpFactory(
         headers: Map<String, String>,
         timeoutSeconds: Long = DEFAULT_TIMEOUT_SECONDS
     ): OkHttpDataSource.Factory {
-        val client = if (timeoutSeconds == DEFAULT_TIMEOUT_SECONDS) {
-            HTTP_CLIENT
-        } else {
-            HTTP_CLIENT.newBuilder()
-                .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                .build()
-        }
-        return okHttpDataSource(headers, client)
+        val connect = if (timeoutSeconds == BT_LOCAL_TIMEOUT_SECONDS) DEFAULT_TIMEOUT_SECONDS else timeoutSeconds
+        return okHttpDataSource(headers, clientFor(timeoutSeconds, connect))
     }
 
     /** User-Agent 单独设置，内部标记头由 [HttpHeaders.toRequestHeaders] 过滤 */

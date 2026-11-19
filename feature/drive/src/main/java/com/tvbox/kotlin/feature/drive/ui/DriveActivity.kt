@@ -150,18 +150,27 @@ class DriveActivity : BaseBindingActivity<ActivityDriveBinding>() {
         return node
     }
 
-    /** 按网盘类型构造播放器配置：WebDAV 附带 Basic 认证请求头 */
+    /** 按网盘类型构造播放器配置：WebDAV 附带 Basic 认证请求头，ISO 镜像附带类型标记 */
     private fun buildPlayExtras(file: DriveFolderFile): Intent? {
-        val drive = resolveDrive(file) ?: return null
-        if (drive.getDriveType() != StorageDriveType.TYPE.WEBDAV) return null
-        val credential = drive.getWebDAVBase64Credential() ?: return null
-        return try {
-            val headers = JSONArray().apply {
-                put(JSONObject().apply {
+        val headers = JSONArray()
+        val drive = resolveDrive(file)
+        if (drive?.getDriveType() == StorageDriveType.TYPE.WEBDAV) {
+            drive.getWebDAVBase64Credential()?.let { credential ->
+                headers.put(JSONObject().apply {
                     put("name", "authorization")
                     put("value", "Basic $credential")
                 })
             }
+        }
+        // 网盘签名直链常不含 .iso 后缀，显式标记避免被当作普通流处理
+        if (file.fileType.equals("ISO", ignoreCase = true)) {
+            headers.put(JSONObject().apply {
+                put("name", "TVBox-Iso")
+                put("value", "1")
+            })
+        }
+        if (headers.length() == 0) return null
+        return try {
             val cfg = JSONObject().apply { put("headers", headers) }
             Intent().putExtra("playerCfg", cfg.toString())
         } catch (_: Throwable) {
