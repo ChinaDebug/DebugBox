@@ -512,9 +512,6 @@ class PlayerVodControlView @JvmOverloads constructor(
     /** 片头片尾记忆键（源key|影片id），非空时跳过时间随影片持久化，退出后重新进入可恢复 */
     private var skipTimeKey = ""
 
-    // 是否有弹幕数据，决定弹幕设置按钮显隐
-    private var hasDanmu = false
-
     // 当前播放状态，用于遥控按键与手势的播放态判断
     private var curPlayState = PlayerConstants.STATE_IDLE
 
@@ -1069,7 +1066,6 @@ class PlayerVodControlView @JvmOverloads constructor(
                 .setDuration(ANIM_DURATION)
                 .setInterpolator(DecelerateInterpolator())
                 .start()
-            updateDanmuBtn()
             // 控制栏显示时按当前方向刷新底部按钮显隐（case 1002 中的调用）
             updateBottomButtonsForOrientation()
             // 尺寸信息可能在控制栏隐藏期间才就绪，显示时补刷一次
@@ -1760,20 +1756,6 @@ class PlayerVodControlView @JvmOverloads constructor(
         playPlayerTxt?.text = text
         playPlayerTxt?.visibility = if (isCastMode) View.GONE else View.VISIBLE
     }
-
-    /** 设置是否有弹幕数据，控制弹幕设置按钮显隐 */
-    fun setHasDanmu(has: Boolean) {
-        hasDanmu = has
-        updateDanmuBtn()
-    }
-
-    /** 根据弹幕数据刷新弹幕入口可用状态（入口在设置面板，底栏图标恒隐藏） */
-    private fun updateDanmuBtn() {
-        llDanmuSetting?.visibility = View.GONE
-    }
-
-    /** 视频是否有弹幕数据，供设置面板决定弹幕入口显隐 */
-    fun isDanmuAvailable(): Boolean = hasDanmu
 
     /** 音轨是否多于 1 条，供设置面板决定音轨入口显隐 */
     fun isAudioTrackAvailable(): Boolean = audioTrackVisible

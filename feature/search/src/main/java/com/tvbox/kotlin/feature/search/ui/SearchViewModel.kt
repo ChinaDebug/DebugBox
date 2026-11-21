@@ -1,5 +1,6 @@
 package com.tvbox.kotlin.feature.search.ui
 
+import com.github.catvod.Proxy
 import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.bean.Movie
 import com.tvbox.kotlin.core.common.bean.SourceBean
@@ -8,14 +9,18 @@ import com.tvbox.kotlin.core.data.repo.SearchPresenter
 import com.tvbox.kotlin.core.network.OkHttpHelper
 import com.tvbox.kotlin.core.spider.ApiConfig
 import com.tvbox.kotlin.core.spider.CmsApi
+import com.tvbox.kotlin.core.spider.IsolatedSpiderClient
 import com.tvbox.kotlin.core.spider.SearchHelper
 import android.content.Context
+import android.os.Build
 import com.tvbox.kotlin.core.ui.BaseViewModel
 import com.tvbox.kotlin.core.ui.R as uiR
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +37,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -158,6 +164,35 @@ class SearchViewModel @Inject constructor(
     /** 多源并发上限，与线程池大小一致 */
     private val searchSemaphore = Semaphore(SEARCH_CONCURRENCY)
 
+    /**
+     * x86 设备上 jar 爬虫依赖 houdini 翻译执行，native 崩溃无法在进程内捕获，
+     * 因此把 jar 搜索转移到 `:spider` 独立进程执行，崩溃只影响子进程。
+     */
+    private val isolatedClient = IsolatedSpiderClient(context)
+
+    /** 已确认会杀死隔离进程的源 key，持久化后跳过，避免每次搜索都触发一次崩溃 */
+    private val crashedSources: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    /** 本轮搜索的源快照与关键字，用于崩溃归因复测 */
+    @Volatile
+    private var currentSearchSources: List<SourceBean> = emptyList()
+
+    @Volatile
+    private var currentKeyword: String = ""
+
+    init {
+        crashedSources.addAll(
+            appPreferences.getString(KEY_CRASHED_SOURCES, "")
+                .split(',')
+                .filter { it.isNotBlank() }
+        )
+    }
+
+    override fun onCleared() {
+        isolatedClient.release()
+        super.onCleared()
+    }
+
     /** 结果累积锁 */
     private val resultLock = Any()
 
@@ -231,13 +266,17 @@ class SearchViewModel @Inject constructor(
         sources.remove(home)
         sources.add(0, home)
         val searchSources = sources.filter { bean ->
-            bean.isSearchable() && checkedSources.containsKey(bean.key)
+            bean.isSearchable() && checkedSources.containsKey(bean.key) &&
+                (bean.key == null || !crashedSources.contains(bean.key))
         }
 
         if (searchSources.isEmpty()) {
             _searchState.value = SearchState.Empty
             return
         }
+
+        currentSearchSources = searchSources
+        currentKeyword = trimmed
 
         _progress.value = SearchProgress(total = searchSources.size)
 
@@ -435,9 +474,13 @@ class SearchViewModel @Inject constructor(
     }
 
     /** 按站点类型分派搜索：type 3 爬虫，type 0/1/4 采集站 HTTP 直连 */
-    private fun searchFromSource(source: SourceBean, keyword: String): List<Movie.Video> {
+    private suspend fun searchFromSource(source: SourceBean, keyword: String): List<Movie.Video> {
         val sourceKey = source.key ?: return emptyList()
         if (source.type == 3) {
+            // x86 设备上 jar 爬虫的 native 崩溃无法在主进程捕获，改由 :spider 独立进程执行
+            if (useIsolatedSpider && isJarSpider(source)) {
+                return searchInIsolatedProcess(source, keyword)
+            }
             // Spider（JS/Python/Jar）执行可能是阻塞且不可中断的（QuickJS/Python 死循环、
             // 慢脚本），withTimeoutOrNull 无法中断阻塞调用；这里放独立线程池执行，
             // 超时即放弃等待（卡死线程残留运行但不阻塞整体搜索），保证单源耗时 ≤ SEARCH_TIMEOUT_MS
@@ -452,6 +495,91 @@ class SearchViewModel @Inject constructor(
             }
         }
         return cmsApi.search(source, keyword)
+    }
+
+    /**
+     * 在 `:spider` 独立进程执行 jar 搜索。
+     * 子进程被 native 崩溃杀死时返回空结果，并触发嫌疑源归因复测。
+     */
+    private suspend fun searchInIsolatedProcess(source: SourceBean, keyword: String): List<Movie.Video> {
+        val sourceKey = source.key ?: return emptyList()
+        val result = isolatedClient.search(
+            sourceKey = sourceKey,
+            api = source.api ?: "",
+            ext = source.ext ?: "",
+            siteJar = source.jar ?: "",
+            mainJar = apiConfig.getSpider(),
+            keyword = keyword,
+            proxyPort = proxyPort(),
+            timeoutMs = ISOLATED_TIMEOUT_MS
+        )
+        return when (result) {
+            is IsolatedSpiderClient.Result.Ok -> parseVideos(result.json, sourceKey)
+            is IsolatedSpiderClient.Result.ProcessDied -> {
+                startCrashProbe(result.inFlightKeys)
+                emptyList()
+            }
+            is IsolatedSpiderClient.Result.Failed -> emptyList()
+        }
+    }
+
+    /**
+     * 隔离进程崩溃后，对当时未完成的源串行复测：
+     * 再次杀死进程的源写入持久化黑名单，后续搜索自动跳过，避免重复触发崩溃。
+     * 复测使用进程级作用域与独立客户端，用户离开搜索页也不会中断归因。
+     */
+    @Synchronized
+    private fun startCrashProbe(suspectKeys: List<String>) {
+        if (suspectKeys.isEmpty()) return
+        if (crashProbeJob?.isActive == true) return
+        val suspectSet = suspectKeys.toSet()
+        val suspects = currentSearchSources.filter { bean ->
+            bean.key != null && suspectSet.contains(bean.key) && !crashedSources.contains(bean.key)
+        }
+        if (suspects.isEmpty()) return
+        val keyword = currentKeyword
+        val mainJar = apiConfig.getSpider()
+        val port = proxyPort()
+        val activeSearch = searchJob
+        crashProbeJob = crashProbeScope.launch {
+            // 等当前搜索结束再复测，避免搜索请求与复测请求并发导致误判崩溃源
+            activeSearch?.join()
+            val probeClient = IsolatedSpiderClient(context)
+            try {
+                for (bean in suspects) {
+                    val key = bean.key ?: continue
+                    if (crashedSources.contains(key)) continue
+                    val result = probeClient.search(
+                        sourceKey = key,
+                        api = bean.api ?: "",
+                        ext = bean.ext ?: "",
+                        siteJar = bean.jar ?: "",
+                        mainJar = mainJar,
+                        keyword = keyword,
+                        proxyPort = port,
+                        timeoutMs = ISOLATED_TIMEOUT_MS
+                    )
+                    // 单请求复测仍导致进程死亡，即确认该源为崩溃源
+                    if (result is IsolatedSpiderClient.Result.ProcessDied) {
+                        crashedSources.add(key)
+                        appPreferences.putSync(KEY_CRASHED_SOURCES, crashedSources.sorted().joinToString(","))
+                    }
+                    // 给隔离进程重启留出间隔
+                    kotlinx.coroutines.delay(500)
+                }
+            } finally {
+                probeClient.release()
+            }
+        }
+    }
+
+    /** 主进程本地服务端口，jar 内代理请求需与主进程保持一致 */
+    private fun proxyPort(): Int = runCatching { Proxy.getPort() }.getOrDefault(0)
+
+    /** 是否为 jar 爬虫（js/py 爬虫依赖各自运行时，留在主进程执行） */
+    private fun isJarSpider(source: SourceBean): Boolean {
+        val api = source.api ?: return false
+        return !(api.endsWith(".js") || api.contains(".js?") || api.contains(".py"))
     }
 
     /** 加载热门搜索词（腾讯热搜接口，进程内静态缓存） */
@@ -614,8 +742,28 @@ class SearchViewModel @Inject constructor(
          */
         private const val SEARCH_CONCURRENCY = 10
 
+        /**
+         * x86 设备上 arm64 爬虫依赖 houdini 翻译执行，native 崩溃无法在进程内捕获，
+         * 因此启用 `:spider` 独立进程隔离。
+         */
+        private val useIsolatedSpider: Boolean by lazy {
+            Build.SUPPORTED_ABIS.any { it == "x86" || it == "x86_64" }
+        }
+
         /** 单源搜索超时（毫秒）：只砍真正无响应的源，正常慢源（3~5s）应保留结果 */
         private const val SEARCH_TIMEOUT_MS = 10_000L
+
+        /** 隔离进程搜索超时：略小于主超时，保证超时/崩溃结果先于外层取消返回 */
+        private const val ISOLATED_TIMEOUT_MS = SEARCH_TIMEOUT_MS - 1_000
+
+        /** 已确认导致隔离进程崩溃的源 key（逗号分隔，持久化到偏好） */
+        private const val KEY_CRASHED_SOURCES = "search_crashed_sources"
+
+        /** 崩溃归因复测：进程级作用域，避免用户离开搜索页导致复测被取消 */
+        private val crashProbeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        @Volatile
+        private var crashProbeJob: Job? = null
 
         /** 等待全部源完成的最大时长（毫秒）：每源内部已有超时兜底，此值仅防爬虫执行不可中断时永久阻塞 */
         private const val WAIT_ALL_MAX_MS = 20_000L

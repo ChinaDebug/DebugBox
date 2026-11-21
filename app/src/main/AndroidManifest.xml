@@ -38,6 +38,12 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
 
+        <!-- 爬虫搜索隔离进程：加固 jar 的 native 崩溃只影响该进程，不拖垮主进程 -->
+        <service
+            android:name="com.tvbox.kotlin.core.spider.IsolatedSpiderService"
+            android:exported="false"
+            android:process=":spider" />
+
         <activity
             android:name="com.tvbox.kotlin.feature.splash.ui.SplashActivity"
             android:screenOrientation="sensorLandscape"

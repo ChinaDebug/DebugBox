@@ -439,12 +439,10 @@ class PlayerSettingsPanelDialog(
             dismiss()
             delegate.onSubtitleClick()
         }
-        findViewById<View>(R.id.ps_row_danmu)?.apply {
-            visibility = if (host.controller.isDanmuAvailable()) View.VISIBLE else View.GONE
-            setOnClickListener {
-                dismiss()
-                delegate.onDanmuClick()
-            }
+        // 弹幕入口常显：源未提供弹幕字段时，仍可进入设置弹窗使用在线弹幕搜索
+        findViewById<View>(R.id.ps_row_danmu)?.setOnClickListener {
+            dismiss()
+            delegate.onDanmuClick()
         }
     }
 

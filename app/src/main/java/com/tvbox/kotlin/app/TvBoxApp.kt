@@ -2,6 +2,7 @@ package com.tvbox.kotlin.app
 
 import android.app.Application
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -21,6 +22,7 @@ import dagger.hilt.android.HiltAndroidApp
 import me.jessyan.autosize.AutoSizeConfig
 import me.jessyan.autosize.unit.Subunits
 import javax.inject.Inject
+import javax.inject.Provider
 
 /**
  * 应用入口，Hilt 根节点。
@@ -30,14 +32,25 @@ import javax.inject.Inject
 class TvBoxApp : Application() {
 
     @Inject
-    lateinit var preferences: AppPreferences
+    lateinit var preferencesProvider: Provider<AppPreferences>
 
     @Inject
-    lateinit var okHttpHelper: OkHttpHelper
+    lateinit var okHttpProvider: Provider<OkHttpHelper>
+
+    /** 仅主进程使用的偏好实例，避免在 :spider 进程创建 MMKV */
+    private lateinit var preferences: AppPreferences
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // :spider 独立进程只承载 jar 搜索，仅需 catvod 上下文；
+        // 跳过偏好/投屏/EPG 初始化，避免 MMKV（单进程模式）被第二个进程打开
+        if (isSpiderProcess()) {
+            runCatching { com.github.catvod.Init.set(this) }
+            return
+        }
+        preferences = preferencesProvider.get()
+        val okHttpHelper = okHttpProvider.get()
         // 注册 core/ui 全局 Context（雷鸟/荐片等后台线程读取字符串资源需要，缺失会 IllegalStateException）
         UiResources.install(this)
         // 注册全局共享偏好实例，供 Activity 基类等非注入场景同步读取
@@ -50,6 +63,18 @@ class TvBoxApp : Application() {
         initAutoSize()
         initCore()
         initCastServer()
+    }
+
+    /** 判断当前进程是否为爬虫隔离进程（Manifest 中声明的 android:process=":spider"） */
+    private fun isSpiderProcess(): Boolean = try {
+        val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Application.getProcessName()
+        } else {
+            File("/proc/self/cmdline").readText().trim().substringBefore('\u0000')
+        }
+        name.endsWith(":spider")
+    } catch (_: Throwable) {
+        false
     }
 
     /**

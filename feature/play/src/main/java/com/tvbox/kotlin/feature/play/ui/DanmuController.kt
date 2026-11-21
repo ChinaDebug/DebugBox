@@ -14,7 +14,7 @@ import master.flame.danmaku.danmaku.model.android.DanmakuContext
  * 弹幕加载与管理控制器，屏蔽 PlayFragment/PlayActivity 的宿主差异。
  *
  * 流程：
- * - [checkDanmu]：注入弹幕数据，更新按钮与视图可见性，开关开启且正在播放时主动加载；
+ * - [checkDanmu]：注入弹幕数据，更新弹幕视图可见性，开关开启且正在播放时主动加载；
  * - [loadDanmuWhenPlaying]：播放状态回调触发加载；
  * - [setDanmuViewSettings]：设置参数应用到共享 [danmakuContext]（单例，
  *   速度/大小/行数/透明度即时生效）；reload=true 时执行加载任务，reload=false 时仅显示并同步进度。
@@ -79,14 +79,13 @@ class DanmuController(private val host: PlayHost) {
         }
     }
 
-    /** 注入弹幕数据后检查：更新按钮与视图可见性，弹幕加载由播放状态回调触发。
+    /** 注入弹幕数据后检查：更新弹幕视图可见性，弹幕加载由播放状态回调触发。
      * 幂等基准取 ViewModel 内 resolve 后的最终源（宿主传入的原始串可能因端口占位替换而与之不同，
      * 会造成同源被误判为新源重复加载）；同源重复注入时不打断已加载/加载中的弹幕，
      * 避免同源被重复 fetch（每次真实 fetch 都会触发源 jar 的"加载成功"提示）。 */
     fun checkDanmu() {
         val view = host.danmakuView ?: return
         val source = host.viewModel.getDanmu()
-        host.controller.setHasDanmu(source.isNotEmpty())
         if (source == currentDanmuSource) {
             // 同源且已渲染：保持现状
             if (danmuLoaded) return
@@ -293,7 +292,6 @@ class DanmuController(private val host: PlayHost) {
         currentDanmuSource = content
         danmuLoaded = false
         HawkUtils.setDanmuOpen(true)
-        host.controller.setHasDanmu(true)
         host.danmakuView?.visibility = View.VISIBLE
         loadDanmuIfNeeded(showToast = true, notifyFailure = true)
     }
@@ -305,7 +303,6 @@ class DanmuController(private val host: PlayHost) {
         host.viewModel.setDanmu(backup)
         currentDanmuSource = ""
         danmuLoaded = false
-        host.controller.setHasDanmu(backup.isNotEmpty())
         if (backup.isEmpty()) {
             host.danmakuView?.let {
                 it.hide()
