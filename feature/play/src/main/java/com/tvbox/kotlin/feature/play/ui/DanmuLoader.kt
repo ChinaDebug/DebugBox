@@ -38,6 +38,7 @@ import master.flame.danmaku.danmaku.model.android.Danmakus
 import master.flame.danmaku.danmaku.model.android.SpannedCacheStuffer
 import master.flame.danmaku.danmaku.parser.BaseDanmakuParser
 import master.flame.danmaku.danmaku.util.DanmakuUtils
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -49,11 +50,13 @@ import java.util.Random
  *
  * 支持：
  * - HTTP/HTTPS 远程弹幕（XML 或 JSON）；
+ * - `proxy://` 本地代理弹幕，由实现层归一化为代理 URL 后直调爬虫；
  * - 本地 base64 编码弹幕（直接嵌入在 playerContent 返回的 danmu 字段）；
  * - 纯 XML/JSON 文本内容。
  *
- * XML 采用 B 站弹幕格式（`<d p="time,mode,size,color">text</d>`），
- * JSON 采用 `{"data":[{"t":..,"m":..,"c":..,"s":..,"n":..}]}` 结构，
+ * XML 采用 B 站弹幕格式（`<d p="time,mode,size,color">text</d>`）；
+ * JSON 兼容精简结构 `{"data":[{"t":..,"m":..,"c":..,"s":..,"n":..}]}` 与
+ * 弹弹play 原始结构 `{"comments":[{"p":"time,mode,color,uid","m":text}]}`，
  * 解析后按播放器尺寸缩放填充到 [IDanmakuView]。
  */
 object DanmuLoader {
@@ -63,6 +66,19 @@ object DanmuLoader {
     private const val READ_TIMEOUT_MS = 15_000
     private const val MAX_REDIRECTS = 5
     private const val UA = "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36"
+
+    /** 无协议头但形如 host:port/path 的弹幕地址（如 127.0.0.1:9978/danmu） */
+    private val HOST_PORT_PATH = Regex("^[A-Za-z0-9.\\-]+:\\d+/")
+
+    /** 协议相对地址：//host[:port]/path；限定 host 形态，避免把以 // 开头的纯文本误判为 URL */
+    private val PROTOCOL_RELATIVE = Regex("^//[A-Za-z0-9.\\-]+(?::\\d+)?/")
+
+    /** 集数提取规则：第N集/话/期、EP N、末尾 _N/-N */
+    private val EPISODE_PATTERNS = listOf(
+        Regex("第\\s*(\\d{1,4})\\s*[集话期]"),
+        Regex("(?i)EP\\s*(\\d{1,4})"),
+        Regex("[_\\-\\s](\\d{1,4})\\s*$")
+    )
 
     /** 弹幕图片内存缓存（URL → Bitmap，按字节计，上限 8MB），避免重复下载 */
     private val imageCache = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
@@ -382,7 +398,7 @@ object DanmuLoader {
     /**
      * 加载弹幕并注入到目标视图。
      *
-     * @param danmu 弹幕来源：HTTP(S) URL、base64 字符串或纯 XML/JSON 内容
+     * @param danmu 弹幕来源：HTTP(S) URL、proxy://、base64 字符串或纯 XML/JSON 内容
      * @param view 目标 DanmakuView
      * @param context 弹幕上下文；默认新建，传入共享实例时复用（单例语义，
      * 速度/大小/行数/透明度等设置变更后对已加载弹幕即时生效，无需重载）
@@ -397,6 +413,7 @@ object DanmuLoader {
      * danmuText，后续重载直接解析缓存不再请求网络）
      * @param isLatest 当前加载是否仍是最新请求（调用方在强制重载时递增代际）；
      * 返回 false 表示任务已被更新的加载取代，须丢弃结果不缓存、不操作视图
+     * @param episodeHint 当前集名称/编号，用于校验检索式源弹幕候选的集数，避免匹配到其它集
      * @return 加载结果，调用方按结果提示
      */
     suspend fun loadInto(
@@ -408,7 +425,8 @@ object DanmuLoader {
         clockPosition: () -> Long = { 0L },
         remoteFetcher: (suspend (String) -> String?)? = null,
         onContent: ((String) -> Unit)? = null,
-        isLatest: () -> Boolean = { true }
+        isLatest: () -> Boolean = { true },
+        episodeHint: String = ""
     ): DanmuLoadResult = withContext(Dispatchers.IO) {
         // 确保表情词表就绪（进程内只拉取一次；失败由内置表兜底）
         DanmuEmote.ensureLoaded()
@@ -425,7 +443,7 @@ object DanmuLoader {
         }
         // 网络拉取放锁外：旧任务阻塞在 HTTP 中时，新任务不必等锁
         // （否则换集后新集弹幕会被旧集未完成的网络请求阻塞最多一个超时周期）
-        val content = fetchContent(normalized, remoteFetcher)
+        val content = fetchContent(normalized, remoteFetcher, episodeHint)
         // 解析与视图注入串行执行（避免并发操作 DanmakuView 状态）
         loadMutex.withLock {
             // 任务已被更新的加载取代或取消时不再继续（取消不是失败，不提示）
@@ -528,22 +546,30 @@ object DanmuLoader {
     }
 
     /**
-     * 规范化弹幕来源串：去除首尾空白、全角冒号转半角。
-     * 部分弹幕源协议头写法不标准（前后空格、`http：//` 全角冒号、大写协议等），
-     * 不规范化会导致 http/file 协议识别失败或 URL 解析异常；
-     * 大小写兼容由调用方 startsWith(ignoreCase=true) 覆盖。
+     * 规范化弹幕来源串：移除 BOM 与首尾空白、全角冒号转半角，并补全省略的协议头。
+     *
+     * 源端常见非标准写法（`http：//`、`//host/path`、`host:port/path`）若不做归一化，
+     * 会被误判为 base64/纯文本，最终解析为空且不产生失败提示。
+     * 协议大小写由调用方 `startsWith(ignoreCase = true)` 兼容。
      */
     private fun normalizeDanmuSource(source: String): String {
         // 先移除 UTF-8 BOM（部分源文件头带 BOM），再去除首尾空白、全角冒号转半角
-        var s = source.removePrefix("\uFEFF").trim()
-        if (s.indexOf('：') >= 0) s = s.replace('：', ':')
+        val s = source.removePrefix("\uFEFF").trim().replace('：', ':')
+        // 协议相对地址：本机服务补 http，其余补 https
+        if (PROTOCOL_RELATIVE.containsMatchIn(s)) {
+            val local = s.startsWith("//127.0.0.1") || s.startsWith("//localhost")
+            return (if (local) "http:" else "https:") + s
+        }
+        // 无协议头的 host:port/path 补 http；base64 字符集不含冒号，不会误判
+        if (!s.contains("://") && HOST_PORT_PATH.containsMatchIn(s)) return "http://$s"
         return s
     }
 
-    /** 获取弹幕内容，自动识别 base64 / HTTP URL / 本地文件 / 纯文本 */
+    /** 获取弹幕内容，自动识别 base64 / HTTP(S) URL / proxy:// / 本地文件 / 纯文本 */
     private suspend fun fetchContent(
         danmu: String,
-        remoteFetcher: (suspend (String) -> String?)?
+        remoteFetcher: (suspend (String) -> String?)?,
+        episodeHint: String = ""
     ): String? {
         val source = normalizeDanmuSource(danmu)
         if (source.isEmpty()) return null
@@ -554,21 +580,38 @@ object DanmuLoader {
                 java.io.File(path).takeIf { it.exists() }?.readText(Charsets.UTF_8)
             }.getOrNull()
         }
+        // proxy:// 由实现层归一化为本地代理 URL 并直调爬虫，避免 feature 模块依赖 Spider Proxy
+        if (source.startsWith("proxy://", ignoreCase = true)) {
+            return remoteFetcher?.invoke(source)
+        }
         // 远程 URL：宽松判断，优先走直调拉取器（实现层用 OkHttp 更健壮），非本地代理地址失败时回退 HttpURLConnection 兜底
         if (source.startsWith("http", ignoreCase = true)) {
             // URL 含无效端口（-1）时 HTTP 回退必然失败
             val hasInvalidPort = source.contains(":-1")
-            if (remoteFetcher != null) {
+            val body = if (remoteFetcher != null) {
                 val fetched = remoteFetcher(source)
-                if (!fetched.isNullOrEmpty()) return fetched
-                if (hasInvalidPort) return null
-                // /proxy 端点的 HTTP 回退与直调最终落到同一爬虫调用
-                //（RemoteServer /proxy → ApiConfig.proxyLocal），回退只会让源 jar 被重复调用，
-                // 造成重复抓取与源 jar 重复的加载提示，故不回退；
-                // 其余本地地址（如弹幕服务 /danmu）回退 HTTP，避免直调失败即误判加载失败
-                if (isLocalProxyEndpoint(source)) return null
+                when {
+                    !fetched.isNullOrEmpty() -> fetched
+                    hasInvalidPort -> return null
+                    // /proxy 端点的 HTTP 回退与直调最终落到同一爬虫调用
+                    //（RemoteServer /proxy → ApiConfig.proxyLocal），回退只会让源 jar 被重复调用，
+                    // 造成重复抓取与源 jar 重复的加载提示，故不回退；
+                    // 其余本地地址（如弹幕服务 /danmu）回退 HTTP，避免直调失败即误判加载失败
+                    isLocalProxyEndpoint(source) -> return null
+                    else -> fetchRemoteContent(source)
+                }
+            } else {
+                fetchRemoteContent(source)
             }
-            return fetchRemoteContent(source)
+            if (body.isNullOrEmpty()) return null
+            // 检索式源弹幕：首次响应为候选列表，需按候选地址再取真正的弹幕内容
+            val contentUrl = resolveCandidateContentUrl(source, body, episodeHint)
+            if (contentUrl != null) {
+                val resolved = remoteFetcher?.invoke(contentUrl)?.takeIf { it.isNotBlank() }
+                    ?: fetchRemoteContent(contentUrl)
+                if (!resolved.isNullOrBlank()) return resolved
+            }
+            return body
         }
         // 结构化文本（XML/JSON）直接返回：Base64 解码会跳过非法字符，
         // 将 XML/JSON 中的字母数字误解码为无效字节，导致弹幕解析为空并被错误缓存
@@ -586,6 +629,71 @@ object DanmuLoader {
         }
         // 纯 XML/JSON 文本内容
         return source
+    }
+
+    /**
+     * 检索式弹幕接口：首次响应为 [{ratio,url,name}] 候选列表时，
+     * 选取相关度最高的候选，用同一端点以 url 参数请求真正的弹幕内容。
+     *
+     * 当前集有明确集数时优先命中同集候选，再按相关度取最高；
+     * 找不到同集候选时退回最高相关度，保证尽量有弹幕可用。
+     *
+     * @return 候选内容地址；非候选列表返回 null
+     */
+    private fun resolveCandidateContentUrl(
+        requestUrl: String,
+        body: String,
+        episodeHint: String
+    ): String? {
+        val text = body.trimStart()
+        if (!text.startsWith("[")) return null
+        val candidates = runCatching { JSONArray(text) }.getOrNull() ?: return null
+        if (candidates.length() == 0) return null
+        val desiredEpisode = extractEpisodeNumber(episodeHint)
+        var bestSameEpisodeUrl: String? = null
+        var bestSameEpisodeRatio = Double.NEGATIVE_INFINITY
+        var bestAnyUrl: String? = null
+        var bestAnyRatio = Double.NEGATIVE_INFINITY
+        for (i in 0 until candidates.length()) {
+            val item = candidates.optJSONObject(i) ?: continue
+            val url = item.optString("url")
+            if (url.isEmpty()) continue
+            val ratio = item.optDouble("ratio", 0.0)
+            if (ratio > bestAnyRatio) {
+                bestAnyRatio = ratio
+                bestAnyUrl = url
+            }
+            if (desiredEpisode != null &&
+                extractEpisodeNumber(item.optString("name")) == desiredEpisode &&
+                ratio > bestSameEpisodeRatio
+            ) {
+                bestSameEpisodeRatio = ratio
+                bestSameEpisodeUrl = url
+            }
+        }
+        // 同集优先；源库没有同集候选时退回最高相关度，避免直接没有弹幕
+        val candidateUrl = bestSameEpisodeUrl ?: bestAnyUrl ?: return null
+        val base = requestUrl.toHttpUrlOrNull() ?: return null
+        return base.newBuilder()
+            .removeAllQueryParameters("url")
+            .addQueryParameter("url", candidateUrl)
+            .build()
+            .toString()
+    }
+
+    /**
+     * 提取集数：支持 "1"、"第01集/话/期"、"EP12"、"_12" 等常见写法。
+     * 无法识别（如特别篇名称）返回 null。
+     */
+    private fun extractEpisodeNumber(text: String): Int? {
+        val value = text.trim()
+        if (value.isEmpty()) return null
+        if (value.length <= 4 && value.all { it.isDigit() }) return value.toIntOrNull()
+        for (pattern in EPISODE_PATTERNS) {
+            val match = pattern.find(value) ?: continue
+            return match.groupValues[1].toIntOrNull()
+        }
+        return null
     }
 
     /** 是否为本地代理转发的 /proxy 端点：该端点 HTTP 回退与直调爬虫等价，需避免重复请求 */
@@ -660,31 +768,71 @@ object DanmuLoader {
         }
     }
 
-    /** 解析 JSON 弹幕：{"data":[{"t":time,"m":mode,"c":color,"s":size,"n":text}]} */
+    /**
+     * 解析 JSON 弹幕：
+     * - 精简结构 `{"data":[{"t":time,"m":mode,"c":color,"s":size,"n":text}]}`；
+     * - 弹弹play 原始结构 `{"comments":[{"p":"time,mode,color,uid","m":text}]}`。
+     */
     private fun parseJsonItems(content: String): List<DanmakuItem> {
         return try {
             val array = if (content.trimStart().startsWith("[")) {
                 JSONArray(content)
             } else {
                 val obj = JSONObject(content)
-                obj.optJSONArray("data") ?: return emptyList()
+                obj.optJSONArray("data")
+                    ?: obj.optJSONArray("comments")
+                    ?: obj.optJSONArray("danmaku")
+                    ?: return emptyList()
             }
             buildList {
                 for (i in 0 until array.length()) {
                     val item = array.optJSONObject(i) ?: continue
-                    val t = item.optDouble("t", item.optDouble("time", -1.0))
-                    val m = item.optInt("m", item.optInt("mode", 1))
-                    val c = item.optLong("c", item.optLong("color", 0xFFFFFFL))
-                    val s = item.optString("s", item.optString("size", "25"))
-                    val n = item.optString("n", item.optString("text", ""))
-                    if (t < 0 || n.isEmpty()) continue
-                    add(DanmakuItem("$t,$m,$s,$c", n))
+                    // 弹弹play 原始条目：p 携带 时间,模式,颜色,用户ID，文本在 m
+                    val p = item.optText("p")
+                    if (p.isNotEmpty()) {
+                        val text = item.optText("m", "text")
+                        if (text.isEmpty()) continue
+                        add(DanmakuItem(dandanplayParam(p), text))
+                        continue
+                    }
+                    val text = item.optText("n", "text")
+                    if (text.isEmpty()) continue
+                    val time = item.optDouble("t", item.optDouble("time", -1.0))
+                    if (time < 0) continue
+                    val mode = item.optInt("m", item.optInt("mode", 1))
+                    val color = item.optLong("c", item.optLong("color", 0xFFFFFFL))
+                    val size = item.optString("s", item.optString("size", "25"))
+                    add(DanmakuItem("$time,$mode,$size,$color", text))
                 }
             }
         } catch (e: Throwable) {
             LOG.e(TAG, "解析 JSON 弹幕失败", e)
             emptyList()
         }
+    }
+
+    /**
+     * 读取首个非空字符串字段。
+     * org.json 会将 JSON null 转为字符串 "null"，需过滤，避免被当作有效弹幕文本。
+     */
+    private fun JSONObject.optText(vararg keys: String): String {
+        for (key in keys) {
+            val value = optString(key)
+            if (value.isNotEmpty() && value != "null") return value
+        }
+        return ""
+    }
+
+    /**
+     * 弹弹play p 字段格式为 `时间,模式,颜色,用户ID`，
+     * 转换为播放器解析器使用的 B 站 p 格式 `时间,模式,字号,颜色`。
+     */
+    private fun dandanplayParam(p: String): String {
+        val arr = p.split(",")
+        val time = arr.getOrNull(0)?.trim()?.toFloatOrNull() ?: 0f
+        val mode = arr.getOrNull(1)?.trim()?.toIntOrNull() ?: 1
+        val color = (arr.getOrNull(2)?.trim()?.toLongOrNull() ?: 0xFFFFFFL) and 0xFFFFFFL
+        return "$time,$mode,25,$color"
     }
 
     /** 单条弹幕：param 为 B 站 p 属性格式，text 为弹幕文本 */

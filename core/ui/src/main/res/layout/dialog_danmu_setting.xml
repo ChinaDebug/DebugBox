@@ -366,6 +366,19 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/tvDanmuRestore"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/vs_45"
+            android:layout_marginTop="@dimen/vs_15"
+            android:background="@drawable/button_dialog_main"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="@string/danmu_use_source"
+            android:textColor="@color/color_FFFFFF"
+            android:textSize="@dimen/ts_20"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/tvDanmuSearch"
             android:layout_width="match_parent"
             android:layout_height="@dimen/vs_45"

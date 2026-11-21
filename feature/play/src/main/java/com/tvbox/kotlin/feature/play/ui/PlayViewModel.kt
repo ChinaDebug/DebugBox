@@ -2,6 +2,7 @@ package com.tvbox.kotlin.feature.play.ui
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.tvbox.kotlin.core.common.AppConstants
@@ -197,6 +198,9 @@ class PlayViewModel @Inject constructor(
     private var playSubtitle: String = ""
     /** 弹幕 URL 或 base64 数据，由解析结果填充 */
     private var danmuSource: String = ""
+    /** 播放请求头（Referer/Cookie 等），弹幕请求复用；随每次解析刷新，跨协程读取需保证可见性 */
+    @Volatile
+    private var danmuHeaders: Map<String, String>? = null
     /** 已下载的弹幕内容缓存，换源/换集时清空 */
     private var danmuContentCache: String? = null
     /** 播放器配置 JSON，由详情页下发 */
@@ -399,7 +403,8 @@ class PlayViewModel @Inject constructor(
             }
         }
         val jx = content.optInt("jx", 0) == 1
-        val danmu = content.optString("danmaku").ifEmpty { content.optString("danmu") }.orEmpty()
+        val danmu = content.optString("danmaku").ifEmpty { content.optString("danmu") }
+            .ifEmpty { buildDanmakuFromTemplate(episodeUrl) }
 
         val contentKey = content.optString("key").orEmpty()
         if (contentKey.isNotEmpty()) {
@@ -410,6 +415,8 @@ class PlayViewModel @Inject constructor(
             setProgressKey(buildStableProgressKey(info, flag))
         }
 
+        // 弹幕请求复用播放请求头（部分弹幕接口校验 Referer/Cookie）
+        danmuHeaders = headers
         // 每次解析都同步弹幕来源供 Activity 加载：源为空同样写入（清空），
         // 避免换集/换源后沿用上一集的弹幕源与缓存内容
         setDanmuSource(danmu)
@@ -833,9 +840,9 @@ class PlayViewModel @Inject constructor(
         if (content.isNotEmpty()) danmuContentCache = content
     }
 
-    /** 拉取弹幕内容（本地代理地址由实现层直接调用爬虫 proxyLocal），失败返回 null */
+    /** 拉取弹幕内容并携带当前播放请求头；本地代理地址由实现层直调爬虫 proxyLocal。失败返回 null */
     suspend fun fetchDanmu(url: String): String? =
-        runCatchingResume { playResolver.fetchDanmu(url) }.getOrNull()
+        runCatchingResume { playResolver.fetchDanmu(url, danmuHeaders) }.getOrNull()
 
     /** 当前源是否提供在线弹幕搜索界面 */
     fun hasOnlineDanmuSearch(): Boolean =
@@ -877,6 +884,20 @@ class PlayViewModel @Inject constructor(
     /** 设置弹幕来源（解析流程内部调用）；来源变化时清空内容缓存 */
     fun setDanmuSource(danmu: String) {
         applyDanmuSource(danmu)
+    }
+
+    /**
+     * 源未提供弹幕时回退到配置级模板：替换 {name}/{episode} 占位符并按 URL 编码。
+     * 模板通常指向源方弹幕检索服务，实际内容由弹幕加载器二次请求候选地址获取。
+     */
+    private fun buildDanmakuFromTemplate(episodeUrl: String): String {
+        val template = runCatching { playResolver.getDanmakuTemplate() }.getOrDefault("").trim()
+        if (template.isEmpty()) return ""
+        val name = _vodInfo.value?.name.orEmpty().trim()
+        val episode = _currentEpisode.value?.name.orEmpty().trim().ifEmpty { episodeUrl }
+        return template
+            .replace("{name}", Uri.encode(name))
+            .replace("{episode}", Uri.encode(episode))
     }
 
     /**

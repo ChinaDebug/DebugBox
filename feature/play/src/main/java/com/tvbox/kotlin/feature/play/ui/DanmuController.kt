@@ -7,6 +7,8 @@ import com.tvbox.kotlin.core.common.util.HawkUtils
 import com.tvbox.kotlin.core.ui.dialog.DanmuSettingDialog
 import com.tvbox.kotlin.core.ui.R as uiR
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import master.flame.danmaku.danmaku.model.android.DanmakuContext
 
@@ -59,6 +61,53 @@ class DanmuController(private val host: PlayHost) {
     private var lastFailureSource = ""
     private var lastFailureToastAt = 0L
 
+    /** 弹幕卡住自愈：上次弹幕时间与视频位置 */
+    private var lastDanmuTime = -1L
+    private var lastVideoPosition = -1L
+    private var lastRecoverAt = 0L
+
+    init {
+        host.scope.launch {
+            while (isActive) {
+                delay(DANMU_CLOCK_CHECK_INTERVAL_MS)
+                recoverDanmakuClockIfStalled()
+            }
+        }
+    }
+
+    /**
+     * 偶发卡住自愈：缓冲/切集时可能只执行了 pause 而漏掉 resume，
+     * 或弹幕时钟不再推进；视频仍在播放时按当前进度重新对齐并恢复渲染。
+     */
+    private fun recoverDanmakuClockIfStalled() {
+        val view = host.danmakuView ?: return
+        if (!danmuLoaded || !view.isPrepared) return
+        if (!HawkUtils.getDanmuOpen() || !host.videoView.isPlaying) {
+            lastDanmuTime = -1L
+            lastVideoPosition = -1L
+            return
+        }
+        val videoPosition = host.videoView.danmuStartPosition()
+        val danmuTime = view.getCurrentTime()
+        val stalled = view.isPaused() ||
+            (
+                lastDanmuTime >= 0 &&
+                    danmuTime <= lastDanmuTime &&
+                    videoPosition - lastVideoPosition >= STALL_POSITION_THRESHOLD_MS
+                )
+        if (stalled) {
+            val now = SystemClock.elapsedRealtime()
+            // 限制自愈频率，避免视图状态异常时每秒反复 seek 造成抖动
+            if (now - lastRecoverAt >= RECOVER_COOLDOWN_MS) {
+                lastRecoverAt = now
+                view.resume()
+                view.seekTo(videoPosition)
+            }
+        }
+        lastDanmuTime = view.getCurrentTime()
+        lastVideoPosition = videoPosition
+    }
+
     /**
      * 强制取消当前弹幕加载（换集/退出界面时调用）：
      * 立即取消加载任务、隐藏弹幕视图并重置加载状态。
@@ -100,6 +149,8 @@ class DanmuController(private val host: PlayHost) {
         // 新弹幕源：完整重置旧加载与渲染后等待播放回调加载
         currentDanmuSource = source
         danmuLoaded = false
+        // 换集/换源后在线覆盖失效，旧备份作废，恢复源弹幕入口随之隐藏
+        sourceDanmuBackup = null
         view.hide()
         view.visibility = View.GONE
         danmuLoadJob?.cancel()
@@ -195,7 +246,8 @@ class DanmuController(private val host: PlayHost) {
                             host.viewModel.cacheDanmuContent(content)
                         }
                     },
-                    isLatest = { generation == danmuLoadGeneration }
+                    isLatest = { generation == danmuLoadGeneration },
+                    episodeHint = host.viewModel.currentEpisode.value?.name.orEmpty()
                 )
 
                 if (generation != danmuLoadGeneration) return@launch
@@ -252,10 +304,14 @@ class DanmuController(private val host: PlayHost) {
 
     /** 打开弹幕设置弹窗；在线搜索使用内置弹幕库，不依赖源 jar */
     fun showDanmuSettingDialog() {
+        // 仅存在在线弹幕覆盖时提供“使用源弹幕”入口
+        val restore: (() -> Unit)? = sourceDanmuBackup?.let { { restoreSourceDanmu() } }
         DanmuSettingDialog(
-            host.context,
-            { open, needReload -> handleDanmuSetting(open, needReload) }
-        ) { openOnlineDanmuSearch() }.show()
+            context = host.context,
+            onChanged = { open, needReload -> handleDanmuSetting(open, needReload) },
+            onSearchOnline = { openOnlineDanmuSearch() },
+            onRestoreSource = restore
+        ).show()
     }
 
     /** 内置在线弹幕搜索：以剧名 + 当前集数作为关键字，选择后直接加载 */
@@ -264,8 +320,7 @@ class DanmuController(private val host: PlayHost) {
             host.context,
             host.viewModel,
             buildDanmuKeyword(),
-            onSelected = { content -> applyOnlineDanmu(content) },
-            onRestoreSource = { restoreSourceDanmu() }
+            onSelected = { content -> applyOnlineDanmu(content) }
         ).show()
     }
 
@@ -350,5 +405,14 @@ class DanmuController(private val host: PlayHost) {
     private companion object {
         /** 同一弹幕源失败提示的最小间隔（毫秒） */
         const val FAILURE_TOAST_INTERVAL_MS = 5_000L
+
+        /** 弹幕卡住自愈检查间隔（毫秒） */
+        private const val DANMU_CLOCK_CHECK_INTERVAL_MS = 1_000L
+
+        /** 视频进度推进超过该值（毫秒）而弹幕时间未变化时判定为时钟停滞 */
+        private const val STALL_POSITION_THRESHOLD_MS = 1_000L
+
+        /** 自愈最小间隔（毫秒），避免异常状态下反复 seek */
+        private const val RECOVER_COOLDOWN_MS = 3_000L
     }
 }

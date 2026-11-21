@@ -79,9 +79,14 @@ interface PlayResolver {
      *
      * 本地代理地址（含 127.0.0.1/localhost）直接调用爬虫 proxyLocal 获取内容，
      * 不依赖端口占位是否与实际监听端口一致（Parser.getXmlContent）；
-     * 其余地址按 HTTP 拉取。
+     * 其余地址按 HTTP 拉取。`proxy://` 由实现层转换为代理 URL。
+     *
+     * @param headers 复用播放请求头（Referer/Cookie 等），用于需要鉴权的弹幕地址
      */
-    suspend fun fetchDanmu(url: String): String?
+    suspend fun fetchDanmu(url: String, headers: Map<String, String>? = null): String?
+
+    /** 配置级弹幕模板（含 {name}/{episode} 占位符），未配置返回空串 */
+    fun getDanmakuTemplate(): String = ""
 
     /** 当前源是否提供在线弹幕搜索界面（由源 jar 实现），默认不支持 */
     fun hasDanmuSearchUi(): Boolean = false

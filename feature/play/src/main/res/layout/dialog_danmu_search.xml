@@ -74,19 +74,6 @@
                 android:text="@string/danmu_search_action"
                 android:textColor="@android:color/white"
                 android:textSize="@dimen/ts_24" />
-
-            <TextView
-                android:id="@+id/btn_danmu_source"
-                android:layout_width="@dimen/vs_150"
-                android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/vs_10"
-                android:layout_marginLeft="@dimen/vs_10"
-                android:background="@drawable/button_subtitle_search"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="@string/danmu_use_source"
-                android:textColor="@android:color/white"
-                android:textSize="@dimen/ts_24" />
         </LinearLayout>
 
         <FrameLayout

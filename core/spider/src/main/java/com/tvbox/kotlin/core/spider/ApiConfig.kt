@@ -103,6 +103,9 @@ class ApiConfig @Inject constructor(
     private var vipParseFlags: List<String> = ArrayList()
     @Volatile
     private var spider: String = ""
+    /** 配置级弹幕模板（含 {name}/{episode} 占位符），源未返回弹幕时由客户端回退使用 */
+    @Volatile
+    private var danmakuTemplate: String = ""
     @Volatile
     var wallpaper: String = ""
         private set
@@ -391,6 +394,7 @@ class ApiConfig @Inject constructor(
         val infoJson: JsonObject = Gson().fromJson(jsonStr, JsonObject::class.java) ?: JsonObject()
         jarCache = DefaultConfig.safeJsonString(infoJson, "jarCache", "true")
         spider = DefaultConfig.safeJsonString(infoJson, "spider", "")
+        danmakuTemplate = DefaultConfig.safeJsonString(infoJson, "danmaku", "")
         wallpaper = DefaultConfig.safeJsonString(infoJson, "wallpaper", "")
         livePlayHeaders = DefaultConfig.safeJsonArray(infoJson, "livePlayHeaders")
 
@@ -1287,6 +1291,9 @@ class ApiConfig @Inject constructor(
     // 站点/解析/直播管理
     // ------------------------------------------------------------------
     fun getSpider(): String = spider
+
+    /** 配置级弹幕模板（含 {name}/{episode} 占位符），未配置返回空串 */
+    fun getDanmakuTemplate(): String = danmakuTemplate
 
     /** hosts 域名→IP 直连映射，供网络层查询 */
     fun getMyHost(): Map<String, String> = myHosts

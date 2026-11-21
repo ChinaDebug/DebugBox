@@ -27,7 +27,8 @@ import java.text.DecimalFormat
 class DanmuSettingDialog(
     context: Context,
     private val onChanged: (danmuOpen: Boolean, needReload: Boolean) -> Unit,
-    private val onSearchOnline: (() -> Unit)? = null
+    private val onSearchOnline: (() -> Unit)? = null,
+    private val onRestoreSource: (() -> Unit)? = null
 ) : BaseDialog(context, uiR.style.CustomDialogStyle) {
 
     init {
@@ -45,6 +46,7 @@ class DanmuSettingDialog(
         initLine()
         initAlpha()
         initApi()
+        initRestoreSource()
         initSearchOnline()
     }
 
@@ -61,7 +63,22 @@ class DanmuSettingDialog(
     private fun customApiLabel(url: String): String =
         if (url.trim().trimEnd('/') == HawkUtils.DEFAULT_DANMU_API) "" else url
 
-    /** 在线弹幕搜索入口：收起设置弹窗后由宿主调起源 jar 的搜索界面 */
+    /** 恢复源弹幕入口：仅当前存在在线弹幕覆盖时由宿主传入回调，否则隐藏 */
+    private fun initRestoreSource() {
+        val button = findViewById<TextView>(uiR.id.tvDanmuRestore) ?: return
+        val callback = onRestoreSource
+        if (callback == null) {
+            button.visibility = View.GONE
+            return
+        }
+        button.visibility = View.VISIBLE
+        button.setOnClickListener {
+            dismiss()
+            callback.invoke()
+        }
+    }
+
+    /** 在线弹幕搜索入口：收起设置弹窗后由宿主打开在线搜索界面 */
     private fun initSearchOnline() {
         val button = findViewById<TextView>(uiR.id.tvDanmuSearch) ?: return
         if (onSearchOnline == null) {

@@ -237,43 +237,55 @@ class PlayResolverImpl @Inject constructor(
         }
     }
 
-    override suspend fun fetchDanmu(url: String): String? = withContext(Dispatchers.IO) {
-        if (url.isBlank()) return@withContext null
-        // 仅本地代理转发端点（/proxy，do 参数由爬虫处理）调用 proxyLocal；
-        // 本地弹幕服务的普通地址（如 /danmu）直接 HTTP 拉取——proxyLocal 无对应
-        // 爬虫处理器时返回 null，会被误判为弹幕加载失败
-        if (isLocalProxyEndpoint(url)) {
-            val params = HashMap<String, String>()
-            runCatching {
-                val query = URL(url).query
-                if (!query.isNullOrEmpty()) {
-                    query.split("&").forEach { pair ->
-                        val idx = pair.indexOf('=')
-                        if (idx > 0) {
-                            params[pair.substring(0, idx)] =
-                                URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+    override suspend fun fetchDanmu(url: String, headers: Map<String, String>?): String? =
+        withContext(Dispatchers.IO) {
+            if (url.isBlank()) return@withContext null
+            // proxy:// 归一化为本地代理 URL，与播放地址处理保持一致
+            val target = if (url.startsWith("proxy://")) {
+                com.github.catvod.Proxy.getUrl(true) + "?" + url.removePrefix("proxy://")
+            } else url
+            // 仅本地代理转发端点（/proxy，do 参数由爬虫处理）调用 proxyLocal；
+            // 本地弹幕服务的普通地址（如 /danmu）直接 HTTP 拉取——proxyLocal 无对应
+            // 爬虫处理器时返回 null，会被误判为弹幕加载失败
+            if (isLocalProxyEndpoint(target)) {
+                val params = HashMap<String, String>()
+                runCatching {
+                    val query = URL(target).query
+                    if (!query.isNullOrEmpty()) {
+                        query.split("&").forEach { pair ->
+                            val idx = pair.indexOf('=')
+                            if (idx > 0) {
+                                params[pair.substring(0, idx)] =
+                                    URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
+                            }
                         }
                     }
                 }
+                // 空参数也尝试调用，
+                // 部分源弹幕 URL 无 query 参数时由 proxyLocal 实现兜底，避免误判为加载失败
+                val localResult = runCatchingResume {
+                    val rs = apiConfig.proxyLocal(params)
+                    if (rs != null && rs.size >= 3 && rs[2] is InputStream) {
+                        (rs[2] as InputStream).bufferedReader().use { it.readText() }
+                    } else null
+                }.getOrNull()
+                localResult
+            } else {
+                // 优先不带播放请求头，失败后再带：弹幕地址与播放源可能不同源，
+                // 直接携带源站 Referer 会被第三方弹幕服务拒绝
+                runCatchingResume {
+                    okHttpHelper.get(target).ifEmpty {
+                        if (headers.isNullOrEmpty()) "" else okHttpHelper.get(target, headers)
+                    }
+                }.getOrNull()
             }
-            // 空参数也尝试调用，
-            // 部分源弹幕 URL 无 query 参数时由 proxyLocal 实现兜底，避免误判为加载失败
-            val localResult = runCatchingResume {
-                val rs = apiConfig.proxyLocal(params)
-                if (rs != null && rs.size >= 3 && rs[2] is InputStream) {
-                    (rs[2] as InputStream).bufferedReader().use { it.readText() }
-                } else null
-            }.getOrNull()
-            localResult
-        } else {
-            runCatchingResume {
-                okHttpHelper.get(url)
-            }.getOrNull()
         }
-    }
 
     override fun hasDanmuSearchUi(): Boolean =
         runCatching { apiConfig.hasDanmuSearchUi() }.getOrDefault(false)
+
+    override fun getDanmakuTemplate(): String =
+        runCatching { apiConfig.getDanmakuTemplate() }.getOrDefault("")
 
     override fun searchDanmuUi(name: String, episode: String, longClick: Boolean) {
         runCatching { apiConfig.searchDanmuUi(name, episode, longClick) }

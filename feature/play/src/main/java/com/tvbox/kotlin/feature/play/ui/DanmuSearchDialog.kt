@@ -36,8 +36,7 @@ class DanmuSearchDialog(
     context: Context,
     private val viewModel: PlayViewModel,
     private val initialKeyword: String,
-    private val onSelected: (String) -> Unit,
-    private val onRestoreSource: (() -> Unit)? = null
+    private val onSelected: (String) -> Unit
 ) : BaseDialog(context, uiR.style.CustomDialogStyle) {
 
     private val scope = MainScope()
@@ -131,14 +130,6 @@ class DanmuSearchDialog(
         }
         searchButton.setOnClickListener { search() }
         findViewById<View>(R.id.dialog_close)?.setOnClickListener { dismiss() }
-        // 恢复源弹幕：仅播放页提供（App 设置不传回调时隐藏）
-        findViewById<View>(R.id.btn_danmu_source)?.apply {
-            visibility = if (onRestoreSource == null) View.GONE else View.VISIBLE
-            setOnClickListener {
-                dismiss()
-                onRestoreSource?.invoke()
-            }
-        }
         if (initialKeyword.isNotBlank()) {
             // 首帧后再发起搜索：onCreate 阶段窗口尚未 attach，聚焦状态切换会打断首个请求
             keywordInput.post { search() }
