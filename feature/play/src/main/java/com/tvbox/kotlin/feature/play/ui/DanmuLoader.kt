@@ -73,12 +73,23 @@ object DanmuLoader {
     /** 协议相对地址：//host[:port]/path；限定 host 形态，避免把以 // 开头的纯文本误判为 URL */
     private val PROTOCOL_RELATIVE = Regex("^//[A-Za-z0-9.\\-]+(?::\\d+)?/")
 
-    /** 集数提取规则：第N集/话/期、EP N、末尾 _N/-N */
+    /** 集数提取规则：第N集/话/期、EP N */
     private val EPISODE_PATTERNS = listOf(
         Regex("第\\s*(\\d{1,4})\\s*[集话期]"),
-        Regex("(?i)EP\\s*(\\d{1,4})"),
-        Regex("[_\\-\\s](\\d{1,4})\\s*$")
+        Regex("(?i)EP\\s*(\\d{1,4})")
     )
+
+    /** 末尾 _N/-N 形式，需额外排除“HD 1080”这类画质数字 */
+    private val EPISODE_TAIL_PATTERN = Regex("[_\\-\\s](\\d{1,4})\\s*$")
+
+    /** 画质线索：集名含这些标记时，末尾的 1080/720 等按分辨率处理 */
+    private val QUALITY_HINT_REGEX = Regex(
+        "(?i)(?<![a-z])(?:hd|fhd|uhd|hdr10?|blu-?ray|web-?dl|webrip|hdtv|remux|bdrip|dvdrip)(?![a-z])" +
+            "|\\d{3,4}\\s*[pi]|[24]\\s*k"
+    )
+
+    private val RESOLUTION_NUMBERS =
+        setOf(144, 240, 360, 480, 540, 576, 720, 1080, 1440, 2160, 4320)
 
     /** 弹幕图片内存缓存（URL → Bitmap，按字节计，上限 8MB），避免重复下载 */
     private val imageCache = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
@@ -693,7 +704,11 @@ object DanmuLoader {
             val match = pattern.find(value) ?: continue
             return match.groupValues[1].toIntOrNull()
         }
-        return null
+        val tail = EPISODE_TAIL_PATTERN.find(value) ?: return null
+        val number = tail.groupValues[1].toIntOrNull() ?: return null
+        // “HD 1080”“1080P 1080”这类末尾数字是画质而非集数，误用会导致同集候选永远匹配不上
+        if (number in RESOLUTION_NUMBERS && QUALITY_HINT_REGEX.containsMatchIn(value)) return null
+        return number
     }
 
     /** 是否为本地代理转发的 /proxy 端点：该端点 HTTP 回退与直调爬虫等价，需避免重复请求 */

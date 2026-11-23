@@ -276,6 +276,17 @@
                                 android:textSize="@dimen/ts_22" />
                         </LinearLayout>
 
+                        <!-- 当前实际解码方式：随起播/切轨自动刷新，与上方配置的解码模式区分 -->
+                        <TextView
+                            android:id="@+id/ps_decode_current"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="@dimen/vs_10"
+                            android:paddingLeft="@dimen/vs_20"
+                            android:paddingStart="@dimen/vs_20"
+                            android:textColor="@color/color_FFFFFF_80"
+                            android:textSize="@dimen/ts_20" />
+
                         <View
                             android:layout_width="match_parent"
                             android:layout_height="1dp"

@@ -542,6 +542,8 @@
     <string name="media_decode_hard_only">仅硬解</string>
     <string name="media_decode_soft_only">仅软解</string>
     <string name="media_select_decode">选择解码模式</string>
+    <string name="media_decode_current_hard">当前：硬解</string>
+    <string name="media_decode_current_soft">当前：软解</string>
 
     // 播放代码界面 //
     <string name="play_err_no_video_addr">无视频源地址</string>

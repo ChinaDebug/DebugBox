@@ -2,9 +2,11 @@ package com.tvbox.kotlin.core.network.doh
 
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import okhttp3.CacheControl
 import okhttp3.Call
 import okhttp3.Callback
@@ -96,8 +98,10 @@ class DnsOverHttps private constructor(builder: Builder) : Dns {
         }
         executeRequests(hostname, networkRequests, results, failures)
 
-        // 查询失败或为空时回退系统 DNS，避免阻塞业务
-        return if (results.isNotEmpty()) results else Dns.SYSTEM.lookup(hostname)
+        // 查询失败或为空时回退系统 DNS，避免阻塞业务；IPv4 优先，
+        // 部分设备/网络 IPv6 半通，AAAA 排前面会让首连白等一轮超时
+        val ordered = results.sortedBy { if (it is Inet4Address) 0 else 1 }
+        return if (ordered.isNotEmpty()) ordered else Dns.SYSTEM.lookup(hostname)
     }
 
     private fun buildRequest(
@@ -147,7 +151,10 @@ class DnsOverHttps private constructor(builder: Builder) : Dns {
             })
         }
         try {
-            latch.await()
+            // 与 DoH client 超时对齐：请求卡住时主动取消并交给系统 DNS 兜底，避免无限期阻塞
+            if (!latch.await(EXECUTE_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                networkRequests.forEach { it.cancel() }
+            }
         } catch (e: InterruptedException) {
             failures.add(e)
             Thread.currentThread().interrupt()
@@ -246,6 +253,7 @@ class DnsOverHttps private constructor(builder: Builder) : Dns {
     companion object {
         val DNS_MESSAGE = "application/dns-message".toMediaType()
         const val MAX_RESPONSE_SIZE: Long = 64L * 1024L
+        private const val EXECUTE_TIMEOUT_MS = 5_000L
 
         /** 判断主机是否为私有地址，依据顶级私有域名是否可解析 */
         internal fun isPrivateHost(host: String): Boolean {

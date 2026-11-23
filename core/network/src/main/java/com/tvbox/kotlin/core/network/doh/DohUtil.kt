@@ -39,7 +39,11 @@ class DohUtil @Inject constructor(
         val type = preferences.getInt(AppConstants.DOH_URL, 0)
         val cached = cachedDns
         if (cached != null && cachedType == type) return cached
-        val dns = buildDns(type)
+        // DoH 属增强能力：缓存目录不可用、地址异常等构建失败时退回系统 DNS，
+        // 否则异常会冒泡到 OkHttpClient.Builder.dns()，导致整个网络栈无法创建
+        val dns = runCatching { buildDns(type) }
+            .onFailure { com.tvbox.kotlin.core.common.LOG.e(it) }
+            .getOrDefault(Dns.SYSTEM)
         cachedDns = dns
         cachedType = type
         return dns
@@ -71,14 +75,18 @@ class DohUtil @Inject constructor(
             .connectTimeout(TIMEOUT_DOH, TimeUnit.MILLISECONDS)
             .readTimeout(TIMEOUT_DOH, TimeUnit.MILLISECONDS)
             .writeTimeout(TIMEOUT_DOH, TimeUnit.MILLISECONDS)
-            .cache(Cache(File(context.cacheDir, DIR_DOH_CACHE), SIZE_DOH_CACHE))
+        // 缓存目录异常时降级为无缓存，避免 DoH client 构建失败
+        runCatching { Cache(File(context.cacheDir, DIR_DOH_CACHE), SIZE_DOH_CACHE) }
+            .onFailure { com.tvbox.kotlin.core.common.LOG.e(it) }
+            .getOrNull()
+            ?.let { builder.cache(it) }
         applySsl(builder)
         return builder.build()
     }
 
     private fun applySsl(builder: OkHttpClient.Builder) {
         try {
-            builder.sslSocketFactory(sslCompat, SSLSocketFactoryCompat.systemTrustManager())
+            builder.sslSocketFactory(sslCompat, sslCompat.trustManager())
         } catch (e: Throwable) {
             // 兜底失败时退回系统默认 SSL 配置
             com.tvbox.kotlin.core.common.LOG.e(e)
@@ -104,7 +112,9 @@ class DohUtil @Inject constructor(
         const val TYPE_ADGUARD: Int = 5
         const val TYPE_QUAD9: Int = 6
 
-        private const val TIMEOUT_DOH: Long = 15_000L
+        // DoH 仅作加速：被运营商拦截或不可达时要在数秒内失败并回退系统 DNS，
+        // 过长的超时会让订阅拉取首包等待十几秒，表现为“拉取订阅失败/卡住”
+        private const val TIMEOUT_DOH: Long = 5_000L
         private const val SIZE_DOH_CACHE: Long = 10L * 1024L * 1024L
         private const val DIR_DOH_CACHE = "dohcache"
 

@@ -17,6 +17,7 @@ import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
@@ -47,8 +48,11 @@ class OkHttpHelper @Inject constructor(
         initConscrypt()
     }
 
-    private val httpCache: Cache by lazy {
-        Cache(File(context.cacheDir, DIR_HTTP_CACHE), SIZE_HTTP_CACHE)
+    /** 磁盘缓存目录异常（存储满/权限）时降级为无缓存客户端，避免整个 client 构建失败导致订阅拉取必败 */
+    private val httpCache: Cache? by lazy {
+        runCatching { Cache(File(context.cacheDir, DIR_HTTP_CACHE), SIZE_HTTP_CACHE) }
+            .onFailure { LOG.e(it) }
+            .getOrNull()
     }
 
     @Volatile
@@ -59,6 +63,9 @@ class OkHttpHelper @Inject constructor(
 
     @Volatile
     private var checkApiClient: OkHttpClient? = null
+
+    @Volatile
+    private var http11Client: OkHttpClient? = null
 
     /** 内存级 Cookie Jar，跨请求复用会话；登出/切换账号时调用 [clearCookies] */
     val cookieJar: InMemoryCookieJar by lazy { InMemoryCookieJar() }
@@ -110,12 +117,22 @@ class OkHttpHelper @Inject constructor(
         checkApiClient ?: buildCheckClient().also { checkApiClient = it }
     }
 
+    /**
+     * 订阅/配置拉取专用：固定 HTTP/1.1。
+     * 部分服务器的 h2 实现有流控/首包缺陷，同一订阅地址在个别设备或网络下会握手成功但读不到内容，
+     * 退回 1.1 可稳定拿到配置；其余能力（DoH、TLS 兼容、Cookie）与全局 client 一致。
+     */
+    fun http11Client(): OkHttpClient = synchronized(this) {
+        http11Client ?: buildClient(followRedirects = true, http11 = true).also { http11Client = it }
+    }
+
     /** 重建全部客户端实例（DoH 等客户端级配置变更后调用，使新配置立即生效） */
     fun rebuildClients() {
         synchronized(this) {
             defaultClient = null
             noRedirectClient = null
             checkApiClient = null
+            http11Client = null
         }
     }
 
@@ -237,7 +254,7 @@ class OkHttpHelper @Inject constructor(
         headers.forEach { (k, v) -> builder.header(k, v) }
     }
 
-    private fun buildClient(followRedirects: Boolean): OkHttpClient {
+    private fun buildClient(followRedirects: Boolean, http11: Boolean = false): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectionSpecs(getConnectionSpecs())
             .retryOnConnectionFailure(true)
@@ -247,8 +264,9 @@ class OkHttpHelper @Inject constructor(
             .readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .writeTimeout(WRITE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .dns(HostsDns(dohUtil.choose()))
-            .cache(httpCache)
             .cookieJar(cookieJar)
+        httpCache?.let { builder.cache(it) }
+        if (http11) builder.protocols(listOf(Protocol.HTTP_1_1))
         applySsl(builder)
         return builder.build()
     }
@@ -269,7 +287,7 @@ class OkHttpHelper @Inject constructor(
 
     private fun applySsl(builder: OkHttpClient.Builder) {
         try {
-            builder.sslSocketFactory(sslCompat, SSLSocketFactoryCompat.systemTrustManager())
+            builder.sslSocketFactory(sslCompat, sslCompat.trustManager())
         } catch (e: Throwable) {
             LOG.e(e)
         }

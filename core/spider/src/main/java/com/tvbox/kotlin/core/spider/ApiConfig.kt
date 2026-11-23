@@ -53,6 +53,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -168,37 +169,20 @@ class ApiConfig @Inject constructor(
             val configUrl = parsed.first
             val configKey = parsed.second
             try {
-                val request = Request.Builder()
-                    .url(configUrl)
-                    .header("User-Agent", USER_AGENT)
-                    .header("Accept", REQUEST_ACCEPT)
-                    .build()
-                okHttpHelper.client().newCall(request).execute().use { response ->
-                    var json = ""
-                    val body = response.body
-                    if (body != null) {
-                        var result = body.string()
-                        result = findResult(result, configKey)
-                        if (apiUrl.startsWith("clan")) {
-                            result = clanContentFix(clanToAddress(apiUrl), result)
-                        }
-                        result = fixContentPath(apiUrl, result)
-                        json = result
+                val json = fetchConfigContent(configUrl, configKey, apiUrl)
+                // 多仓（接口合集）：不自动切换，交由 UI 弹窗让用户选择线路
+                val apiLines = parseApiCollection(json)
+                if (apiLines.isNotEmpty()) {
+                    scope.launch {
+                        // 按来源分别保存线路列表，支持多个多仓源共存
+                        ApiLineStore.putLines(appPreferences, apiUrl, apiLines)
                     }
-                    // 多仓（接口合集）：不自动切换，交由 UI 弹窗让用户选择线路
-                    val apiLines = parseApiCollection(json)
-                    if (apiLines.isNotEmpty()) {
-                        scope.launch {
-                            // 按来源分别保存线路列表，支持多个多仓源共存
-                            ApiLineStore.putLines(appPreferences, apiUrl, apiLines)
-                        }
-                        callback.apiLines(apiLines)
-                        return@launch
-                    }
-                    parseJson(apiUrl, json)
-                    writeCache(cache, json)
-                    callback.success()
+                    callback.apiLines(apiLines)
+                    return@launch
                 }
+                parseJson(apiUrl, json)
+                writeCache(cache, json)
+                callback.success()
             } catch (e: Throwable) {
                 LOG.e(e)
                 if (cache.exists()) {
@@ -210,9 +194,52 @@ class ApiConfig @Inject constructor(
                         LOG.e(e2)
                     }
                 }
-                callback.error(context.getString(R.string.config_err_fetch, e.message ?: ""))
+                callback.error(configErrorMessage(e))
             }
         }
+    }
+
+    /**
+     * 拉取订阅内容：固定 HTTP/1.1 规避部分服务器 h2 首包/流控缺陷；
+     * 非 2xx、空响应或网络异常时换轮换 UA 重试一次，兼容防盗链误判与偶发断连；
+     * 两次都失败才抛出，交由上层回退本地缓存。
+     */
+    @Throws(Throwable::class)
+    private fun fetchConfigContent(configUrl: String, configKey: String?, apiUrl: String): String {
+        var lastError: Throwable? = null
+        for (attempt in 0 until 2) {
+            val ua = if (attempt == 0) USER_AGENT else okHttpHelper.nextUserAgent()
+            try {
+                val request = Request.Builder()
+                    .url(configUrl)
+                    .header("User-Agent", ua)
+                    .header("Accept", REQUEST_ACCEPT)
+                    .build()
+                return okHttpHelper.http11Client().newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+                    var result = response.body?.string().orEmpty()
+                    if (result.isBlank()) throw IOException("empty config response")
+                    result = findResult(result, configKey)
+                    if (apiUrl.startsWith("clan")) {
+                        result = clanContentFix(clanToAddress(apiUrl), result)
+                    }
+                    fixContentPath(apiUrl, result)
+                }
+            } catch (e: Throwable) {
+                lastError = e
+                LOG.e(e)
+            }
+        }
+        throw lastError ?: IOException("empty config response")
+    }
+
+    /** 订阅失败原因归类：TLS/解析/超时给中文可读提示，其余保留原始异常信息便于排查 */
+    private fun configErrorMessage(e: Throwable): String = when (e) {
+        is javax.net.ssl.SSLException, is java.security.cert.CertificateException ->
+            context.getString(R.string.config_err_tls)
+        is java.net.UnknownHostException -> context.getString(R.string.config_err_dns)
+        is java.net.SocketTimeoutException -> context.getString(R.string.config_err_timeout)
+        else -> context.getString(R.string.config_err_fetch, e.message ?: "")
     }
 
     /** 加载主爬虫 jar，支持 img+ 隐写、md5 校验与缓存复用 */

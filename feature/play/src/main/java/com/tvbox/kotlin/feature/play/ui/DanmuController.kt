@@ -324,18 +324,42 @@ class DanmuController(private val host: PlayHost) {
         ).show()
     }
 
-    /** 组合初始搜索词：剧名沿用标题，集数取自当前集名中的数字，便于直接命中该集弹幕 */
+    /** 组合初始搜索词：剧名沿用标题，集数取自当前集名中的真实集数 */
     private fun buildDanmuKeyword(): String {
-        val title = host.viewModel.title.value.ifEmpty {
+        val rawTitle = host.viewModel.title.value.ifEmpty {
             host.viewModel.vodInfo.value?.name.orEmpty()
         }.trim()
+        // 剧名里的 1080P/4K 等画质标记同样会污染检索词
+        val title = cleanMediaTags(rawTitle).ifEmpty { rawTitle }
         val episode = host.viewModel.currentEpisode.value?.name.orEmpty()
-        val number = Regex("\\d+").find(episode)?.value
+        val number = extractEpisodeNumber(episode)
         return if (title.isNotEmpty() && number != null && !title.contains(number)) {
             "$title $number"
         } else {
             title
         }
+    }
+
+    /** 去除画质/编码/帧率标记，避免“1080P”这类集名被当成集数 */
+    private fun cleanMediaTags(text: String): String = text
+        .replace(MEDIA_TAG_REGEX, " ")
+        .replace(MULTI_SPACE_REGEX, " ")
+        .trim()
+
+    /**
+     * 从集名提取真实集数：先认“第x集/话/期/回”“EPx”“SxxExx”等显式标识，
+     * 再取清洗后的首个独立数字。裸数字（如千集的“1080”“2000”）普遍是集数，
+     * 只有集名还残留 HD/BluRay 等画质词时，才把常见分辨率值判为画质排除。
+     */
+    private fun extractEpisodeNumber(episode: String): String? {
+        for (regex in EXPLICIT_EPISODE_REGEXES) {
+            val number = regex.find(episode)?.groupValues?.get(1).orEmpty()
+            if (number.isNotEmpty()) return number
+        }
+        val cleaned = cleanMediaTags(episode)
+        val number = STANDALONE_NUMBER_REGEX.find(cleaned)?.groupValues?.get(1) ?: return null
+        if (number in RESOLUTION_NUMBERS && RESIDUAL_QUALITY_REGEX.containsMatchIn(cleaned)) return null
+        return number
     }
 
     /** 应用在线选择的弹幕内容：写入弹幕源并强制重新加载 */
@@ -414,5 +438,30 @@ class DanmuController(private val host: PlayHost) {
 
         /** 自愈最小间隔（毫秒），避免异常状态下反复 seek */
         private const val RECOVER_COOLDOWN_MS = 3_000L
+
+        /** 画质与编码标记：1080P、720i、4K、H264、x265、60fps */
+        private val MEDIA_TAG_REGEX = Regex(
+            "(?i)(\\d{3,4}\\s*[pi]|[24]\\s*k|[hx]\\.?26[45]|\\d{2,3}\\s*(?:fps|帧))"
+        )
+
+        private val MULTI_SPACE_REGEX = Regex("\\s+")
+
+        /** 显式集数标识：第12集、1080集/话/期/回、EP12、S01E12 */
+        private val EXPLICIT_EPISODE_REGEXES = listOf(
+            Regex("(?:第\\s*)?(\\d{1,4})\\s*[集话期回]"),
+            Regex("(?i)(?<![a-z])s\\d{1,2}\\s*e(\\d{1,4})"),
+            Regex("(?i)(?<![a-z])(?:ep|e)\\s*\\.?\\s*(\\d{1,4})(?!\\d)")
+        )
+
+        private val STANDALONE_NUMBER_REGEX = Regex("(?<!\\d)(\\d{1,4})(?!\\d)")
+
+        /** 未带 P/i 后缀时常见的分辨率数字，仅在有其他画质词佐证时才排除 */
+        private val RESOLUTION_NUMBERS =
+            setOf("144", "240", "360", "480", "540", "576", "720", "1080", "1440", "2160", "4320")
+
+        /** 集名中残留的画质词：命中才把分辨率数字判为画质，避免误伤千集剧的裸数字集名 */
+        private val RESIDUAL_QUALITY_REGEX = Regex(
+            "(?i)(?<![a-z])(?:hd|fhd|uhd|hdr10?|blu-?ray|web-?dl|webrip|hdtv|remux|bdrip|dvdrip)(?![a-z])"
+        )
     }
 }

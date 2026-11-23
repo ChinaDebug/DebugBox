@@ -561,6 +561,8 @@
     <string name="media_decode_hard_only">Hardware Only</string>
     <string name="media_decode_soft_only">Software Only</string>
     <string name="media_select_decode">Select Decode Mode</string>
+    <string name="media_decode_current_hard">Current: Hardware</string>
+    <string name="media_decode_current_soft">Current: Software</string>
 
     // Play code UI //
     <string name="play_err_no_video_addr">No video source address</string>

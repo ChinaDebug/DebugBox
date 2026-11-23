@@ -3,6 +3,9 @@
     <!-- 配置/接口加载错误提示 -->
     <string name="config_err_empty_api">Source address is empty</string>
     <string name="config_err_fetch">Failed to fetch config\n%1$s</string>
+    <string name="config_err_tls">Secure connection failed\nCheck device time and try again</string>
+    <string name="config_err_dns">Failed to resolve host\nCheck network or change DNS</string>
+    <string name="config_err_timeout">Connection timed out\nPlease try again later</string>
     <string name="config_err_cache_jar">Failed to load jar from cache</string>
     <string name="config_err_net_jar_empty">Network jar data is empty</string>
     <string name="config_err_img_jar_empty">Img jar data is empty</string>

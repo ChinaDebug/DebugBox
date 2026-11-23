@@ -3,6 +3,9 @@
     <!-- 订阅加载错误提示 -->
     <string name="config_err_empty_api">订阅地址为空</string>
     <string name="config_err_fetch">拉取订阅失败\n%1$s</string>
+    <string name="config_err_tls">HTTPS 安全连接失败\n请检查设备时间是否准确后重试</string>
+    <string name="config_err_dns">域名解析失败\n请检查网络或切换 DNS 后重试</string>
+    <string name="config_err_timeout">网络连接超时\n请稍后重试</string>
     <string name="config_err_cache_jar">从缓存加载jar失败</string>
     <string name="config_err_net_jar_empty">从网络上加载jar地址字节数据为空</string>
     <string name="config_err_img_jar_empty">img jar 数据为空</string>

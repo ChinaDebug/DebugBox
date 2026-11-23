@@ -84,6 +84,9 @@ class PlayerSettingsPanelDialog(
     /** 软解直写 Surface 时视频效果链不会被执行，画面调节与增强统一禁用 */
     private var softDecode = false
 
+    /** 上次展示的实际解码方式（true=软解），避免轮询重复 setText */
+    private var decodeCurrentSoft: Boolean? = null
+
     private val prefs: AppPreferences by lazy { AppPreferences.getShared(context) }
 
     /** 屏显开关行：行 id / 值 id / 偏好键 */
@@ -204,6 +207,7 @@ class PlayerSettingsPanelDialog(
             }.show()
         }
         refreshDecodeMode()
+        refreshDecodeCurrent(Anime4kStatus.isSoftVideoRenderer(host.videoView.exoPlayer))
     }
 
     /** 解码模式名称：0 硬解优先、1 软解优先、2 仅硬解、3 仅软解 */
@@ -218,6 +222,18 @@ class PlayerSettingsPanelDialog(
         val names = decodeModeNames()
         val current = prefs.getInt(AppConstants.MEDIA3_RENDERER_MODE, 0).coerceIn(0, names.lastIndex)
         findViewById<TextView>(R.id.ps_decode_value)?.text = names[current]
+    }
+
+    /**
+     * 刷新“当前解码方式”提示：配置的解码模式是意愿档位，实际生效的渲染器可能因
+     * 硬解不支持回落到 FFmpeg 软解，这里按当前活动视频渲染器展示真实状态。
+     */
+    private fun refreshDecodeCurrent(soft: Boolean) {
+        if (soft == decodeCurrentSoft) return
+        decodeCurrentSoft = soft
+        findViewById<TextView>(R.id.ps_decode_current)?.text = context.getString(
+            if (soft) uiR.string.media_decode_current_soft else uiR.string.media_decode_current_hard
+        )
     }
 
     private fun refreshPlayValues() {
@@ -338,6 +354,7 @@ class PlayerSettingsPanelDialog(
             softDecode = soft
             applyPictureState()
         }
+        refreshDecodeCurrent(soft)
         status.text = when {
             !Anime4kSettings.isEnabledPref(context) ->
                 context.getString(uiR.string.quality_status_off)
