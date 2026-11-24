@@ -4,8 +4,8 @@ import android.content.Context
 import android.os.Handler
 import androidx.media3.common.C
 import androidx.media3.common.Format
-import androidx.media3.common.MimeTypes
 import androidx.media3.decoder.ffmpeg.ExperimentalFfmpegVideoRenderer
+import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import androidx.media3.decoder.ffmpeg.FfmpegLibrary
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.Renderer
@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.PlaybackVideoGraphWrapper
 import androidx.media3.exoplayer.video.VideoFrameReleaseControl
 import androidx.media3.exoplayer.video.VideoRendererEventListener
+import com.tvbox.kotlin.core.common.LOG
 
 /**
  * 直控内核渲染器配置（设置项 0~3）。
@@ -36,24 +37,14 @@ object PlayerEngineConfig {
     private var mode: Int = MODE_HARDWARE_FIRST
 
     fun apply(rendererMode: Int) {
-        mode = rendererMode
+        // 备份恢复/旧版本可能写入越界档位，统一归一到已知模式，避免落入未知分支
+        mode = rendererMode.coerceIn(MODE_HARDWARE_FIRST, MODE_SOFTWARE_ONLY)
     }
 
     val currentMode: Int get() = mode
 
     /** 仅软解：移除全部 MediaCodec 渲染器 */
     val isSoftwareOnly: Boolean get() = mode == MODE_SOFTWARE_ONLY
-
-    /** 仅硬解：音频无 FFmpeg 软解兜底，杜比/DTS 音轨可能解码失败（错误码 4001） */
-    val isOnlyHardwareMode: Boolean get() = mode == MODE_HARDWARE_ONLY
-
-    /** 杜比/DTS 家族音频 MIME：仅硬解模式的音轨能力预检用 */
-    fun isDolbyOrDts(mime: String?): Boolean = when (mime) {
-        MimeTypes.AUDIO_AC3, MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC,
-        MimeTypes.AUDIO_TRUEHD, MimeTypes.AUDIO_DTS, MimeTypes.AUDIO_DTS_HD,
-        MimeTypes.AUDIO_DTS_EXPRESS -> true
-        else -> false
-    }
 }
 
 /**
@@ -61,9 +52,13 @@ object PlayerEngineConfig {
  *
  * 视频：MediaCodec 渲染器带编码 profile 校验（硬解不支持时回落软解）；
  * 软解渲染器为本模块自编译 FFmpeg（类名与官方扩展不同，需显式加入）。
- * 音频：非仅硬解模式只保留 FFmpeg 软解（单渲染器，避免切轨跨渲染器失败）。
+ * 音频：与视频解码模式解耦，全部模式优先 FFmpeg 软解；原生库不可用时保留硬解兜底。
  */
 internal class EngineRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+
+    private companion object {
+        const val TAG = "EngineRenderersFactory"
+    }
 
     private val softOnly = PlayerEngineConfig.isSoftwareOnly
 
@@ -92,8 +87,30 @@ internal class EngineRenderersFactory(context: Context) : DefaultRenderersFactor
             context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback,
             eventHandler, eventListener, allowedVideoJoiningTimeMs, out
         )
+        // 自编译 FFmpeg 视频渲染器：官方扩展名反射加载不到，需显式创建
+        val ffmpegVideo = if (extensionRendererMode != EXTENSION_RENDERER_MODE_OFF &&
+            FfmpegLibrary.isAvailable()
+        ) {
+            try {
+                ExperimentalFfmpegVideoRenderer(
+                    allowedVideoJoiningTimeMs, eventHandler, eventListener,
+                    MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY
+                )
+            } catch (t: Throwable) {
+                LOG.w(TAG, "FFmpeg 视频渲染器创建失败：${t.message}")
+                null
+            }
+        } else {
+            null
+        }
+
         if (softOnly) {
-            out.removeAll { it is MediaCodecVideoRenderer }
+            // 仅软解完全依赖 FFmpeg：不可用时保留硬解，避免完全没有画面
+            if (ffmpegVideo != null) {
+                out.removeAll { it is MediaCodecVideoRenderer }
+            } else {
+                LOG.w(TAG, "FFmpeg 视频软解不可用，仅软解模式回退硬解")
+            }
         } else {
             // 默认 MediaCodec 渲染器替换为带 profile 校验的版本
             val idx = out.indexOfFirst { it is MediaCodecVideoRenderer }
@@ -108,19 +125,14 @@ internal class EngineRenderersFactory(context: Context) : DefaultRenderersFactor
                 )
             }
         }
-        // 自编译 FFmpeg 视频渲染器：官方扩展名反射加载不到，显式加入；
-        // 软解优先模式插到硬解之前，其余模式追加在后
-        if (extensionRendererMode != EXTENSION_RENDERER_MODE_OFF && FfmpegLibrary.isAvailable()) {
-            val renderer = ExperimentalFfmpegVideoRenderer(
-                allowedVideoJoiningTimeMs, eventHandler, eventListener,
-                MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY
-            )
+        if (ffmpegVideo != null) {
+            // 软解优先插到硬解之前，其余模式追加在后
             val insertAt = if (extensionRendererMode == EXTENSION_RENDERER_MODE_PREFER) {
                 out.indexOfFirst { it is MediaCodecVideoRenderer }.takeIf { it >= 0 } ?: out.size
             } else {
                 out.size
             }
-            out.add(insertAt, renderer)
+            out.add(insertAt, ffmpegVideo)
         }
     }
 
@@ -134,14 +146,19 @@ internal class EngineRenderersFactory(context: Context) : DefaultRenderersFactor
         eventListener: AudioRendererEventListener,
         out: ArrayList<Renderer>
     ) {
+        // 音频固定装配扩展渲染器（FFmpeg 软解），不能沿用工厂的 OFF：
+        // 仅硬解模式只约束视频，若音频也关闭扩展将无软解兜底，杜比/DTS 音轨会无声
         super.buildAudioRenderers(
-            context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback,
+            context, EXTENSION_RENDERER_MODE_ON, mediaCodecSelector, enableDecoderFallback,
             audioSink, eventHandler, eventListener, out
         )
-        // 仅当 FFmpeg 音频渲染器确实加载成功时才移除 MediaCodec 音频，避免无音频输出
-        val hasFfmpegAudio = out.any { it.javaClass.name.endsWith("FfmpegAudioRenderer") }
-        if (extensionRendererMode != EXTENSION_RENDERER_MODE_OFF && hasFfmpegAudio) {
+        // 反射创建成功不代表可解码：原生库缺失时 supportsFormat 恒为不支持，
+        // 此时必须保留 MediaCodec 音频兜底，避免所有格式完全无声
+        val ffmpegAudioReady = out.any { it is FfmpegAudioRenderer } && FfmpegLibrary.isAvailable()
+        if (ffmpegAudioReady) {
             out.removeAll { it is MediaCodecAudioRenderer }
+        } else {
+            LOG.w(TAG, "FFmpeg 音频软解不可用，音频回退硬解（杜比/DTS 音轨可能无声）")
         }
     }
 

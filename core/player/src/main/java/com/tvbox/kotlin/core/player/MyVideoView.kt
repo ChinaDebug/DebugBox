@@ -12,7 +12,6 @@ import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Effect
@@ -73,10 +72,6 @@ class MyVideoView @JvmOverloads constructor(
     /** 当前播放请求头 */
     var headers: Map<String, String> = emptyMap()
         private set
-
-    /** 音轨切换进行中标志：PlayerMenuHelper 切换音轨时置位，错误回调据此给出硬解兜底提示 */
-    @Volatile
-    var audioTrackSwitching = false
 
     //region 内核与渲染层
     /** 直控 ExoPlayer（未创建时为 null） */
@@ -372,23 +367,12 @@ class MyVideoView @JvmOverloads constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            // 仅硬解模式切到无硬件解码器的音轨（杜比/DTS）时解码器初始化失败，给出可操作提示
-            if (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED &&
-                audioTrackSwitching && PlayerEngineConfig.isOnlyHardwareMode
-            ) {
-                audioTrackSwitching = false
-                Toast.makeText(
-                    context,
-                    "当前仅硬解模式不支持该音轨（杜比/DTS），请切换硬解优先或软解优先",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
             setPlayState(PlayerConstants.STATE_ERROR)
             onErrorListener?.invoke(error.errorCode, 0)
         }
     }
 
-    /** 首次就绪：断点跳转、音轨标志复位、纯音频兜底检测 */
+    /** 首次就绪：断点跳转、纯音频兜底检测 */
     private fun onPreparedInternal() {
         setPlayState(PlayerConstants.STATE_PREPARED)
         val player = exoPlayer
@@ -398,7 +382,6 @@ class MyVideoView @JvmOverloads constructor(
         if (pendingStartPosition > 0) {
             seekTo(pendingStartPosition)
         }
-        audioTrackSwitching = false
         scheduleAudioModeCheck()
         onPreparedListener?.invoke()
     }
@@ -649,7 +632,6 @@ class MyVideoView @JvmOverloads constructor(
         danmuClockBaseMs = 0L
         danmuClockBaseUptime = 0L
         danmuClockPlaying = false
-        audioTrackSwitching = false
         audioCheckRunnable?.let { mainHandler.removeCallbacks(it) }
         audioCheckRunnable = null
         audioOnly = false

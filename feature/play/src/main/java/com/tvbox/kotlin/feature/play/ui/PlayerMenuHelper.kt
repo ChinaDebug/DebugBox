@@ -3,8 +3,6 @@ package com.tvbox.kotlin.feature.play.ui
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.media.MediaCodecList
-import android.os.Build
 import android.widget.Toast
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -18,7 +16,6 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.tvbox.kotlin.core.common.AppConstants
 import com.tvbox.kotlin.core.common.util.AppPreferences
 import com.tvbox.kotlin.core.player.MyVideoView
-import com.tvbox.kotlin.core.player.PlayerEngineConfig
 import com.tvbox.kotlin.core.player.TrackInfoBean
 import com.tvbox.kotlin.core.player.subtitle.model.Subtitle
 import com.tvbox.kotlin.core.player.subtitle.widget.SimpleSubtitleView
@@ -322,7 +319,7 @@ object PlayerMenuHelper {
 
     /**
      * 切换 Exo 内核音频轨道：经 TrackSelector SelectionOverride 切换，[playKey] 非空时持久化所选轨道。
-     * 音频为单渲染器 FFmpeg 软解，无解码失败风险。
+     * 音频固定为 FFmpeg 软解，任意编码均可切换解出。
      */
     fun switchExoAudioTrack(videoView: MyVideoView, bean: TrackInfoBean, playKey: String? = null) {
         try {
@@ -333,22 +330,7 @@ object PlayerMenuHelper {
             val groups = mappedInfo.getTrackGroups(bean.renderId)
             if (bean.trackGroupId !in 0 until groups.length) return
             if (bean.trackId !in 0 until groups.get(bean.trackGroupId).length) return
-            // 仅硬解模式（OFF）无 FFmpeg 音频软解兜底：目标音轨为杜比/DTS 家族且设备无对应硬件解码器时
-            // 拦截切换（播放保持现状不中断），避免切换后解码失败报 4001
-            val targetFormat = groups.get(bean.trackGroupId).getFormat(bean.trackId)
-            if (PlayerEngineConfig.isOnlyHardwareMode &&
-                PlayerEngineConfig.isDolbyOrDts(targetFormat.sampleMimeType) &&
-                !hasHardwareDecoder(targetFormat.sampleMimeType)
-            ) {
-                Toast.makeText(
-                    videoView.context,
-                    "当前仅硬解模式不支持该音轨（杜比/DTS），请切换硬解优先或软解优先",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return
-            }
-            // 直接 setParameters 切换：音频为单渲染器 FFmpeg 软解（无解码失败风险），无需暂停等待解码器停稳
-            videoView.audioTrackSwitching = true
+            // 音频为单渲染器 FFmpeg 软解（无解码失败风险），无需暂停等待解码器停稳
             val override = DefaultTrackSelector.SelectionOverride(bean.trackGroupId, bean.trackId)
             val builder = trackSelector.buildUponParameters()
                 .setRendererDisabled(bean.renderId, false)
@@ -358,29 +340,6 @@ object PlayerMenuHelper {
             playKey?.let { AudioTrackMemory.saveExo(videoView.context, it, bean.renderId, bean.trackGroupId, bean.trackId) }
         } catch (e: Throwable) {
             Toast.makeText(videoView.context, "音轨切换失败：${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    /**
-     * 设备是否具备指定 MIME 的硬件解码器（排除软件解码器）。
-     * 用于仅硬解模式下的音轨能力预检：杜比/DTS 家族格式若设备无硬件解码器则无法硬解。
-     */
-    private fun hasHardwareDecoder(mime: String?): Boolean {
-        if (mime.isNullOrBlank()) return false
-        return try {
-            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-            codecList.codecInfos.any { info ->
-                if (info.isEncoder || !info.supportedTypes.contains(mime)) return@any false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    !info.isSoftwareOnly
-                } else {
-                    // API 29 以下无 isSoftwareOnly，按名称前缀排除软件解码器（OMX.google / c2.android）
-                    val name = info.name.lowercase()
-                    !name.contains("google") && !name.contains("android.")
-                }
-            }
-        } catch (_: Throwable) {
-            false
         }
     }
 
@@ -459,7 +418,7 @@ object PlayerMenuHelper {
         applyExoMemoryTrack(videoView, mem.first, mem.second, mem.third)
     }
 
-    /** 应用记忆的 Exo 音频轨道：校验索引后 setParameters（与手动切换同路径）；仅硬解模式记忆为不可解杜比时跳过 */
+    /** 应用记忆的 Exo 音频轨道：校验索引后 setParameters（与手动切换同路径） */
     private fun applyExoMemoryTrack(videoView: MyVideoView, renderId: Int, groupIndex: Int, trackId: Int) {
         try {
             val trackSelector = videoView.trackSelector ?: return
@@ -469,14 +428,6 @@ object PlayerMenuHelper {
             val groups = mappedInfo.getTrackGroups(renderId)
             if (groupIndex !in 0 until groups.length) return
             if (trackId !in 0 until groups.get(groupIndex).length) return
-            // 仅硬解模式且记忆为无硬件解码器的杜比/DTS 音轨：恢复必然解码失败，跳过保持默认
-            val mime = groups.get(groupIndex).getFormat(trackId).sampleMimeType
-            if (PlayerEngineConfig.isOnlyHardwareMode &&
-                PlayerEngineConfig.isDolbyOrDts(mime) &&
-                !hasHardwareDecoder(mime)
-            ) {
-                return
-            }
             val override = DefaultTrackSelector.SelectionOverride(groupIndex, trackId)
             val builder = trackSelector.buildUponParameters()
                 .setRendererDisabled(renderId, false)
