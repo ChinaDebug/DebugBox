@@ -482,9 +482,8 @@ class SearchActivity : BaseBindingActivity<ActivitySearchBinding>() {
         }
     }
 
-    /** 跳转详情页 */
+    /** 跳转详情页：搜索任务保持运行，返回时进度与结果继续呈现 */
     private fun goToDetail(video: Movie.Video) {
-        viewModel.cancelSearch()
         appNavigator.goDetail(this, video.id, video.sourceKey, Intent().putExtra("pic", video.pic))
     }
 
